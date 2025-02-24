@@ -7,9 +7,13 @@ User Roles and Dashboards
 Roles:
 
 Operator: Responsible for scanning serial numbers to record each output.
+
 Leader: Inputs the current model running and updates material counts manually.
+
 Supervisor: Likely oversees operations, reviews performance dashboards, and monitors overall production efficiency.
+
 Engineer: May handle troubleshooting, system analytics, and possibly oversee predictive maintenance or improvement processes.
+
 Dashboards:
 Multiple dashboards can be configured based on the role. For example, an operator’s dashboard might focus on real-time scanning and immediate output confirmation, while a supervisor’s dashboard shows aggregated performance data and material trends. An engineer’s dashboard could provide deeper analytics and alert logs.
 Production Line Tracking
