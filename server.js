@@ -11,6 +11,8 @@ const userRoutes = require('./routes/userRoutes');
 const lineRoutes = require('./routes/lineRoutes');
 
 // Middleware
+const authRoutes = require('./routes/authRoutes');
+
 app.use(express.json());
 
 // Basic test route
@@ -23,6 +25,8 @@ app.use('/api/users', userRoutes);
 
 // Production line routes
 app.use('/api/lines', lineRoutes);
+
+app.use('/api/auth', authRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
