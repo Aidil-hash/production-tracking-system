@@ -1,30 +1,31 @@
 // controllers/userController.js
 
-const User = require('../models/User'); // The new Mongoose model
+const User = require('../models/User');
+const bcrypt = require('bcrypt');
 
-// Create a new user
-// Create a new user with a password
 const createUser = async (req, res) => {
   try {
-  const { name, role, password } = req.body;
+    const { name, role, password } = req.body;
+    if (!name || !role || !password) {
+      return res.status(400).json({ message: 'Name, role, and password are required' });
+    }
 
-  // Basic validation
-  if (!name || !role || !password) {
-    return res.status(400).json({ message: 'Name, Role, and Password are required' });
-  }
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-  // Create and save user in MongoDB
-  const newUser = new User({ name, role, password });
-  await newUser.save();
+    // Create and save user
+    const newUser = new User({ name, role, password: hashedPassword });
+    await newUser.save();
 
-  // Return user without password
-  const { password: _, ...userData } = newUser.toObject();
-  return res.status(201).json({ message: 'User created', user: userData });
-} catch (error) {
-  console.error('Error creating user:', error);
+    const { password: _, ...userData } = newUser.toObject();
+    return res.status(201).json({ message: 'User created', user: userData });
+  } catch (error) {
+    console.error('Error creating user:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
   // Get all users
 const getUsers = async (req, res) => {
   try {

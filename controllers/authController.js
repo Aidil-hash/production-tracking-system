@@ -1,17 +1,22 @@
 // controllers/authController.js
 
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
-const secretKey = 'your_secret_key'; // Use env variable in production
+const secretKey = process.env.JWT_SECRET || 'your_secret_key';
 
 const login = async (req, res) => {
   try {
     const { name, password } = req.body;
-    // Find user in MongoDB
     const user = await User.findOne({ name });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
-    if (!user || user.password !== password) {
+    // Compare hashed password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
