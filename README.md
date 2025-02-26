@@ -1,9 +1,11 @@
-Below is an outline based on your specifications along with some suggestions for improvement:
+Below is an outline for the project
 
 Overview
-Your app will serve as a production line management tool designed to track materials, monitor output efficiency, and streamline communication across multiple roles. The key idea is to automate material tracking and provide dashboards tailored to each user type.
+
+This app will serve as a production line management tool designed to track materials, monitor output efficiency, and streamline communication across multiple roles. The key idea is to automate material tracking and provide dashboards tailored to each user type.
 
 User Roles and Dashboards
+
 Roles:
 
 Operator: Responsible for scanning serial numbers to record each output.
