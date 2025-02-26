@@ -18,6 +18,7 @@ Engineer: May handle troubleshooting, system analytics, and possibly oversee pre
 
 Dashboards:
 Multiple dashboards can be configured based on the role. For example, an operator’s dashboard might focus on real-time scanning and immediate output confirmation, while a supervisor’s dashboard shows aggregated performance data and material trends. An engineer’s dashboard could provide deeper analytics and alert logs.
+
 Production Line Tracking
 
 Material Count and Efficiency Calculation:
