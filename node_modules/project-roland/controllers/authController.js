@@ -1,26 +1,32 @@
 // controllers/authController.js
 
 const jwt = require('jsonwebtoken');
-const { users } = require('../models/userModel');
+const User = require('../models/User');
 
-const secretKey = 'your_secret_key'; // In production, store this in an environment variable.
+const secretKey = 'your_secret_key'; // Use env variable in production
 
-const login = (req, res) => {
-  const { name, password } = req.body;
+const login = async (req, res) => {
+  try {
+    const { name, password } = req.body;
+    // Find user in MongoDB
+    const user = await User.findOne({ name });
 
-  // Find the user by name and check the password
-  const user = users.find(u => u.name === name && u.password === password);
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Create JWT
+    const token = jwt.sign(
+      { id: user._id, role: user.role, name: user.name },
+      secretKey,
+      { expiresIn: '1h' }
+    );
+
+    return res.status(200).json({ message: 'Login successful', token });
+  } catch (error) {
+    console.error('Error logging in:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
-
-  // Create a JWT token with user info (id, role, name)
-  const token = jwt.sign(
-    { id: user.id, role: user.role, name: user.name },
-    secretKey,
-    { expiresIn: '1h' }
-  );
-  return res.status(200).json({ message: 'Login successful', token });
 };
 
 module.exports = { login };

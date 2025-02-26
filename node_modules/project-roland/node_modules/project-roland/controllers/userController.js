@@ -1,9 +1,11 @@
 // controllers/userController.js
 
-const { users, ROLES } = require('../models/userModel');
+const User = require('../models/User'); // The new Mongoose model
 
 // Create a new user
-const createUser = (req, res) => {
+// Create a new user with a password
+const createUser = async (req, res) => {
+  try {
   const { name, role, password } = req.body;
 
   // Basic validation
@@ -11,32 +13,29 @@ const createUser = (req, res) => {
     return res.status(400).json({ message: 'Name, Role, and Password are required' });
   }
 
-  // Check if role is valid
-  if (!Object.values(ROLES).includes(role)) {
-    return res.status(400).json({ message: 'Invalid Role provided' });
+  // Create and save user in MongoDB
+  const newUser = new User({ name, role, password });
+  await newUser.save();
+
+  // Return user without password
+  const { password: _, ...userData } = newUser.toObject();
+  return res.status(201).json({ message: 'User created', user: userData });
+} catch (error) {
+  console.error('Error creating user:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
-
-  // Simple check for existing user (by name)
-  if (users.find(u => u.name === name)) {
-    return res.status(400).json({ message: 'User already exists' });
-  }
-
-  const newUser = {
-    id: users.length + 1, // simplistic ID generation
-    name,
-    role,
-    password, // In production, hash the password!
-  };
-
-  users.push(newUser);
-
-  return res.status(201).json({ message: 'User created', user: newUser });
 };
-
-// Get all users
-const getUsers = (req, res) => {
-  const usersWithoutPassword = users.map(({ password, ...rest}) => rest);
-  return res.status(200).json(usersWithoutPassword);
+  // Get all users
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.find({});
+    // Remove password before sending
+    const usersWithoutPassword = users.map(({ password, ...rest }) => rest);
+    return res.status(200).json(usersWithoutPassword);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
 };
 
 module.exports = {
