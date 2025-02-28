@@ -71,23 +71,27 @@ const scanSerial = async (req, res) => {
 const getLine = async (req, res) => {
   try {
     const { lineId } = req.params;
+    // For MongoDB, something like:
     const line = await Line.findById(lineId);
     if (!line) {
       return res.status(404).json({ message: 'Line not found' });
     }
-
-    return res.status(200).json(line);
+    return res.json(line);
   } catch (error) {
     console.error('Error fetching line:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
 // Get all lines
 const getAllLines = async (req, res) => {
   try {
-    const lines = await Line.find({});
-    return res.status(200).json(lines);
+    const lines = await Line.find({}); // returns [{ _id: 'abc123', model: 'Model-X', ...}, ...]
+    const formattedLines = lines.map((l) => ({
+      id: l._id.toString(), // rename _id to id
+      model: l.model,
+    }));
+    return res.status(200).json(formattedLines);
   } catch (error) {
     console.error('Error fetching lines:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });

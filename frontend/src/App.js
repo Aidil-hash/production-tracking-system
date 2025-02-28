@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -16,8 +16,10 @@ function App() {
     setIsDark(!isDark);
   };
 
+  const theme = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
+
   return (
-    <ThemeProvider theme={isDark ? darkTheme : lightTheme}>
+    <ThemeProvider theme={theme}>
       <Button variant="contained" onClick={toggleTheme}>
         Toggle Theme
       </Button>
@@ -25,6 +27,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/:lineId" element={<Dashboard />} />
             <Route path="/register" element={<Register />} />
           </Routes>
         </Router>

@@ -11,28 +11,19 @@ function Register() {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  // Adjust if you have a different port or environment variable
+  // Use the API URL from the environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      // Make a POST request to your backend's user creation endpoint
-      await axios.post(`${API_URL}/api/users`, {
-        name,
-        role,
-        password
-      });
-
-      // On success, you might display a success message or redirect to login
+      await axios.post(`${API_URL}/api/users`, { name, role, password });
       setSuccess('User registered successfully!');
       setError('');
-      // Optionally redirect after a short delay
       setTimeout(() => {
-        navigate('/'); // e.g., redirect to login
+        navigate('/'); // Redirect to login
       }, 2000);
     } catch (err) {
-      // Show error from backend if available
       setError(err.response?.data?.message || 'Registration failed');
       setSuccess('');
     }
@@ -41,25 +32,16 @@ function Register() {
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto' }}>
       <h2>Register</h2>
-      {error && <p style={{ color:'red' }}>{error}</p>}
-      {success && <p style={{ color:'green' }}>{success}</p>}
+      {error && <p style={{color:'red'}}>{error}</p>}
+      {success && <p style={{color:'green'}}>{success}</p>}
       <form onSubmit={handleRegister}>
         <div>
           <label>Name:</label>
-          <input 
-            type="text" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)} 
-            required 
-          />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div>
           <label>Role:</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            required
-          >
+          <select value={role} onChange={(e) => setRole(e.target.value)} required>
             <option value="">--Select a role--</option>
             <option value="operator">Operator</option>
             <option value="leader">Leader</option>
@@ -69,12 +51,7 @@ function Register() {
         </div>
         <div>
           <label>Password:</label>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            required 
-          />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         <button type="submit">Register</button>
       </form>

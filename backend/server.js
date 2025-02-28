@@ -4,7 +4,15 @@ require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/database'); // adjust path if needed
 const app = express();
-const port = 3000;
+
+const cors = require('cors');
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 // Connect to MongoDB
 connectDB();
 
@@ -31,9 +39,6 @@ app.use('/api/lines', lineRoutes);
 
 app.use('/api/auth', authRoutes);
 
-const cors = require('cors');
-app.use(cors());
-
 module.exports = app; // export the app for testing
 
 const path = require('path');
@@ -47,7 +52,7 @@ app.get('*', (req, res) => {
 
 if (require.main === module) {
   // Only start listening if this file is run directly (not imported by test)
-  app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+  app.listen(5000, () => {
+    console.log('Server running on port 5000');
   });
 }
