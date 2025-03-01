@@ -34,7 +34,7 @@ const getAssignedLineForLeader = async (req, res) => {
 const assignLineToOperator = async (req, res) => {
     try {
       // Check that the requester is a leader
-      if (req.user.role !== 'leader'|| 'supervisor') {
+      if (req.user.role !== 'leader') {
         return res.status(403).json({ message: 'Access denied. Only leaders can assign lines.' });
       }
   

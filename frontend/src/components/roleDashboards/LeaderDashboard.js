@@ -1,19 +1,36 @@
 // src/components/roleDashboards/LeaderDashboard.js
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  TextField, 
+  Button, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper 
+} from '@mui/material';
 import axios from 'axios';
+import LogoutButton from '../Logout';
 
 function LeaderDashboard() {
   const [lineData, setLineData] = useState(null);
   const [model, setModel] = useState('');
   const [materialCount, setMaterialCount] = useState('');
+  const [predictedTimeToDepletion, setPredictedTimeToDepletion] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lineId, setLineId] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState('');
 
-  // Use API URL from environment variables or fallback
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Fetch the leader's assigned production line from the API
@@ -39,12 +56,15 @@ function LeaderDashboard() {
     const fetchLineData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/lines/${lineId}`, {
+        // Call the predict endpoint to get additional info including predicted time
+        const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log('Predict API response:', res.data); // Debug: check response structure
         setLineData(res.data);
         setModel(res.data.model);
         setMaterialCount(res.data.currentMaterialCount);
+        setPredictedTimeToDepletion(res.data.predictedTimeToDepletion || 'N/A');
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
       }
@@ -58,10 +78,11 @@ function LeaderDashboard() {
     const fetchOperators = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/operators`, {
+        const res = await axios.get(`${API_URL}/api/users`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setOperators(res.data);
+        const operatorData = res.data.filter((user) => user.role === 'operator');
+        setOperators(operatorData);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch operators');
       }
@@ -83,6 +104,7 @@ function LeaderDashboard() {
       setError('');
       if (res.data.line) {
         setLineData(res.data.line);
+        setPredictedTimeToDepletion(res.data.line.predictedTimeToDepletion || 'N/A');
       }
     } catch (err) {
       setMessage('');
@@ -94,7 +116,7 @@ function LeaderDashboard() {
   const handleAssign = async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/api/lines/assignLine`, 
+      await axios.put(`${API_URL}/api/leaders/assignLine`, 
         { lineId, operatorId: selectedOperator },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -108,9 +130,12 @@ function LeaderDashboard() {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        Leader Dashboard
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" align="center" gutterBottom>
+          Leader Dashboard
+        </Typography>
+        <LogoutButton />
+      </Box>
       {error && (
         <Typography variant="body1" color="error" align="center" mb={2}>
           {error}
@@ -122,13 +147,30 @@ function LeaderDashboard() {
         </Typography>
       )}
       {lineData ? (
-        <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+        <Box sx={{ maxWidth: 900, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
             Production Line Details
           </Typography>
-          <Typography variant="body1" mb={1}>
-            Line ID: {lineId}
-          </Typography>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Model</TableCell>
+                  <TableCell>Current Material Count</TableCell>
+                  <TableCell>Total Outputs</TableCell>
+                  <TableCell>Predicted Time to Depletion (minutes)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>{lineData.model}</TableCell>
+                  <TableCell>{lineData.currentMaterialCount}</TableCell>
+                  <TableCell>{lineData.totalOutputs}</TableCell>
+                  <TableCell>{predictedTimeToDepletion}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
           <Box component="form" onSubmit={handleUpdate} sx={{ mt: 3 }}>
             <TextField
               label="Model"
@@ -161,19 +203,15 @@ function LeaderDashboard() {
               >
                 <MenuItem value=""><em>--Select an operator--</em></MenuItem>
                 {operators.map((operator) => (
-                  <MenuItem key={operator.id} value={operator.id}>{operator.name}</MenuItem>
+                  <MenuItem key={operator._id} value={operator._id}>
+                    {operator.name}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
             <Button variant="contained" fullWidth onClick={handleAssign}>
               Assign Line
             </Button>
-          </Box>
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6">Additional Details</Typography>
-            <Typography variant="body1">
-              Total Outputs: {lineData.totalOutputs}
-            </Typography>
           </Box>
         </Box>
       ) : (

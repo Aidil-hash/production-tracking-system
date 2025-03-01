@@ -57,14 +57,13 @@ const scanSerial = async (req, res) => {
       return res.status(400).json({ message: "Serial number is required." });
     }
 
-    // Find the production line
-    const line = await ProductionLine.findById(lineId);
+    // Use "Line" (not ProductionLine) since that's what you imported
+    const line = await Line.findById(lineId);
     if (!line) {
       return res.status(404).json({ message: "Production line not found." });
     }
 
-    // (Optional) Check that the operator is assigned to this line.
-    // For example, if your ProductionLine has an operatorId field:
+    // Optional: Check that the operator is assigned to this line
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
       return res.status(403).json({ message: "You are not assigned to this production line." });
     }
@@ -72,7 +71,7 @@ const scanSerial = async (req, res) => {
     // Update production line metrics: increment total outputs and decrement current material count if possible
     line.totalOutputs = (line.totalOutputs || 0) + 1;
     if (line.currentMaterialCount > 0) {
-      line.currentMaterialCount = line.currentMaterialCount - 1;
+      line.currentMaterialCount -= 1;
     }
     await line.save();
 
@@ -89,6 +88,7 @@ const scanSerial = async (req, res) => {
       line,
       scan: newScanLog
     });
+    
   } catch (error) {
     console.error("Error scanning serial:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -195,6 +195,7 @@ const predictMaterialLow = async (req, res) => {
     return res.status(200).json({
       message: 'Prediction calculated',
       lineId: line._id,
+      model: line.model,
       currentMaterialCount: line.currentMaterialCount,
       totalOutputs: line.totalOutputs,
       timeElapsedMinutes: timeElapsedMinutes.toFixed(2),

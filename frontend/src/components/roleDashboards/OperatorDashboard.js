@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, TextField, Button } from '@mui/material';
 import axios from 'axios';
+import LogoutButton from '../Logout';
 
 function OperatorDashboard() {
   const [lineId, setLineId] = useState('');
@@ -86,6 +87,7 @@ function OperatorDashboard() {
           {message}
         </Typography>
       )}
+      <LogoutButton />
 
       {lineId ? (
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>

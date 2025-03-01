@@ -17,6 +17,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import LogoutButton from '../Logout';
 
 function SupervisorDashboard() {
   const [lines, setLines] = useState([]);
@@ -117,6 +118,7 @@ function SupervisorDashboard() {
           {message}
         </Typography>
       )}
+      <LogoutButton />
 
       {/* Table of production lines */}
       <TableContainer component={Paper} sx={{ maxWidth: 900, mx: 'auto' }}>

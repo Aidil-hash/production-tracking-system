@@ -19,6 +19,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import axios from 'axios';
+import LogoutButton from '../Logout';
 
 function EngineerDashboard() {
   const [analytics, setAnalytics] = useState(null);
@@ -27,7 +28,6 @@ function EngineerDashboard() {
   const [selectedLine, setSelectedLine] = useState('');
   const [lines, setLines] = useState([]);
 
-  // Use API URL from environment variables or fallback to localhost:5000
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Fetch available production lines for selection
@@ -39,7 +39,6 @@ function EngineerDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setLines(res.data);
-        // Optionally, set the first line as selected by default if available
         if (res.data.length > 0) {
           setSelectedLine(res.data[0].id);
         }
@@ -47,11 +46,10 @@ function EngineerDashboard() {
         setError(err.response?.data?.message || 'Failed to fetch lines');
       }
     };
-
     fetchLines();
   }, [API_URL]);
 
-  // Fetch analytics data based on the selected line (if needed)
+  // Fetch analytics data based on the selected line
   useEffect(() => {
     if (selectedLine) {
       const fetchAnalytics = async () => {
@@ -65,26 +63,25 @@ function EngineerDashboard() {
           setError(err.response?.data?.message || 'Failed to fetch analytics data');
         }
       };
-
       fetchAnalytics();
     }
   }, [API_URL, selectedLine]);
 
-  // Fetch scan logs from the backend for engineers
+  // Fetch scan logs from the backend for engineers (using query parameter for line)
   useEffect(() => {
     if (selectedLine) {
       const fetchScanLogs = async () => {
         try {
           const token = localStorage.getItem('token');
-          const res = await axios.get(`${API_URL}/api/engineer/${selectedLine}/scanlogs`, {
+          const res = await axios.get(`${API_URL}/api/engineer/allscanlogs`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          // The response is an array of scan logs
           setScanLogs(res.data);
         } catch (err) {
-          setError(err.response?.data?.message || 'Failed to fetch scan logs');
+          setError(err.response?.data?.message || 'Failed to fetch all scan logs');
         }
       };
-
       fetchScanLogs();
     }
   }, [API_URL, selectedLine]);
@@ -94,34 +91,30 @@ function EngineerDashboard() {
       <Typography variant="h4" align="center" gutterBottom>
         Engineer Dashboard
       </Typography>
-
       {error && (
         <Typography variant="body1" color="error" align="center" mb={2}>
           {error}
         </Typography>
       )}
+      <LogoutButton />
 
-      {/* Dropdown to select a production line */}
-      {lines.length > 0 && (
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Select Production Line</InputLabel>
-          <Select
-            value={selectedLine}
-            onChange={(e) => setSelectedLine(e.target.value)}
-          >
-            <MenuItem value="">
-              <em>--Select a line--</em>
+      <FormControl fullWidth margin="normal">
+        <InputLabel>Select Production Line</InputLabel>
+        <Select
+          value={selectedLine}
+          onChange={(e) => setSelectedLine(e.target.value)}
+        >
+          <MenuItem value="">
+            <em>--Select a line--</em>
+          </MenuItem>
+          {lines.map((line) => (
+            <MenuItem key={line.id} value={line.id}>
+              {line.model}
             </MenuItem>
-            {lines.map((line) => (
-              <MenuItem key={line.id} value={line.id}>
-                {line.model} {/* Display model or any identifying field */}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
+          ))}
+        </Select>
+      </FormControl>
 
-      {/* Analytics Section */}
       {analytics && (
         <Grid container spacing={3} sx={{ mt: 2 }}>
           <Grid item xs={12} md={6}>
@@ -134,7 +127,7 @@ function EngineerDashboard() {
                   Overall Efficiency: {analytics.overallEfficiency}%
                 </Typography>
                 <Typography variant="body1">
-                  Avg Outputs per Hour: {analytics.avgOutputsPerHour}
+                  Avg Outputs per Minute: {analytics.efficiencyPerMinute}
                 </Typography>
               </CardContent>
             </Card>
@@ -149,7 +142,7 @@ function EngineerDashboard() {
                   Predicted Time to Depletion: {analytics.predictedTimeToDepletion} minutes
                 </Typography>
                 <Typography variant="body1">
-                  Current Material Level: {analytics.currentMaterialLevel}
+                  Current Material Level: {analytics.currentMaterialCount}
                 </Typography>
               </CardContent>
             </Card>
@@ -157,37 +150,28 @@ function EngineerDashboard() {
         </Grid>
       )}
 
-      {/* Scan Logs Section */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" gutterBottom>
           Scan Logs
         </Typography>
-        {scanLogs.length > 0 ? (
+        {scanLogs && scanLogs.length > 0 ? (
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Scan ID</TableCell>
-                  <TableCell>Production Line</TableCell>
                   <TableCell>Operator</TableCell>
                   <TableCell>Serial Number</TableCell>
+                  <TableCell>Production Line</TableCell>
                   <TableCell>Scanned At</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {scanLogs.map((log) => (
                   <TableRow key={log._id}>
-                    <TableCell>{log._id}</TableCell>
-                    <TableCell>
-                      {log.productionLine ? log.productionLine.model : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {log.operator ? log.operator.name : 'N/A'}
-                    </TableCell>
+                    <TableCell>{log.operator ? log.operator.name : 'N/A'}</TableCell>
                     <TableCell>{log.serialNumber}</TableCell>
-                    <TableCell>
-                      {new Date(log.scannedAt).toLocaleString()}
-                    </TableCell>
+                    <TableCell>{log.productionLine ? log.productionLine.model : 'N/A'}</TableCell>
+                    <TableCell>{new Date(log.scannedAt).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
