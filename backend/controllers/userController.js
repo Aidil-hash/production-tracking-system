@@ -29,7 +29,7 @@ const createUser = async (req, res) => {
   // Get all users
 const getUsers = async (req, res) => {
   try {
-    const users = await User.find({});
+    const users = await User.find({}).lean();
     // Remove password before sending
     const usersWithoutPassword = users.map(({ password, ...rest }) => rest);
     return res.status(200).json(usersWithoutPassword);

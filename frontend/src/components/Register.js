@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { Container, TextField, Button, Typography, Select, MenuItem, FormControl, InputLabel, Alert } from '@mui/material';
 
 function Register() {
   const [name, setName] = useState('');
@@ -30,32 +31,48 @@ function Register() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-      <h2>Register</h2>
-      {error && <p style={{color:'red'}}>{error}</p>}
-      {success && <p style={{color:'green'}}>{success}</p>}
+    <Container maxWidth="xs">
+      <Typography variant="h4" component="h2" gutterBottom>
+        Register
+      </Typography>
+      {error && <Alert severity="error">{error}</Alert>}
+      {success && <Alert severity="success">{success}</Alert>}
       <form onSubmit={handleRegister}>
-        <div>
-          <label>Name:</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div>
-          <label>Role:</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} required>
-            <option value="">--Select a role--</option>
-            <option value="operator">Operator</option>
-            <option value="leader">Leader</option>
-            <option value="supervisor">Supervisor</option>
-            <option value="engineer">Engineer</option>
-          </select>
-        </div>
-        <div>
-          <label>Password:</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-        <button type="submit">Register</button>
+        <TextField
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          fullWidth
+          required
+          margin="normal"
+        />
+        <FormControl fullWidth required margin="normal">
+          <InputLabel>Role</InputLabel>
+          <Select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+          >
+            <MenuItem value=""><em>--Select a role--</em></MenuItem>
+            <MenuItem value="operator">Operator</MenuItem>
+            <MenuItem value="leader">Leader</MenuItem>
+            <MenuItem value="supervisor">Supervisor</MenuItem>
+            <MenuItem value="engineer">Engineer</MenuItem>
+          </Select>
+        </FormControl>
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          fullWidth
+          required
+          margin="normal"
+        />
+        <Button type="submit" variant="contained" color="primary" fullWidth>
+          Register
+        </Button>
       </form>
-    </div>
+    </Container>
   );
 }
 

@@ -26,6 +26,18 @@ const lineRoutes = require('./routes/lineRoutes');
 // Middleware
 const authRoutes = require('./routes/authRoutes');
 
+// Role Routes
+const leaderRoutes = require('./routes/leaderRoutes');
+const operatorRoutes = require('./routes/operatorRoutes');
+const supervisorRoutes = require('./routes/supervisorRoutes');
+const engineerRoutes = require('./routes/engineerRoutes');
+
+// Use the routes
+app.use('/api/leaders', leaderRoutes);
+app.use('/api/operators', operatorRoutes);
+app.use('/api/supervisors', supervisorRoutes);
+app.use('/api/engineer', engineerRoutes);
+
 // Basic test route
 app.get('/', (req, res) => {
   res.send('Hello, Production App!');

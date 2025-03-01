@@ -17,6 +17,7 @@ function Login() {
     try {
       const res = await axios.post(`${API_URL}/api/auth/login`, { name, password });
       localStorage.setItem('token', res.data.token);
+      localStorage.setItem('role', res.data.urole); // store the user role
       setError('');
       navigate('/dashboard');
     } catch (err) {

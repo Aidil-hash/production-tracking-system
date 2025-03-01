@@ -20,7 +20,7 @@ const { ROLES } = require('../models/userModel');
 router.post(
   '/',
   verifyToken,
-  authorizeRoles(ROLES.LEADER, ROLES.SUPERVISOR),
+  authorizeRoles(ROLES.LEADER, ROLES.SUPERVISOR, ROLES.ENGINEER),
   createLine
 );
 
@@ -36,7 +36,7 @@ router.get('/:lineId', verifyToken, getLine);
 router.put(
   '/:lineId',
   verifyToken,
-  authorizeRoles(ROLES.LEADER, ROLES.SUPERVISOR),
+  authorizeRoles(ROLES.LEADER, ROLES.SUPERVISOR, ROLES.ENGINEER),
   updateLine
 );
 

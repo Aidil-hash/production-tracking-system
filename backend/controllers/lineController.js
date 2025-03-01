@@ -1,6 +1,7 @@
 // controllers/lineController.js
 
 const Line = require('../models/Line');
+const ScanLog = require('../models/ScanRecord');
 
 // Create or initialize a new production line
 const createLine = async (req, res) => {
@@ -49,21 +50,48 @@ const updateLine = async (req, res) => {
 const scanSerial = async (req, res) => {
   try {
     const { lineId } = req.params;
-    const line = await Line.findById(lineId);
-    if (!line) {
-      return res.status(404).json({ message: 'Line not found' });
+    const { serialNumber } = req.body;
+    const operatorId = req.user.id; // assume authentication middleware sets req.user
+
+    if (!serialNumber) {
+      return res.status(400).json({ message: "Serial number is required." });
     }
 
-    line.totalOutputs += 1;
+    // Find the production line
+    const line = await ProductionLine.findById(lineId);
+    if (!line) {
+      return res.status(404).json({ message: "Production line not found." });
+    }
+
+    // (Optional) Check that the operator is assigned to this line.
+    // For example, if your ProductionLine has an operatorId field:
+    if (!line.operatorId || line.operatorId.toString() !== operatorId) {
+      return res.status(403).json({ message: "You are not assigned to this production line." });
+    }
+
+    // Update production line metrics: increment total outputs and decrement current material count if possible
+    line.totalOutputs = (line.totalOutputs || 0) + 1;
     if (line.currentMaterialCount > 0) {
-      line.currentMaterialCount -= 1;
+      line.currentMaterialCount = line.currentMaterialCount - 1;
     }
     await line.save();
 
-    return res.status(200).json({ message: 'Serial scanned, output recorded', line });
+    // Create a new scan log record
+    const newScanLog = new ScanLog({
+      productionLine: line._id,
+      operator: operatorId,
+      serialNumber
+    });
+    await newScanLog.save();
+
+    return res.status(200).json({
+      message: "Serial scanned and recorded successfully.",
+      line,
+      scan: newScanLog
+    });
   } catch (error) {
-    console.error('Error scanning serial:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error scanning serial:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
