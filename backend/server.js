@@ -1,11 +1,13 @@
-// server.js
 require('dotenv').config();
 
 const express = require('express');
 const connectDB = require('./config/database'); // adjust path if needed
+const cors = require('cors');
+const path = require('path');
+
 const app = express();
 
-const cors = require('cors');
+// Set up CORS
 app.use(cors({
   origin: 'http://localhost:3000',
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
@@ -17,16 +19,11 @@ app.use(cors({
 connectDB();
 
 app.use(express.json());
+
 // Existing routes
 const userRoutes = require('./routes/userRoutes');
-
-// New line routes
 const lineRoutes = require('./routes/lineRoutes');
-
-// Middleware
 const authRoutes = require('./routes/authRoutes');
-
-// Role Routes
 const leaderRoutes = require('./routes/leaderRoutes');
 const operatorRoutes = require('./routes/operatorRoutes');
 const supervisorRoutes = require('./routes/supervisorRoutes');
@@ -37,23 +34,15 @@ app.use('/api/leaders', leaderRoutes);
 app.use('/api/operators', operatorRoutes);
 app.use('/api/supervisors', supervisorRoutes);
 app.use('/api/engineer', engineerRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/lines', lineRoutes);
+app.use('/api/auth', authRoutes);
 
 // Basic test route
 app.get('/', (req, res) => {
   res.send('Hello, Production App!');
 });
 
-// User routes
-app.use('/api/users', userRoutes);
-
-// Production line routes
-app.use('/api/lines', lineRoutes);
-
-app.use('/api/auth', authRoutes);
-
-module.exports = app; // export the app for testing
-
-const path = require('path');
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/build')));
 
@@ -62,9 +51,34 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
+// --- Socket.IO Integration ---
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST']
+  }
+});
+
+// Store the Socket.IO instance in app locals for use in controllers
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('A client connected:', socket.id);
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// Export the app for testing
+module.exports = app;
+
+// Start the server only if this file is run directly (not imported)
 if (require.main === module) {
-  // Only start listening if this file is run directly (not imported by test)
-  app.listen(5000, () => {
-    console.log('Server running on port 5000');
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
   });
 }

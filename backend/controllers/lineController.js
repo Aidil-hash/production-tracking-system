@@ -1,5 +1,6 @@
 // controllers/lineController.js
 
+const { model } = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
 
@@ -78,10 +79,23 @@ const scanSerial = async (req, res) => {
     // Create a new scan log record
     const newScanLog = new ScanLog({
       productionLine: line._id,
+      model: line.model,
       operator: operatorId,
+      name: req.user.name,
       serialNumber
     });
     await newScanLog.save();
+
+    // Emit a socket event to update scan logs in real-time
+    const io = req.app.get('io');
+    io.emit('newScan', {
+      productionLine: line._id,
+      model: line.model,
+      operator: operatorId, // You might also populate operator name if needed
+      name: req.user.name,
+      serialNumber,
+      scannedAt: newScanLog.scannedAt
+    });
 
     return res.status(200).json({
       message: "Serial scanned and recorded successfully.",

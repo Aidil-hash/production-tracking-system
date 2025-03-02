@@ -17,8 +17,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TextField
 } from '@mui/material';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import LogoutButton from '../Logout';
 
 function EngineerDashboard() {
@@ -27,8 +29,28 @@ function EngineerDashboard() {
   const [error, setError] = useState('');
   const [selectedLine, setSelectedLine] = useState('');
   const [lines, setLines] = useState([]);
+  const [filterText, setFilterText] = useState('');
+  const [filteredScanLogs, setFilteredScanLogs] = useState([]);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+  // Initialize socket connection (only once)
+  useEffect(() => {
+    const socket = io(API_URL);
+    socket.on('newScan', (data) => {
+      // Optionally, check if data.productionLine matches selectedLine
+      if (data.productionLine === selectedLine) {
+        // Insert the new record into your logs array
+      setScanLogs(prevLogs => [{
+        operator: data.operator.name,
+        serialNumber: data.serialNumber,
+        scannedAt: data.scannedAt,
+        lineModel: data.productionLine.model //if you want to show it
+      }, ...prevLogs]);
+      }
+    });
+    return () => socket.disconnect();
+  }, [API_URL, selectedLine]);
 
   // Fetch available production lines for selection
   useEffect(() => {
@@ -85,6 +107,22 @@ function EngineerDashboard() {
       fetchScanLogs();
     }
   }, [API_URL, selectedLine]);
+
+  // Filter scan logs based on filterText input
+  useEffect(() => {
+    if (!filterText) {
+      setFilteredScanLogs(scanLogs);
+    } else {
+      const filtered = scanLogs.filter(log => {
+        const operatorName = log.operator && log.operator.name
+          ? log.operator.name.toLowerCase()
+          : '';
+        const serial = log.serialNumber ? log.serialNumber.toLowerCase() : '';
+        return operatorName.includes(filterText.toLowerCase()) || serial.includes(filterText.toLowerCase());
+      });
+      setFilteredScanLogs(filtered);
+    }
+  }, [filterText, scanLogs]);
 
   return (
     <Box sx={{ p: 4 }}>
@@ -154,23 +192,32 @@ function EngineerDashboard() {
         <Typography variant="h5" gutterBottom>
           Scan Logs
         </Typography>
-        {scanLogs && scanLogs.length > 0 ? (
+        {/* Filter input for scan logs */}
+        <TextField
+          label="Filter by Operator or Serial Number"
+          variant="outlined"
+          fullWidth
+          value={filterText}
+          onChange={(e) => setFilterText(e.target.value)}
+          sx={{ mb: 2 }}
+        />
+        {filteredScanLogs && filteredScanLogs.length > 0 ? (
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
+                <TableCell>Production Line</TableCell>
                   <TableCell>Operator</TableCell>
                   <TableCell>Serial Number</TableCell>
-                  <TableCell>Production Line</TableCell>
                   <TableCell>Scanned At</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {scanLogs.map((log) => (
-                  <TableRow key={log._id}>
-                    <TableCell>{log.operator ? log.operator.name : 'N/A'}</TableCell>
+                {filteredScanLogs.map((log, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{log.model ? log.productionLine.model : 'N/A'}</TableCell>
+                    <TableCell>{log.name ? log.operator.name : 'N/A'}</TableCell>
                     <TableCell>{log.serialNumber}</TableCell>
-                    <TableCell>{log.productionLine ? log.productionLine.model : 'N/A'}</TableCell>
                     <TableCell>{new Date(log.scannedAt).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
