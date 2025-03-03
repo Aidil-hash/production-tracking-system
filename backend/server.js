@@ -9,7 +9,7 @@ const app = express();
 
 // Set up CORS
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'http://192.168.1.36:3000'|| 'http://localhost:3000',
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -57,7 +57,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: 'http://192.168.1.36:3000'|| 'http://localhost:3000',
     methods: ['GET', 'POST']
   }
 });
@@ -78,7 +78,7 @@ module.exports = app;
 // Start the server only if this file is run directly (not imported)
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  server.listen(PORT, () => {
+  server.listen(PORT,'0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });
 }

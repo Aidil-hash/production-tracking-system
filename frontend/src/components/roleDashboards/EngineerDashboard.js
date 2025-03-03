@@ -17,7 +17,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  TextField
+  TextField,
+  Button,
 } from '@mui/material';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -31,6 +32,9 @@ function EngineerDashboard() {
   const [lines, setLines] = useState([]);
   const [filterText, setFilterText] = useState('');
   const [filteredScanLogs, setFilteredScanLogs] = useState([]);
+  const [newLineModel, setNewLineModel] = useState('');
+  const [newLineMaterialCount, setNewLineMaterialCount] = useState('');
+  const [message, setMessage] = useState('');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -114,15 +118,44 @@ function EngineerDashboard() {
       setFilteredScanLogs(scanLogs);
     } else {
       const filtered = scanLogs.filter(log => {
-        const operatorName = log.operator && log.operator.name
-          ? log.operator.name.toLowerCase()
-          : '';
-        const serial = log.serialNumber ? log.serialNumber.toLowerCase() : '';
-        return operatorName.includes(filterText.toLowerCase()) || serial.includes(filterText.toLowerCase());
+        // Check if the log has a productionLine with a model field
+        const lineModel = log.productionLine && log.productionLine.model 
+                            ? log.productionLine.model.toLowerCase() 
+                            : '';
+        return lineModel.includes(filterText.toLowerCase());
       });
       setFilteredScanLogs(filtered);
     }
   }, [filterText, scanLogs]);
+
+  // New function: Add a new production line
+  const handleAddNewLine = async (e) => {
+    e.preventDefault();
+    if (!newLineModel || newLineMaterialCount === '') {
+      setError('Please enter both model and material count.');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/api/lines`, 
+        { model: newLineModel, materialCount: newLineMaterialCount },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Optionally, refresh the lines list after adding a new line
+      setMessage('New production line added successfully!');
+      setError('');
+      setNewLineModel('');
+      setNewLineMaterialCount('');
+      // Refresh lines
+      const linesRes = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(linesRes.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add new line');
+      setMessage('');
+    }
+  };
 
   return (
     <Box sx={{ p: 4 }}>
@@ -134,8 +167,13 @@ function EngineerDashboard() {
           {error}
         </Typography>
       )}
+      {/** Message block **/}
+      <Typography variant="body1" color="success.main" align="center" mb={2}>
+        {""}
+      </Typography>
       <LogoutButton />
 
+      {/* Dropdown to select production line */}
       <FormControl fullWidth margin="normal">
         <InputLabel>Select Production Line</InputLabel>
         <Select
@@ -188,13 +226,47 @@ function EngineerDashboard() {
         </Grid>
       )}
 
+      {/* New Line Form Section */}
+      <Box sx={{ mt: 4, maxWidth: 600, mx: 'auto', p: 2, border: '1px solid #ccc', borderRadius: 2 }}>
+        <Typography variant="h5" gutterBottom>
+          Add New Production Line
+        </Typography>
+        <Box component="form" onSubmit={handleAddNewLine}>
+          <TextField
+            label="Model"
+            variant="outlined"
+            fullWidth
+            sx={{ mb: 2 }}
+            value={newLineModel}
+            onChange={(e) => setNewLineModel(e.target.value)}
+          />
+          <TextField
+            label="Initial Material Count"
+            variant="outlined"
+            fullWidth
+            type="number"
+            sx={{ mb: 2 }}
+            value={newLineMaterialCount}
+            onChange={(e) => setNewLineMaterialCount(e.target.value)}
+          />
+          <Button variant="contained" fullWidth type="submit">
+            Add New Line
+          </Button>
+          {message && (
+            <Typography variant="body1" color="success.main" align="center" mb={2}>
+              {message}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+
+      {/* Scan Logs Section */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" gutterBottom>
           Scan Logs
         </Typography>
-        {/* Filter input for scan logs */}
         <TextField
-          label="Filter by Operator or Serial Number"
+          label="Filter by Model"
           variant="outlined"
           fullWidth
           value={filterText}
@@ -206,7 +278,7 @@ function EngineerDashboard() {
             <Table>
               <TableHead>
                 <TableRow>
-                <TableCell>Production Line</TableCell>
+                  <TableCell>Model</TableCell>
                   <TableCell>Operator</TableCell>
                   <TableCell>Serial Number</TableCell>
                   <TableCell>Scanned At</TableCell>
@@ -215,10 +287,10 @@ function EngineerDashboard() {
               <TableBody>
                 {filteredScanLogs.map((log, index) => (
                   <TableRow key={index}>
-                    <TableCell>{log.model ? log.productionLine.model : 'N/A'}</TableCell>
-                    <TableCell>{log.name ? log.operator.name : 'N/A'}</TableCell>
-                    <TableCell>{log.serialNumber}</TableCell>
-                    <TableCell>{new Date(log.scannedAt).toLocaleString()}</TableCell>
+                    <TableCell>{log.model || log.productionLine.model || 'Unknown'}</TableCell>
+                    <TableCell>{log.operator && log.operator.name ? log.operator.name : 'Unknown'}</TableCell>
+                    <TableCell>{log.serialNumber || 'N/A'}</TableCell>
+                    <TableCell>{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
