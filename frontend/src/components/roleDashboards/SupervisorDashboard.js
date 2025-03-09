@@ -103,6 +103,29 @@ function SupervisorDashboard() {
     }
   };
 
+  // NEW: Handler to detach leader from a production line
+  const handleDetachLeader = async (lineId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${API_URL}/api/supervisors/detachLeader`,
+        { lineId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage('Leader detached from line successfully!');
+      setError('');
+      // Refresh lines after detachment
+      const token2 = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token2}` },
+      });
+      setLines(res.data);
+    } catch (err) {
+      setMessage('');
+      setError(err.response?.data?.message || 'Failed to detach leader from line');
+    }
+  };
+
   return (
     <Box sx={{ p: 4 }}>
       <Typography variant="h4" align="center" gutterBottom>
@@ -211,6 +234,62 @@ function SupervisorDashboard() {
         <Button variant="contained" fullWidth onClick={handleAssignLeader}>
           Assign Leader
         </Button>
+      </Box>
+
+      {/* Scan Logs Section */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Leader List
+        </Typography>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Model</TableCell>
+                  <TableCell>Leader</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {lines.map((line) => (
+                  <TableRow key={line.id}>
+                    <TableCell>{line.id}</TableCell>
+                    <TableCell>{line.model}</TableCell>
+                    <TableCell>{line.leaderName || 'No leader assigned'}</TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => handleViewDetails(line.id)}
+                        >
+                          View Details
+                        </Button>
+                        {line.leaderId && (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            color="error"
+                            onClick={() => handleDetachLeader(line.id)}
+                          >
+                            Detach Leader
+                          </Button>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {lines.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">
+                      No production lines available.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
       </Box>
     </Box>
   );

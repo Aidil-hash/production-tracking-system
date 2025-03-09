@@ -35,4 +35,41 @@ const assignLineToLeader = async (req, res) => {
   }
 };
 
-module.exports = { assignLineToLeader };
+const detachLeaderFromLine = async (req, res) => {
+  try {
+    // Only supervisors can detach leaders.
+    if (req.user.role !== 'supervisor') {
+      return res.status(403).json({ message: 'Access denied. Only supervisors can detach leaders from lines.' });
+    }
+
+    // Extract production line ID from the request body.
+    const { lineId } = req.body;
+    if (!lineId) {
+      return res.status(400).json({ message: 'lineId is required.' });
+    }
+
+    // Update the production line by setting the leaderId to null
+    const updatedLine = await ProductionLine.findByIdAndUpdate(
+      lineId,
+      { $unset: { leaderId: "" } },
+      { new: true }
+    );
+
+    if (!updatedLine) {
+      return res.status(404).json({ message: 'Production line not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Leader detached from line successfully.',
+      line: updatedLine,
+    });
+  } catch (error) {
+    console.error('Error detaching leader from line:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { 
+  assignLineToLeader,
+  detachLeaderFromLine
+};

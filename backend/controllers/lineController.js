@@ -3,6 +3,7 @@
 const { model } = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
+const User = require('../models/User');
 
 // Create or initialize a new production line
 const createLine = async (req, res) => {
@@ -128,15 +129,29 @@ const getLine = async (req, res) => {
 // Get all lines
 const getAllLines = async (req, res) => {
   try {
-    const lines = await Line.find({}); // returns [{ _id: 'abc123', model: 'Model-X', ...}, ...]
-    const formattedLines = lines.map((l) => ({
-      id: l._id.toString(), // rename _id to id
-      model: l.model,
+    const lines = await Line.find(); // returns [{ _id: 'abc123', model: 'Model-X', leaderId: ...}, ...]
+
+    // Use Promise.all so we can await the async map
+    const formattedLines = await Promise.all(lines.map(async (l) => {
+      // If there's a leaderId, try to find the user
+      let leaderDoc = null;
+      if (l.leaderId) {
+        leaderDoc = await User.findById(l.leaderId);
+      }
+
+      return {
+        id: l._id.toString(),
+        model: l.model,
+        leaderId: l.leaderId,
+        // If leaderDoc is found, use leaderDoc.name, otherwise 'No leader'
+        leaderName: leaderDoc ? leaderDoc.name : 'No leader'
+      };
     }));
-    return res.status(200).json(formattedLines);
+
+    res.status(200).json(formattedLines);
   } catch (error) {
     console.error('Error fetching lines:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

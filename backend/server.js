@@ -9,7 +9,7 @@ const app = express();
 
 // Set up CORS
 app.use(cors({
-  origin: 'http://192.168.1.36:3000'|| 'http://localhost:3000',
+  origin: 'http://localhost:3000',
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -57,7 +57,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: 'http://192.168.1.36:3000'|| 'http://localhost:3000',
+    origin: 'http://localhost:3000',
     methods: ['GET', 'POST']
   }
 });
