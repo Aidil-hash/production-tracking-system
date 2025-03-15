@@ -129,29 +129,39 @@ const getLine = async (req, res) => {
 // Get all lines
 const getAllLines = async (req, res) => {
   try {
-    const lines = await Line.find(); // returns [{ _id: 'abc123', model: 'Model-X', leaderId: ...}, ...]
+    const lines = await Line.find();
 
-    // Use Promise.all so we can await the async map
-    const formattedLines = await Promise.all(lines.map(async (l) => {
-      // If there's a leaderId, try to find the user
-      let leaderDoc = null;
-      if (l.leaderId) {
-        leaderDoc = await User.findById(l.leaderId);
-      }
+    const formattedLines = await Promise.all(
+      lines.map(async (l) => {
+        // Lookup leader if leaderId is set
+        let leaderDoc = null;
+        if (l.leaderId) {
+          leaderDoc = await User.findById(l.leaderId);
+        }
 
-      return {
-        id: l._id.toString(),
-        model: l.model,
-        leaderId: l.leaderId,
-        // If leaderDoc is found, use leaderDoc.name, otherwise 'No leader'
-        leaderName: leaderDoc ? leaderDoc.name : 'No leader'
-      };
-    }));
+        // Lookup operator if operatorId is set
+        let operatorDoc = null;
+        if (l.operatorId) {
+          operatorDoc = await User.findById(l.operatorId);
+        }
 
-    res.status(200).json(formattedLines);
+        return {
+          id: l._id.toString(),
+          model: l.model,
+          leaderId: l.leaderId,
+          leaderName: leaderDoc ? leaderDoc.name : 'No leader',
+          operatorId: l.operatorId,
+          operatorName: operatorDoc ? operatorDoc.name : 'No operator',
+          currentMaterialCount: l.currentMaterialCount,
+          totalOutputs: l.totalOutputs,
+        };
+      })
+    );
+
+    return res.status(200).json(formattedLines);
   } catch (error) {
     console.error('Error fetching lines:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -238,6 +248,24 @@ const predictMaterialLow = async (req, res) => {
   }
 };
 
+const deleteLine = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!['engineer', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    const deletedLine = await Line.findByIdAndDelete(id);
+    if (!deletedLine) {
+      return res.status(404).json({ message: 'Line not found' });
+    }
+    return res.status(200).json({ message: 'Production line deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting line:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   createLine,
   updateLine,
@@ -245,5 +273,6 @@ module.exports = {
   getLine,
   getAllLines,
   getLineEfficiency,
-  predictMaterialLow
+  predictMaterialLow,
+  deleteLine
 };

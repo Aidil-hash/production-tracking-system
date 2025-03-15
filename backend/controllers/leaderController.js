@@ -65,7 +65,45 @@ const assignLineToOperator = async (req, res) => {
     }
   };
 
+  // NEW FUNCTION: Detach operator from a line
+const detachOperatorFromLine = async (req, res) => {
+  try {
+    // Ensure the requester is a leader
+    if (req.user.role !== 'leader') {
+      return res.status(403).json({
+        message: 'Access denied. Only leaders can detach operators from lines.'
+      });
+    }
+
+    // Expect the lineId in the request body
+    const { lineId } = req.body;
+    if (!lineId) {
+      return res.status(400).json({ message: 'lineId is required.' });
+    }
+
+    // Update the production line to remove the assigned operator
+    const updatedLine = await ProductionLine.findByIdAndUpdate(
+      lineId,
+      { operatorId: null }, // or undefined, depending on your schema
+      { new: true }
+    );
+
+    if (!updatedLine) {
+      return res.status(404).json({ message: 'Production line not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Operator detached from line successfully.',
+      line: updatedLine
+    });
+  } catch (error) {
+    console.error('Error detaching operator from line:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = { 
     getAssignedLineForLeader,
     assignLineToOperator,
+    detachOperatorFromLine
  };

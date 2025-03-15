@@ -1,7 +1,7 @@
 // routes/leaderRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getAssignedLineForLeader, assignLineToOperator } = require('../controllers/leaderController');
+const { getAssignedLineForLeader, assignLineToOperator, detachOperatorFromLine } = require('../controllers/leaderController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
 // Endpoint to get the leader's assigned production line
@@ -19,5 +19,8 @@ router.get('/', verifyToken, async (req, res) => {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
+
+// Detach operator route
+router.put('/detachOperator', verifyToken, detachOperatorFromLine);
 
 module.exports = router;

@@ -15,13 +15,30 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, { name, password });
+      // Add timeout and headers for better error handling
+      const res = await axios.post(
+        `${API_URL}/api/auth/login`, 
+        { name, password },
+        {
+          timeout: 5000,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+      
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('role', res.data.urole); // store the user role
+      localStorage.setItem('role', res.data.urole);
       setError('');
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      if (err.code === 'ECONNABORTED') {
+        setError('Connection timeout. Please check your network.');
+      } else if (!err.response) {
+        setError('Network error. Please check if the server is running.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed');
+      }
     }
   };
 

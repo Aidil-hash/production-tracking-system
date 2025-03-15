@@ -4,6 +4,7 @@ import OperatorDashboard from './roleDashboards/OperatorDashboard';
 import LeaderDashboard from './roleDashboards/LeaderDashboard';
 import SupervisorDashboard from './roleDashboards/SupervisorDashboard';
 import EngineerDashboard from './roleDashboards/EngineerDashboard';
+import AdminDashboard from './roleDashboards/AdminDashboard';
 
 function Dashboard() {
   // Retrieve role from localStorage (or from a global state/Redux/Context)
@@ -22,6 +23,8 @@ function Dashboard() {
       return <SupervisorDashboard />;
     case 'engineer':
       return <EngineerDashboard />;
+    case 'admin':
+      return <AdminDashboard />;
     default:
       return <p>Unknown role. Please contact admin.</p>;
   }

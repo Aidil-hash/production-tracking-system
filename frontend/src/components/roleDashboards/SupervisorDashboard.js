@@ -236,7 +236,7 @@ function SupervisorDashboard() {
         </Button>
       </Box>
 
-      {/* Scan Logs Section */}
+      {/* Line assigned to leader */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" gutterBottom>
           Leader List

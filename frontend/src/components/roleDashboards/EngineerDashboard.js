@@ -287,7 +287,7 @@ function EngineerDashboard() {
               <TableBody>
                 {filteredScanLogs.map((log, index) => (
                   <TableRow key={index}>
-                    <TableCell>{log.model || log.productionLine.model || 'Unknown'}</TableCell>
+                    <TableCell>{log.model ? log.productionLine.model : 'Unknown'}</TableCell>
                     <TableCell>{log.operator && log.operator.name ? log.operator.name : 'Unknown'}</TableCell>
                     <TableCell>{log.serialNumber || 'N/A'}</TableCell>
                     <TableCell>{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</TableCell>

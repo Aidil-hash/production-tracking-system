@@ -3,8 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { 
   Box, 
   Typography, 
-  TextField, 
-  Button, 
   FormControl, 
   InputLabel, 
   Select, 
@@ -15,21 +13,21 @@ import {
   TableContainer, 
   TableHead, 
   TableRow, 
-  Paper 
+  Paper, 
+  Button 
 } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
 
 function LeaderDashboard() {
   const [lineData, setLineData] = useState(null);
-  const [model, setModel] = useState('');
-  const [materialCount, setMaterialCount] = useState('');
   const [predictedTimeToDepletion, setPredictedTimeToDepletion] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lineId, setLineId] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState('');
+  const [lines, setLines] = useState([]); // List of all production lines
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -62,8 +60,6 @@ function LeaderDashboard() {
         });
         console.log('Predict API response:', res.data); // Debug: check response structure
         setLineData(res.data);
-        setModel(res.data.model);
-        setMaterialCount(res.data.currentMaterialCount);
         setPredictedTimeToDepletion(res.data.predictedTimeToDepletion || 'N/A');
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
@@ -91,26 +87,22 @@ function LeaderDashboard() {
     fetchOperators();
   }, [API_URL]);
 
-  // Handle update of production line details
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.put(`${API_URL}/api/lines/${lineId}`, 
-        { model, materialCount },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage('Production line updated successfully!');
-      setError('');
-      if (res.data.line) {
-        setLineData(res.data.line);
-        setPredictedTimeToDepletion(res.data.line.predictedTimeToDepletion || 'N/A');
+  // Fetch list of all production lines for the table
+  useEffect(() => {
+    const fetchLines = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API_URL}/api/lines`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setLines(res.data);
+      } catch (err) {
+        console.error('Failed to fetch production lines:', err);
       }
-    } catch (err) {
-      setMessage('');
-      setError(err.response?.data?.message || 'Failed to update production line');
-    }
-  };
+    };
+
+    fetchLines();
+  }, [API_URL]);
 
   // Handle assigning line to operator
   const handleAssign = async () => {
@@ -122,10 +114,42 @@ function LeaderDashboard() {
       );
       setMessage('Line assigned to operator successfully!');
       setError('');
+      // Refresh lines list after assignment
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(res.data);
     } catch (err) {
       setMessage('');
       setError(err.response?.data?.message || 'Failed to assign line to operator');
     }
+  };
+
+  // Handler to detach operator from a production line
+  const handleDetachOperator = async (lineId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${API_URL}/api/leaders/detachOperator`,
+        { lineId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage('Operator detached from line successfully!');
+      setError('');
+      // Refresh lines after detachment
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(res.data);
+    } catch (err) {
+      setMessage('');
+      setError(err.response?.data?.message || 'Failed to detach operator from line');
+    }
+  };
+
+  // Stub for view details (implement as needed)
+  const handleViewDetails = (lineId) => {
+    console.log('View details for line:', lineId);
   };
 
   return (
@@ -171,28 +195,8 @@ function LeaderDashboard() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Box component="form" onSubmit={handleUpdate} sx={{ mt: 3 }}>
-            <TextField
-              label="Model"
-              variant="outlined"
-              fullWidth
-              sx={{ mb: 2 }}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            />
-            <TextField
-              label="Current Material Count"
-              variant="outlined"
-              fullWidth
-              type="number"
-              sx={{ mb: 2 }}
-              value={materialCount}
-              onChange={(e) => setMaterialCount(e.target.value)}
-            />
-            <Button variant="contained" fullWidth type="submit">
-              Update Production Line
-            </Button>
-          </Box>
+
+          {/* Assign operator section */}
           <Box sx={{ mt: 4 }}>
             <Typography variant="h6">Assign Line to Operator</Typography>
             <FormControl fullWidth margin="normal">
@@ -201,7 +205,9 @@ function LeaderDashboard() {
                 value={selectedOperator}
                 onChange={(e) => setSelectedOperator(e.target.value)}
               >
-                <MenuItem value=""><em>--Select an operator--</em></MenuItem>
+                <MenuItem value="">
+                  <em>--Select an operator--</em>
+                </MenuItem>
                 {operators.map((operator) => (
                   <MenuItem key={operator._id} value={operator._id}>
                     {operator.name}
@@ -219,6 +225,61 @@ function LeaderDashboard() {
           Loading production line details...
         </Typography>
       )}
+      {/* Production lines table with detach functionality */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Production Lines
+        </Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Model</TableCell>
+                <TableCell>Operator</TableCell>
+                <TableCell align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {lines.map((line) => (
+                <TableRow key={line.id}>
+                  <TableCell>{line.id}</TableCell>
+                  <TableCell>{line.model}</TableCell>
+                  <TableCell>{line.operatorName || 'No operator assigned'}</TableCell>
+                  <TableCell align="center">
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => handleViewDetails(line.id)}
+                      >
+                        View Details
+                      </Button>
+                      {line.operatorId && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          color="error"
+                          onClick={() => handleDetachOperator(line.id)}
+                        >
+                          Detach Operator
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {lines.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    No production lines available.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
     </Box>
   );
 }
