@@ -36,10 +36,6 @@ Automated Data Collection:
 
 IoT Integration: Consider integrating IoT sensors for real-time material tracking to complement or verify manual entries, reducing the chance of human error.
 
-Advanced Analytics:
-
-Machine Learning: Incorporate machine learning to continuously refine your prediction models. As the system gathers more data, it can more accurately forecast material needs.
-
 Historical Data Analysis: Provide trend reports and historical performance analysis to help supervisors and engineers identify bottlenecks or inefficiencies.
 
 User Experience Enhancements:
