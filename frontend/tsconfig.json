@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",                  // 👈 ENABLE JSX support (for React 17+)
+    "allowJs": true,                     // Allow plain .js files
+    "target": "ES6",                     // Or "ESNext"
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "strict": false,
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["*"]
+    }
+  },
+  "include": ["src", "postcss.config.jsx", "tailwind.config.jsx"]
+}
