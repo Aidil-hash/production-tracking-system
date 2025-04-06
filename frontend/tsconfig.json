@@ -16,5 +16,6 @@
       "@/*": ["*"]
     }
   },
-  "include": ["src", "postcss.config.jsx", "tailwind.config.jsx"]
+  "include": ["src", "postcss.config.jsx", "tailwind.config.jsx"],
+  "exclude": ["node_modules"]
 }
