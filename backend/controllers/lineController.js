@@ -8,14 +8,16 @@ const User = require('../models/User');
 // Create or initialize a new production line
 const createLine = async (req, res) => {
   try {
-    const { model, materialCount } = req.body;
+    const { model, materialCount, linetargetOutputs, newdepartment } = req.body;
     if (!model || materialCount == null) {
       return res.status(400).json({ message: 'Model and materialCount are required' });
     }
 
     const newLine = new Line({
       model,
-      currentMaterialCount: materialCount
+      currentMaterialCount: materialCount,
+      targetOutputs: linetargetOutputs,
+      department: newdepartment,
     });
     await newLine.save();
 
@@ -30,15 +32,14 @@ const createLine = async (req, res) => {
 const updateLine = async (req, res) => {
   try {
     const { lineId } = req.params;
-    const { model, materialCount } = req.body;
+    const { status } = req.body;
 
     const line = await Line.findById(lineId);
     if (!line) {
       return res.status(404).json({ message: 'Line not found' });
     }
 
-    if (model) line.model = model;
-    if (materialCount != null) line.currentMaterialCount = materialCount;
+    if (status != null) line.linestatus = status;
     await line.save();
 
     return res.status(200).json({ message: 'Line updated', line });
@@ -154,6 +155,8 @@ const getAllLines = async (req, res) => {
           operatorName: operatorDoc ? operatorDoc.name : 'No operator',
           currentMaterialCount: l.currentMaterialCount,
           totalOutputs: l.totalOutputs,
+          targetOutputs: l.targetOutputs,
+          startTime: l.startTime,
         };
       })
     );
@@ -187,6 +190,7 @@ const getLineEfficiency = async (req, res) => {
       lineId: line._id,
       model: line.model,
       totalOutputs: line.totalOutputs,
+      targetOutputs: line.targetOutputs,
       timeElapsedMinutes: timeElapsedMinutes.toFixed(2),
       efficiencyPerMinute: efficiency.toFixed(2)
     });
@@ -200,6 +204,9 @@ const getLineEfficiency = async (req, res) => {
 const predictMaterialLow = async (req, res) => {
   try {
     const { lineId } = req.params;
+    const { linestatus } = req.body; // Assuming status is passed in the request body
+    if (linestatus) line.status = linestatus;
+    await line.save();
     const thresholdMinutes = 30;
 
     const line = await Line.findById(lineId);

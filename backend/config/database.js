@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Replace the connection string with your local or Atlas URI
-    await mongoose.connect('mongodb://localhost:27017/productionApp', {
+    await mongoose.connect('mongodb+srv://onlineDB:roland-123@cluster0.5irue.mongodb.net/', {
       useNewUrlParser: true,
       useUnifiedTopology: true
     });
