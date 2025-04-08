@@ -553,14 +553,14 @@ const SidebarMenuButton = React.forwardRef<
 >(
   (
     {
-      asChild = false,
-      isActive = false,
-      variant = "default",
-      size = "default",
-      tooltip,
-      className,
-      ...props
-    },
+    asChild = false,
+    isActive = false,
+    variant = "default" as "default" | "outline",
+    size = "default" as "default" | "sm" | "lg",
+    tooltip,
+    className,
+    ...props
+  },
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
