@@ -60,7 +60,6 @@ function LeaderDashboard() {
         });
         console.log('Predict API response:', res.data); // Debug: check response structure
         setLineData(res.data);
-        setPredictedTimeToDepletion(res.data.predictedTimeToDepletion || 'N/A');
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
       }
@@ -187,10 +186,10 @@ function LeaderDashboard() {
               </TableHead>
               <TableBody>
                 <TableRow>
-                  <TableCell>{line.model}</TableCell>
-                  <TableCell>{line.currentMaterialCount}</TableCell>
-                  <TableCell>{line.totalOutputs}</TableCell>
-                  <TableCell>{line.predictedTimeToDepletion}</TableCell>
+                  <TableCell>{lineData.model}</TableCell>
+                  <TableCell>{lineData.currentMaterialCount}</TableCell>
+                  <TableCell>{lineData.totalOutputs}</TableCell>
+                  <TableCell>{lineData.predictedTimeToDepletion}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
