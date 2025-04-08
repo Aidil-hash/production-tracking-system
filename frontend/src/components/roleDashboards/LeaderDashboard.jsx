@@ -187,10 +187,10 @@ function LeaderDashboard() {
               </TableHead>
               <TableBody>
                 <TableRow>
-                  <TableCell>{lineData.model}</TableCell>
-                  <TableCell>{lineData.currentMaterialCount}</TableCell>
-                  <TableCell>{lineData.totalOutputs}</TableCell>
-                  <TableCell>{predictedTimeToDepletion}</TableCell>
+                  <TableCell>{line.model}</TableCell>
+                  <TableCell>{line.currentMaterialCount}</TableCell>
+                  <TableCell>{line.totalOutputs}</TableCell>
+                  <TableCell>{line.predictedTimeToDepletion}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
