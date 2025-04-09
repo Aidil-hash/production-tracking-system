@@ -243,13 +243,6 @@ function LeaderDashboard() {
                   <TableCell>{line.operatorName || 'No operator assigned'}</TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleViewDetails(line.id)}
-                      >
-                        View Details
-                      </Button>
                       {line.operatorId && (
                         <Button
                           variant="contained"
