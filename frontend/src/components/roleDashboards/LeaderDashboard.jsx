@@ -146,11 +146,6 @@ function LeaderDashboard() {
     }
   };
 
-  // Stub for view details (implement as needed)
-  const handleViewDetails = (lineId) => {
-    console.log('View details for line:', lineId);
-  };
-
   return (
     <Box sx={{ p: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
