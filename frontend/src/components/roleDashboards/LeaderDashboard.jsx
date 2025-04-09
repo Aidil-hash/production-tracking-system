@@ -23,6 +23,7 @@ function LeaderDashboard() {
   const [lineData, setLineData] = useState(null);
   const [predictedTimeToDepletion, setPredictedTimeToDepletion] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lineId, setLineId] = useState('');
   const [operators, setOperators] = useState([]);
@@ -171,7 +172,11 @@ function LeaderDashboard() {
           {message}
         </Typography>
       )}
-      {lineData ? (
+      {loading ? (
+        <Typography>Loading production line details...</Typography>
+      ) : error ? (
+        <Typography color="error">{error}</Typography>
+      ) : lineData ? (
         <Box sx={{ maxWidth: 900, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
             Production Line Details
@@ -191,11 +196,15 @@ function LeaderDashboard() {
                   <TableCell>{lineData.model}</TableCell>
                   <TableCell>{lineData.currentMaterialCount}</TableCell>
                   <TableCell>{lineData.totalOutputs}</TableCell>
-                  <TableCell>{lineData.predictedTimeToDepletion}</TableCell>
+                  <TableCell>
+                    {lineData.predictedTimeToDepletion ?? "Not available"}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
+        </Box>
+      ) : null}
 
           {/* Assign operator section */}
           <Box sx={{ mt: 4 }}>
