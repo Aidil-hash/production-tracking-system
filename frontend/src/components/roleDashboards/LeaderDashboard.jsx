@@ -230,11 +230,8 @@ function LeaderDashboard() {
             </Button>
           </Box>
         </Box>
-      ) : (
-        <Typography variant="body1" align="center">
-          Loading production line details...
-        </Typography>
       )}
+
       {/* Production lines table with detach functionality */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" gutterBottom>
