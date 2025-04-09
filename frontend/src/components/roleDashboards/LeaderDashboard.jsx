@@ -59,7 +59,7 @@ function LeaderDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Predict API response:', res.data); // Debug: check response structure
-        setLineData(res.data);
+        setLineData(res.data.line);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
       }
