@@ -1,37 +1,24 @@
-// src/components/roleDashboards/LeaderDashboard.js
 import React, { useEffect, useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper, 
-  Button 
-} from '@mui/material';
+import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material'; // Keeping Table for now
 import axios from 'axios';
+import { Button } from "../ui/button"; // ShadCN Button
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select"; // ShadCN Select
+import { Label } from "../ui/label"; // ShadCN Label
+import { Card, CardHeader, CardContent } from "../ui/card"; // ShadCN Card
 import LogoutButton from '../Logout';
 
 function LeaderDashboard() {
   const [lineData, setLineData] = useState(null);
-  const [predictedTimeToDepletion, setPredictedTimeToDepletion] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lineId, setLineId] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState('');
-  const [lines, setLines] = useState([]); // List of all production lines
+  const [lines, setLines] = useState([]);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Fetch the leader's assigned production line from the API
+  // Fetch the leader's assigned production line
   useEffect(() => {
     const fetchAssignedLine = async () => {
       try {
@@ -48,17 +35,16 @@ function LeaderDashboard() {
     fetchAssignedLine();
   }, [API_URL]);
 
-  // Fetch production line details when lineId is available
+  // Fetch production line details
   useEffect(() => {
     if (!lineId) return;
     const fetchLineData = async () => {
       try {
+        setError('');
         const token = localStorage.getItem('token');
-        // Call the predict endpoint to get additional info including predicted time
         const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log('Predict API response:', res.data); // Debug: check response structure
         setLineData(res.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
@@ -72,6 +58,7 @@ function LeaderDashboard() {
   useEffect(() => {
     const fetchOperators = async () => {
       try {
+        setError('');
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API_URL}/api/users`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -86,10 +73,11 @@ function LeaderDashboard() {
     fetchOperators();
   }, [API_URL]);
 
-  // Fetch list of all production lines for the table
+  // Fetch list of all production lines
   useEffect(() => {
     const fetchLines = async () => {
       try {
+        setError('');
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API_URL}/api/lines`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -106,27 +94,29 @@ function LeaderDashboard() {
   // Handle assigning line to operator
   const handleAssign = async () => {
     try {
+      setError('');
+      setMessage('');
       const token = localStorage.getItem('token');
-      await axios.put(`${API_URL}/api/leaders/assignLine`, 
+      await axios.put(
+        `${API_URL}/api/leaders/assignLine`,
         { lineId, operatorId: selectedOperator },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage('Line assigned to operator successfully!');
-      setError('');
-      // Refresh lines list after assignment
       const res = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLines(res.data);
     } catch (err) {
-      setMessage('');
       setError(err.response?.data?.message || 'Failed to assign line to operator');
     }
   };
 
-  // Handler to detach operator from a production line
+  // Handle detaching operator from a production line
   const handleDetachOperator = async (lineId) => {
     try {
+      setError('');
+      setMessage('');
       const token = localStorage.getItem('token');
       await axios.put(
         `${API_URL}/api/leaders/detachOperator`,
@@ -134,137 +124,113 @@ function LeaderDashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage('Operator detached from line successfully!');
-      setError('');
-      // Refresh lines after detachment
       const res = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLines(res.data);
     } catch (err) {
-      setMessage('');
       setError(err.response?.data?.message || 'Failed to detach operator from line');
     }
   };
 
   return (
-    <Box sx={{ p: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          Leader Dashboard
-        </Typography>
-        <LogoutButton />
-      </Box>
-      {error && (
-        <Typography variant="body1" color="error" align="center" mb={2}>
-          {error}
-        </Typography>
-      )}
-      {message && (
-        <Typography variant="body1" color="success.main" align="center" mb={2}>
-          {message}
-        </Typography>
-      )}
-      {lineData ? (
-        <Box sx={{ maxWidth: 900, mx: 'auto' }}>
-          <Typography variant="h6" gutterBottom>
-            Production Line Details
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Model</TableCell>
-                  <TableCell>Current Material Count</TableCell>
-                  <TableCell>Total Outputs</TableCell>
-                  <TableCell>Predicted Time to Depletion (minutes)</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <TableRow>
-                  <TableCell>{lineData.model}</TableCell>
-                  <TableCell>{lineData.currentMaterialCount}</TableCell>
-                  <TableCell>{lineData.totalOutputs}</TableCell>
-                  <TableCell>{lineData.predictedTimeToDepletion}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {/* Assign operator section */}
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" color= "white" >Assign Line to Operator</Typography>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Select Operator</InputLabel>
-              <Select
-                value={selectedOperator}
-                onChange={(e) => setSelectedOperator(e.target.value)}
-                sx={{color:'white'}}
-              >
-                <MenuItem value="">
-                  <em>--Select an operator--</em>
-                </MenuItem>
-                {operators.map((operator) => (
-                  <MenuItem key={operator._id} value={operator._id} sx={{color:'white'}}>
-                    {operator.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button variant="contained" fullWidth onClick={handleAssign}>
-              Assign Line
-            </Button>
-          </Box>
-        </Box>
-      ) : null}
-      {/* Production lines table with detach functionality */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Production Lines
-        </Typography>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Model</TableCell>
-                <TableCell>Operator</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+    <Card className="p-4">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold">Leader Dashboard</h1>
+          <LogoutButton />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+        {message && <p className="text-green-500 text-center mb-4">{message}</p>}
+        {lineData && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold mb-2">Production Line Details</h2>
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2">Model</th>
+                  <th className="border border-gray-300 px-4 py-2">Current Material Count</th>
+                  <th className="border border-gray-300 px-4 py-2">Total Outputs</th>
+                  <th className="border border-gray-300 px-4 py-2">Predicted Time to Depletion (minutes)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-gray-300 px-4 py-2">{lineData.model}</td>
+                  <td className="border border-gray-300 px-4 py-2">{lineData.currentMaterialCount}</td>
+                  <td className="border border-gray-300 px-4 py-2">{lineData.totalOutputs}</td>
+                  <td className="border border-gray-300 px-4 py-2">{lineData.predictedTimeToDepletion}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">Assign Line to Operator</h2>
+          <Label htmlFor="operator">Select Operator</Label>
+          <Select
+            value={selectedOperator}
+            onValueChange={(val) => setSelectedOperator(val)}
+          >
+            <SelectTrigger className="w-full" id="operator">
+              <SelectValue placeholder="--Select an operator--" />
+            </SelectTrigger>
+            <SelectContent>
+              {operators.map((operator) => (
+                <SelectItem key={operator._id} value={operator._id}>
+                  {operator.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button className="w-full mt-4" onClick={handleAssign}>
+            Assign Line
+          </Button>
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 px-4 py-2">ID</th>
+                <th className="border border-gray-300 px-4 py-2">Model</th>
+                <th className="border border-gray-300 px-4 py-2">Operator</th>
+                <th className="border border-gray-300 px-4 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>{line.id}</TableCell>
-                  <TableCell>{line.model}</TableCell>
-                  <TableCell>{line.operatorName || 'No operator assigned'}</TableCell>
-                  <TableCell align="center">
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                      {line.operatorId && (
-                        <Button
-                          variant="contained"
-                          size="small"
-                          color="error"
-                          onClick={() => handleDetachOperator(line.id)}
-                        >
-                          Detach Operator
-                        </Button>
-                      )}
-                    </Box>
-                  </TableCell>
-                </TableRow>
+                <tr key={line.id}>
+                  <td className="border border-gray-300 px-4 py-2">{line.id}</td>
+                  <td className="border border-gray-300 px-4 py-2">{line.model}</td>
+                  <td className="border border-gray-300 px-4 py-2">{line.operatorName || 'No operator assigned'}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {line.operatorId && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDetachOperator(line.id)}
+                      >
+                        Detach Operator
+                      </Button>
+                    )}
+                  </td>
+                </tr>
               ))}
               {lines.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
+                <tr>
+                  <td colSpan={4} className="border border-gray-300 px-4 py-2 text-center">
                     No production lines available.
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-    </Box>
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
