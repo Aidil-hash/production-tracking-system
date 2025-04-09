@@ -155,6 +155,7 @@ function LeaderDashboard() {
   };
 
   return (
+    <>
     <Box sx={{ p: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" align="center" gutterBottom>
@@ -288,6 +289,7 @@ function LeaderDashboard() {
         </TableContainer>
       </Box>
     </Box>
+  </>
   );
 }
 
