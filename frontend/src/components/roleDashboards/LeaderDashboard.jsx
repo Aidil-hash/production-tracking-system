@@ -162,11 +162,6 @@ function LeaderDashboard() {
         </Typography>
         <LogoutButton />
       </Box>
-      {error && (
-        <Typography variant="body1" color="error" align="center" mb={2}>
-          {error}
-        </Typography>
-      )}
       {message && (
         <Typography variant="body1" color="success.main" align="center" mb={2}>
           {message}
