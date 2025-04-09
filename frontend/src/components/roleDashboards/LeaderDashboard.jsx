@@ -59,7 +59,7 @@ function LeaderDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Predict API response:', res.data); // Debug: check response structure
-        setLineData(res.data);
+        setLineData(res.data.line);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
       }
@@ -186,10 +186,10 @@ function LeaderDashboard() {
               </TableHead>
               <TableBody>
                 <TableRow>
-                  <TableCell>{lineData.line.model}</TableCell>
-                  <TableCell>{lineData.line.currentMaterialCount}</TableCell>
-                  <TableCell>{lineData.line.totalOutputs}</TableCell>
-                  <TableCell>{lineData.line.predictedTimeToDepletion}</TableCell>
+                  <TableCell>{lineData.model}</TableCell>
+                  <TableCell>{lineData.currentMaterialCount}</TableCell>
+                  <TableCell>{lineData.totalOutputs}</TableCell>
+                  <TableCell>{lineData.predictedTimeToDepletion}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
