@@ -204,7 +204,7 @@ function LeaderDashboard() {
             </Table>
           </TableContainer>
         </Box>
-      )}
+      ):}
 
           {/* Assign operator section */}
           <Box sx={{ mt: 4 }}>
