@@ -192,18 +192,19 @@ function LeaderDashboard() {
 
           {/* Assign operator section */}
           <Box sx={{ mt: 4 }}>
-            <Typography variant="h6">Assign Line to Operator</Typography>
+            <Typography variant="h6" color= "white" >Assign Line to Operator</Typography>
             <FormControl fullWidth margin="normal">
               <InputLabel>Select Operator</InputLabel>
               <Select
                 value={selectedOperator}
                 onChange={(e) => setSelectedOperator(e.target.value)}
+                sx={{color:'white'}}
               >
                 <MenuItem value="">
                   <em>--Select an operator--</em>
                 </MenuItem>
                 {operators.map((operator) => (
-                  <MenuItem key={operator._id} value={operator._id}>
+                  <MenuItem key={operator._id} value={operator._id} sx={{color:'white'}}>
                     {operator.name}
                   </MenuItem>
                 ))}
