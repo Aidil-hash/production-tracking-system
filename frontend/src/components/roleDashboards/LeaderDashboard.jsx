@@ -169,7 +169,11 @@ function LeaderDashboard() {
           {message}
         </Typography>
       )}
-      {lineData ? (
+      {loading ? (
+        <Typography>Loading production line details...</Typography>
+      ) : error ? (
+        <Typography color="error">{error}</Typography>
+      ) : lineData ? (
         <Box sx={{ maxWidth: 900, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
             Production Line Details
@@ -186,16 +190,18 @@ function LeaderDashboard() {
               </TableHead>
               <TableBody>
                 <TableRow>
-                  <TableCell>{lineData.line.model}</TableCell>
-                  <TableCell>{lineData.line.currentMaterialCount}</TableCell>
-                  <TableCell>{lineData.line.totalOutputs}</TableCell>
-                  <TableCell>{lineData.line.predictedTimeToDepletion}</TableCell>
+                  <TableCell>{lineData.model}</TableCell>
+                  <TableCell>{lineData.currentMaterialCount}</TableCell>
+                  <TableCell>{lineData.totalOutputs}</TableCell>
+                  <TableCell>
+                    {lineData.predictedTimeToDepletion ?? "Not available"}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
+        </Box>
 
-          {/* Assign operator section */}
           <Box sx={{ mt: 4 }}>
             <Typography variant="h6">Assign Line to Operator</Typography>
             <FormControl fullWidth margin="normal">
