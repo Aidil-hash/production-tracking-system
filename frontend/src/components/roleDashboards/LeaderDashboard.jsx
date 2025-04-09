@@ -23,7 +23,6 @@ function LeaderDashboard() {
   const [lineData, setLineData] = useState(null);
   const [predictedTimeToDepletion, setPredictedTimeToDepletion] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lineId, setLineId] = useState('');
   const [operators, setOperators] = useState([]);
@@ -60,11 +59,9 @@ function LeaderDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Predict API response:', res.data); // Debug: check response structure
-        setLineData(res.data.line);
+        setLineData(res.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
-      }finally {
-        setLoading(false);
       }
     };
 
@@ -155,7 +152,6 @@ function LeaderDashboard() {
   };
 
   return (
-    <>
     <Box sx={{ p: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" align="center" gutterBottom>
@@ -173,11 +169,7 @@ function LeaderDashboard() {
           {message}
         </Typography>
       )}
-      {loading ? (
-        <Typography>Loading production line details...</Typography>
-      ) : error ? (
-        <Typography color="error">{error}</Typography>
-      ) : lineData ? (
+      {lineData ? (
         <Box sx={{ maxWidth: 900, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
             Production Line Details
@@ -194,18 +186,14 @@ function LeaderDashboard() {
               </TableHead>
               <TableBody>
                 <TableRow>
-                  <TableCell>{lineData.model}</TableCell>
-                  <TableCell>{lineData.currentMaterialCount}</TableCell>
-                  <TableCell>{lineData.totalOutputs}</TableCell>
-                  <TableCell>
-                    {lineData.predictedTimeToDepletion ?? "Not available"}
-                  </TableCell>
+                  <TableCell>{lineData.line.model}</TableCell>
+                  <TableCell>{lineData.line.currentMaterialCount}</TableCell>
+                  <TableCell>{lineData.line.totalOutputs}</TableCell>
+                  <TableCell>{lineData.line.predictedTimeToDepletion}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
-        </Box>
-      ): null}
 
           {/* Assign operator section */}
           <Box sx={{ mt: 4 }}>
@@ -231,8 +219,11 @@ function LeaderDashboard() {
             </Button>
           </Box>
         </Box>
+      ) : (
+        <Typography variant="body1" align="center">
+          Loading production line details...
+        </Typography>
       )}
-
       {/* Production lines table with detach functionality */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" gutterBottom>
@@ -289,7 +280,6 @@ function LeaderDashboard() {
         </TableContainer>
       </Box>
     </Box>
-  </>
   );
 }
 
