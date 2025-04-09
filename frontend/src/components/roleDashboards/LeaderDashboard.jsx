@@ -62,6 +62,8 @@ function LeaderDashboard() {
         setLineData(res.data.line);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
+      }finally {
+        setLoading(false);
       }
     };
 
