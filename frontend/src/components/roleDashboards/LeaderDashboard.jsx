@@ -58,8 +58,8 @@ function LeaderDashboard() {
         const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log('Predict API response:', res.data.line); // Debug: check response structure
-        setLineData(res.data.line);
+        console.log('Predict API response:', res.data); // Debug: check response structure
+        setLineData(res.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch production line data');
       }
