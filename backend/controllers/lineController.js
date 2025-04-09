@@ -204,15 +204,15 @@ const getLineEfficiency = async (req, res) => {
 const predictMaterialLow = async (req, res) => {
   try {
     const { lineId } = req.params;
-    const { linestatus } = req.body; // Assuming status is passed in the request body
-    if (linestatus) line.status = linestatus;
-    await line.save();
-    const thresholdMinutes = 30;
-
     const line = await Line.findById(lineId);
     if (!line) {
       return res.status(404).json({ message: 'Line not found' });
     }
+
+    const { linestatus } = req.body; // Assuming status is passed in the request body
+    if (linestatus) line.status = linestatus;
+    await line.save();
+    const thresholdMinutes = 30;
 
     const currentTime = Date.now();
     const timeElapsedMs = currentTime - line.startTime.getTime();
