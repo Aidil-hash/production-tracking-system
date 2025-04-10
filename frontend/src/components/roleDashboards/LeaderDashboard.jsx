@@ -198,15 +198,15 @@ function LeaderDashboard() {
             Assign Line
           </Button>
         </div>
-        <div>
+        <div className="w-full max-w-5xl mx-auto overflow-x-auto">
           <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
-          <Table>
+          <Table className="text-sm">
             <TableHeader>
               <TableRow className="border-b border-white/20">
                 <TableHead className="w-[150px] text-white">Model</TableHead>
                 <TableHead className="text-white">Leader</TableHead>
                 <TableHead className="text-white">Operator</TableHead>
-                <TableHead className="text-right text-white">Actions</TableHead>
+                <TableHead className="w-[160px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -215,15 +215,15 @@ function LeaderDashboard() {
                   key={line.id}
                   className="border-b border-zinc-800 hover:bg-zinc-800 transition duration-500 ease-in-out"
                 >
-                  <TableCell className="py-2">{line.model}</TableCell>
-                  <TableCell className="py-2">{line.leaderName || 'No leader'}</TableCell>
-                  <TableCell className="py-2">{line.operatorName || 'No operator'}</TableCell>
-                  <TableCell className="text-right py-2">
+                  <TableCell className="py-1 px-2">{line.model}</TableCell>
+                  <TableCell className="py-1 px-2">{line.leaderName || 'No leader'}</TableCell>
+                  <TableCell className="py-1 px-2">{line.operatorName || 'No operator'}</TableCell>
+                  <TableCell className="py-1 px-2 text-right">
                     {line.operatorId && (
                       <Button
                         variant="destructive"
                         size="sm"
-                        className="bg-red-500 hover:bg-red-700 text-white"
+                        className="bg-red-500 hover:bg-red-700 text-white px-3 py-1 text-xs"
                         onClick={() => handleDetachOperator(line.id)}
                       >
                         Detach Operator
