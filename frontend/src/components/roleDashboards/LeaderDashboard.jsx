@@ -5,6 +5,14 @@ import { Button } from "../ui/button"; // ShadCN Button
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select"; // ShadCN Select
 import { Label } from "../ui/label"; // ShadCN Label
 import { Card, CardHeader, CardContent } from "../ui/card"; // ShadCN Card
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table"
 import LogoutButton from '../Logout';
 
 function LeaderDashboard() {
@@ -147,24 +155,24 @@ function LeaderDashboard() {
         {lineData && (
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-2">Production Line Details</h2>
-            <table className="w-full border-collapse border border-gray-300">
-              <thead>
-                <tr>
-                  <th className="border border-gray-300 px-4 py-2">Model</th>
-                  <th className="border border-gray-300 px-4 py-2">Current Material Count</th>
-                  <th className="border border-gray-300 px-4 py-2">Total Outputs</th>
-                  <th className="border border-gray-300 px-4 py-2">Predicted Time to Depletion (minutes)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-gray-300 px-4 py-2">{lineData.model}</td>
-                  <td className="border border-gray-300 px-4 py-2">{lineData.currentMaterialCount}</td>
-                  <td className="border border-gray-300 px-4 py-2">{lineData.totalOutputs}</td>
-                  <td className="border border-gray-300 px-4 py-2">{lineData.predictedTimeToDepletion}</td>
-                </tr>
-              </tbody>
-            </table>
+            <Table className="w-full border-collapse border border-gray-300">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="border border-gray-300 px-4 py-2">Model</TableHead>
+                  <TableHead className="border border-gray-300 px-4 py-2">Current Material Count</TableHead>
+                  <TableHead className="border border-gray-300 px-4 py-2">Total Outputs</TableHead>
+                  <TableHead className="border border-gray-300 px-4 py-2">Predicted Time to Depletion (minutes)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.model}</TableCell>
+                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.currentMaterialCount}</TableCell>
+                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.totalOutputs}</TableCell>
+                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.predictedTimeToDepletion}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
         )}
         <div className="mb-6 space-y-1 relative z-10">
@@ -193,22 +201,22 @@ function LeaderDashboard() {
         </div>
         <div>
           <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
-          <table className="w-full border-collapse border border-gray-300">
-            <thead>
-              <tr>
-                <th className="border border-gray-300 px-4 py-2">Model</th>
-                <th className="border border-gray-300 px-4 py-2">Leader</th>
-                <th className="border border-gray-300 px-4 py-2">Operator</th>
-                <th className="border border-gray-300 px-4 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="w-full border-collapse border border-gray-300">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="border border-gray-300 px-4 py-2">Model</TableHead>
+                <TableHead className="border border-gray-300 px-4 py-2">Leader</TableHead>
+                <TableHead className="border border-gray-300 px-4 py-2">Operator</TableHead>
+                <TableHead className="border border-gray-300 px-4 py-2">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {lines.map((line) => (
-                <tr key={line.id}>
-                  <td className="border border-gray-300 px-4 py-2 text-center">{line.model}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-center">{line.leaderName || 'No leader assigned'}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-center">{line.operatorName || 'No operator assigned'}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-center">
+                <TableRow key={line.id}>
+                  <TableCell className="border border-gray-300 px-4 py-2 text-center">{line.model}</TableCell>
+                  <TableCell className="border border-gray-300 px-4 py-2 text-center">{line.leaderName || 'No leader assigned'}</TableCell>
+                  <TableCell className="border border-gray-300 px-4 py-2 text-center">{line.operatorName || 'No operator assigned'}</TableCell>
+                  <TableCell className="border border-gray-300 px-4 py-2 text-center">
                     {line.operatorId && (
                       <Button
                         variant="destructive"
@@ -219,8 +227,8 @@ function LeaderDashboard() {
                         Detach Operator
                       </Button>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
               {lines.length === 0 && (
                 <tr>
@@ -229,8 +237,8 @@ function LeaderDashboard() {
                   </td>
                 </tr>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
