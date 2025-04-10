@@ -202,7 +202,7 @@ function LeaderDashboard() {
           <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-zinc-700">
+              <TableRow className="border-b border-white">
                 <TableHead className="w-[150px] text-white">Model</TableHead>
                 <TableHead className="text-white">Leader</TableHead>
                 <TableHead className="text-white">Operator</TableHead>
@@ -213,7 +213,7 @@ function LeaderDashboard() {
               {lines.map((line) => (
                 <TableRow
                   key={line.id}
-                  className="hover:bg-zinc-800 transition duration-150 ease-in-out"
+                  className="border-b border-zinc-700 hover:bg-zinc-800 transition duration-500 ease-in-out"
                 >
                   <TableCell className="py-2">{line.model}</TableCell>
                   <TableCell className="py-2">{line.leaderName || 'No leader'}</TableCell>
