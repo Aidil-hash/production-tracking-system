@@ -199,7 +199,7 @@ function LeaderDashboard() {
           </Button>
         </div>
         <div className="w-full max-w-5xl mx-auto overflow-x-auto">
-          <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
+          <h2 className="text-lg font-semibold mb-2 text-center">Production Lines</h2>
           <Table className="text-sm">
             <TableHeader>
               <TableRow className="border-b border-white/20">
