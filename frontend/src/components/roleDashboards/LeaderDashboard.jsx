@@ -198,8 +198,13 @@ function LeaderDashboard() {
             Assign Line
           </Button>
         </div>
-        <div className="w-full max-w-5xl flex justify-center mx-auto overflow-x-auto">
-          <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
+        <div className="w-full max-w-5xl mx-auto overflow-x-auto">
+        {/* Wrap the heading in a div with text-center */}
+        <div className="mb-4 text-center">
+          <h2 className="text-lg font-semibold text-white">Production Lines</h2>
+        </div>
+        {/* Wrap the table in a full-width container */}
+        <div className="w-full">
           <Table className="text-sm">
             <TableHeader>
               <TableRow className="border-b border-white/20">
@@ -216,8 +221,12 @@ function LeaderDashboard() {
                   className="border-b border-zinc-800 hover:bg-zinc-800 transition duration-500 ease-in-out"
                 >
                   <TableCell className="py-1 px-2">{line.model}</TableCell>
-                  <TableCell className="py-1 px-2">{line.leaderName || 'No leader'}</TableCell>
-                  <TableCell className="py-1 px-2">{line.operatorName || 'No operator'}</TableCell>
+                  <TableCell className="py-1 px-2">
+                    {line.leaderName || 'No leader'}
+                  </TableCell>
+                  <TableCell className="py-1 px-2">
+                    {line.operatorName || 'No operator'}
+                  </TableCell>
                   <TableCell className="py-1 px-2 text-right">
                     {line.operatorId && (
                       <Button
@@ -242,6 +251,7 @@ function LeaderDashboard() {
             </TableBody>
           </Table>
         </div>
+      </div>
       </CardContent>
     </Card>
   );
