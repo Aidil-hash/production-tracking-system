@@ -185,7 +185,8 @@ function LeaderDashboard() {
               ))}
             </SelectContent>
           </Select>
-          <Button className="w-full mt-4 bg-blue-650 hover:bg-red-750 text-white" onClick={handleAssign}>
+          <Button className="w-full bg-blue-650 hover:bg-red-750 text-white mt-4"
+          onClick={handleAssign}>
             Assign Line
           </Button>
         </div>
