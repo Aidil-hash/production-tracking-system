@@ -157,18 +157,18 @@ function LeaderDashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="border border-gray-300 px-4 py-2">Model</TableHead>
-                  <TableHead className="border border-gray-300 px-4 py-2">Current Material Count</TableHead>
-                  <TableHead className="border border-gray-300 px-4 py-2">Total Outputs</TableHead>
-                  <TableHead className="border border-gray-300 px-4 py-2">Predicted Time to Depletion (minutes)</TableHead>
+                  <TableHead className="w-[100px]">Model</TableHead>
+                  <TableHead>Current Material Count</TableHead>
+                  <TableHead>Total Outputs</TableHead>
+                  <TableHead>Predicted Time to Depletion (minutes)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.model}</TableCell>
-                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.currentMaterialCount}</TableCell>
-                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.totalOutputs}</TableCell>
-                  <TableCell className="border border-gray-300 px-4 py-2">{lineData.predictedTimeToDepletion}</TableCell>
+                  <TableCell>{lineData.model}</TableCell>
+                  <TableCell>{lineData.currentMaterialCount}</TableCell>
+                  <TableCell>{lineData.totalOutputs}</TableCell>
+                  <TableCell>{lineData.predictedTimeToDepletion}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -203,19 +203,19 @@ function LeaderDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="border border-gray-300 px-4 py-2">Model</TableHead>
-                <TableHead className="border border-gray-300 px-4 py-2">Leader</TableHead>
-                <TableHead className="border border-gray-300 px-4 py-2">Operator</TableHead>
-                <TableHead className="border border-gray-300 px-4 py-2">Actions</TableHead>
+                <TableHead className="w-[100px]">Model</TableHead>
+                <TableHead>Leader</TableHead>
+                <TableHead>Operator</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.map((line) => (
                 <TableRow key={line.id}>
-                  <TableCell className="border border-gray-300 px-4 py-2 text-center">{line.model}</TableCell>
-                  <TableCell className="border border-gray-300 px-4 py-2 text-center">{line.leaderName || 'No leader assigned'}</TableCell>
-                  <TableCell className="border border-gray-300 px-4 py-2 text-center">{line.operatorName || 'No operator assigned'}</TableCell>
-                  <TableCell className="border border-gray-300 px-4 py-2 text-center">
+                  <TableCell>{line.model}</TableCell>
+                  <TableCell>{line.leaderName || 'No leader assigned'}</TableCell>
+                  <TableCell>{line.operatorName || 'No operator assigned'}</TableCell>
+                  <TableCell className="text-right">
                     {line.operatorId && (
                       <Button
                         variant="destructive"
@@ -230,11 +230,11 @@ function LeaderDashboard() {
                 </TableRow>
               ))}
               {lines.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="border border-gray-300 px-4 py-2 text-center">
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
                     No production lines available.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
