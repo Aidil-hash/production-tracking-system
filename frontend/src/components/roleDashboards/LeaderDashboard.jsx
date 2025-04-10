@@ -180,7 +180,7 @@ function LeaderDashboard() {
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {operators.map((operator) => (
                 <SelectItem key={operator._id} value={operator._id}
-                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">
+                className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
                   {operator.name}
                 </SelectItem>
               ))}
