@@ -177,7 +177,7 @@ function LeaderDashboard() {
             <SelectTrigger className="w-full" id="operator">
               <SelectValue placeholder="--Select an operator--" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
               {operators.map((operator) => (
                 <SelectItem key={operator._id} value={operator._id}>
                   {operator.name}
