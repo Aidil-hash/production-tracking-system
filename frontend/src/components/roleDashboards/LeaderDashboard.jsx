@@ -211,7 +211,7 @@ function LeaderDashboard() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        className="bg-red-600 hover:bg-red-700 text-white"
+                        className="bg-red-500 hover:bg-red-650 text-white"
                         onClick={() => handleDetachOperator(line.id)}
                       >
                         Detach Operator
