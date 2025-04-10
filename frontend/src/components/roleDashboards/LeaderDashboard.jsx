@@ -167,7 +167,7 @@ function LeaderDashboard() {
             </table>
           </div>
         )}
-        <div className="mb-6">
+        <div className="mb-6 space-y-1 relative z-10">
           <h2 className="text-lg font-semibold mb-2">Assign Line to Operator</h2>
           <Label htmlFor="operator">Select Operator</Label>
           <Select
@@ -177,7 +177,7 @@ function LeaderDashboard() {
             <SelectTrigger className="w-full" id="operator">
               <SelectValue placeholder="--Select an operator--" />
             </SelectTrigger>
-            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {operators.map((operator) => (
                 <SelectItem key={operator._id} value={operator._id}>
                   {operator.name}
