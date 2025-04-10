@@ -198,7 +198,7 @@ function LeaderDashboard() {
             Assign Line
           </Button>
         </div>
-        <div className="w-full max-w-5xl justify-center mx-auto overflow-x-auto">
+        <div className="w-full max-w-5xl flex justify-center mx-auto overflow-x-auto">
           <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
           <Table className="text-sm">
             <TableHeader>
