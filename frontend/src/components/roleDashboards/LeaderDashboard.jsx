@@ -154,7 +154,7 @@ function LeaderDashboard() {
         {lineData && (
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-2">Production Line Details</h2>
-            <Table className="w-full border-collapse border border-gray-300">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="border border-gray-300 px-4 py-2">Model</TableHead>
@@ -200,7 +200,7 @@ function LeaderDashboard() {
         </div>
         <div>
           <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
-          <Table className="w-full border-collapse border border-gray-300">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="border border-gray-300 px-4 py-2">Model</TableHead>
