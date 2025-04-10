@@ -196,8 +196,8 @@ function LeaderDashboard() {
           <table className="w-full border-collapse border border-gray-300">
             <thead>
               <tr>
-                <th className="border border-gray-300 px-4 py-2">ID</th>
                 <th className="border border-gray-300 px-4 py-2">Model</th>
+                <th className="border border-gray-300 px-4 py-2">Leader</th>
                 <th className="border border-gray-300 px-4 py-2">Operator</th>
                 <th className="border border-gray-300 px-4 py-2">Actions</th>
               </tr>
@@ -205,8 +205,8 @@ function LeaderDashboard() {
             <tbody>
               {lines.map((line) => (
                 <tr key={line.id}>
-                  <td className="border border-gray-300 px-4 py-2">{line.id}</td>
                   <td className="border border-gray-300 px-4 py-2">{line.model}</td>
+                  <td className="border border-gray-300 px-4 py-2">{line.leaderName || 'No leader assigned'}</td>
                   <td className="border border-gray-300 px-4 py-2">{line.operatorName || 'No operator assigned'}</td>
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     {line.operatorId && (
