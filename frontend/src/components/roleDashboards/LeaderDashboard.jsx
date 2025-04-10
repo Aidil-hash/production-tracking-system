@@ -202,20 +202,23 @@ function LeaderDashboard() {
           <h2 className="text-lg font-semibold mb-2">Production Lines</h2>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Model</TableHead>
-                <TableHead>Leader</TableHead>
-                <TableHead>Operator</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow className="border-b border-zinc-700">
+                <TableHead className="w-[150px] text-white">Model</TableHead>
+                <TableHead className="text-white">Leader</TableHead>
+                <TableHead className="text-white">Operator</TableHead>
+                <TableHead className="text-right text-white">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>{line.model}</TableCell>
-                  <TableCell>{line.leaderName || 'No leader assigned'}</TableCell>
-                  <TableCell>{line.operatorName || 'No operator assigned'}</TableCell>
-                  <TableCell className="text-right">
+                <TableRow
+                  key={line.id}
+                  className="hover:bg-zinc-800 transition duration-150 ease-in-out"
+                >
+                  <TableCell className="py-2">{line.model}</TableCell>
+                  <TableCell className="py-2">{line.leaderName || 'No leader'}</TableCell>
+                  <TableCell className="py-2">{line.operatorName || 'No operator'}</TableCell>
+                  <TableCell className="text-right py-2">
                     {line.operatorId && (
                       <Button
                         variant="destructive"
@@ -231,7 +234,7 @@ function LeaderDashboard() {
               ))}
               {lines.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={4} className="text-center text-zinc-400 py-4">
                     No production lines available.
                   </TableCell>
                 </TableRow>
