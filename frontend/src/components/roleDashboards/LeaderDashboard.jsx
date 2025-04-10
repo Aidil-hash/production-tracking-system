@@ -205,9 +205,9 @@ function LeaderDashboard() {
             <tbody>
               {lines.map((line) => (
                 <tr key={line.id}>
-                  <td className="border border-gray-300 px-4 py-2">{line.model}</td>
-                  <td className="border border-gray-300 px-4 py-2">{line.leaderName || 'No leader assigned'}</td>
-                  <td className="border border-gray-300 px-4 py-2">{line.operatorName || 'No operator assigned'}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">{line.model}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">{line.leaderName || 'No leader assigned'}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">{line.operatorName || 'No operator assigned'}</td>
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     {line.operatorId && (
                       <Button
