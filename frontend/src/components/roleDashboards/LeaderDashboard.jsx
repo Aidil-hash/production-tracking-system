@@ -185,7 +185,7 @@ function LeaderDashboard() {
               ))}
             </SelectContent>
           </Select>
-          <Button className="w-full bg-blue-650 hover:bg-blue-750 text-white mt-4"
+          <Button className="w-full bg-blue-500 hover:bg-blue-900 text-white mt-4"
           onClick={handleAssign}>
             Assign Line
           </Button>
@@ -212,7 +212,7 @@ function LeaderDashboard() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        className="bg-red-500 hover:bg-red-650 text-white"
+                        className="bg-red-500 hover:bg-red-900 text-white"
                         onClick={() => handleDetachOperator(line.id)}
                       >
                         Detach Operator
