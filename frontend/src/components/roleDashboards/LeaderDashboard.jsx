@@ -179,7 +179,8 @@ function LeaderDashboard() {
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {operators.map((operator) => (
-                <SelectItem key={operator._id} value={operator._id}>
+                <SelectItem key={operator._id} value={operator._id}
+                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">
                   {operator.name}
                 </SelectItem>
               ))}
