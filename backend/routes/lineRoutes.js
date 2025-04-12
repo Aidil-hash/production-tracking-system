@@ -26,7 +26,7 @@ router.post(
 );
 
 // GET /api/lines - Get all production lines
-router.get('/', verifyToken, getAllLines, async (req, res) => {
+router.get('/', getAllLines, async (req, res) => {
   const { lineId } = req.params;
 });
 
@@ -53,7 +53,7 @@ router.post(
 router.get('/:lineId/efficiency', verifyToken, getLineEfficiency);
 
 // GET /api/lines/:lineId/predict - Predict low material and trigger notification
-router.get('/:lineId/predict', verifyToken, predictMaterialLow);
+router.get('/:lineId/predict', predictMaterialLow);
 
 // DELETE /api/lines/:id
 router.delete('/:id', verifyToken, deleteLine);
