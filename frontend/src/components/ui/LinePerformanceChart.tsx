@@ -42,7 +42,9 @@ export default function LinePerformanceChart() {
     const fetchLines = async () => {
       try {
         setError("");
+        console.log("Fetching production lines...");
         const res = await axios.get(`${API_URL}/api/lines`);
+        console.log("Fetched lines:", res.data);
         setLines(res.data);
         if (res.data.length > 0) {
           setSelectedLine(res.data[0].id);
@@ -62,7 +64,9 @@ export default function LinePerformanceChart() {
     const fetchLineData = async () => {
       try {
         setError("");
+        console.log(`Fetching line data for lineId: ${lineId}`);
         const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
+        console.log("Fetched line data:", res.data);
         setLineData(res.data);
       } catch (err) {
         console.error("Failed to fetch line data:", err);
@@ -75,19 +79,29 @@ export default function LinePerformanceChart() {
   // Set up socket connection for real-time updates
   useEffect(() => {
     if (!lineId) return;
+    console.log("Connecting to socket...");
     const socket = io(API_URL, {
       transports: ["websocket"],
     });
 
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+    });
+
     socket.on("lineOutputUpdated", (updatedLine) => {
+      console.log("Received real-time update for line:", updatedLine);
       if (updatedLine._id === lineId) {
-        console.log("Received real-time update for line:", updatedLine);
         setLineData(updatedLine);
       }
     });
 
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected");
+    });
+
     return () => {
       socket.disconnect();
+      console.log("Socket connection closed");
     };
   }, [API_URL, lineId]);
 
@@ -100,6 +114,7 @@ export default function LinePerformanceChart() {
         },
       ]
     : [];
+  console.log("chartData:", chartData);
 
   // Chart configuration
   const chartConfig = {
