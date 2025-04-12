@@ -240,7 +240,8 @@ function AdminDashboard() {
             <ListItem button onClick={() => setSection('users')}>
               <ListItemText primary="Users" />
             </ListItem>
-            <ListItem button onClick={() => setSection('lines')}>
+            <ListItem button onClick={() => {console.log("Switching to Production Lines section");
+              setSection('lines');}}>
               <ListItemText primary="Production Lines" />
             </ListItem>
           </List>
