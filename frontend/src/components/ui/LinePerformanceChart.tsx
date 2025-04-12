@@ -20,7 +20,7 @@ import {
   ChartTooltipContent,
 } from "../ui/chart";
 
-export function LinePerformanceChart() {
+export default function LinePerformanceChart() {
   // State declarations
   const [error, setError] = useState("");
   const [lineData, setLineData] = useState<any>(null);
