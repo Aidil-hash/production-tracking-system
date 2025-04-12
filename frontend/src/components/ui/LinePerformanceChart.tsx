@@ -24,46 +24,40 @@ export default function LinePerformanceChart() {
   // State declarations
   const [error, setError] = useState("");
   const [lineData, setLineData] = useState<any>(null);
+  const [selectedLine, setSelectedLine] = useState('');
+  const [lines, setLines] = useState([]);
   const [lineId, setLineId] = useState(""); // Assuming lineId is set from props or context
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-  // Fetch production lines (if needed)
-  const fetchLines = async () => {
-    try {
-      setError("");
-      const res = await axios.get(`${API_URL}/api/lines`);
-      setLineId(res.data.lines[0]._id); // Set the first line as default
-    } catch (err) {
-      console.error("Failed to fetch production lines:", err);
-      setError("Failed to fetch production lines.");
-    }
-  };
-
-  // Fetch line data initially
-  const fetchLineData = async () => {
-    if (!lineId) return;
-    try {
-      setError("");
-      const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
-      // Update state with the latest line data.
-      setLineData(res.data.line);
-    } catch (err) {
-      console.error("Failed to fetch production line data:", err);
-      setError("Failed to fetch production line data.");
-    }
-  };
-
-  // Initial data fetches
   useEffect(() => {
+    const fetchLines = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/lines`);
+        setLines(res.data);
+        if (res.data.length > 0) setSelectedLine(res.data[0].id);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch lines');
+      }
+    };
     fetchLines();
-  }, []);
+  }, [API_URL]);
 
-  useEffect(() => {
-    if (lineId) {
+  // Fetch production line details
+    useEffect(() => {
+      if (!lineId) return;
+      const fetchLineData = async () => {
+        try {
+          setError('');
+          const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
+          setLineData(res.data);
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to fetch production line data');
+        }
+      };
+  
       fetchLineData();
-    }
-  }, [lineId]);
+    }, [API_URL, lineId]);
 
   // Set up socket connection for real-time updates
   useEffect(() => {
@@ -92,7 +86,7 @@ export default function LinePerformanceChart() {
     ? [
         {
           time: new Date(lineData.startTime).getTime(), // Example: starting time
-          performance: lineData.currentMaterialCount,    // Example: current output
+          performance: lineData.effiencyPerMinute,    // Example: current output
         },
       ]
     : [];

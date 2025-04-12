@@ -1,15 +1,21 @@
 import React from 'react';
+import { Link } from "react-router-dom";
 import { Card, CardHeader, CardContent } from '../components/ui/card';
 import LogoutButton from '../components/Logout';
 import LinePerformanceChart from '../components/ui/LinePerformanceChart';
+import { Button } from "../components/ui/button";
 
 export default function PerformanceDashboard() {
   return (
     <Card className="p-4">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Leader Dashboard</h1>
-          <LogoutButton />
+          <Button variant="contained" color="primary" size="small"
+          className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer px-3 py-1">
+            <Link to="/" className="text-white">
+            Back to Login Screen
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
