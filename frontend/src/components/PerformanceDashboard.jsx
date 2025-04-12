@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '../components/ui/card';
 import LogoutButton from '../components/Logout';
-import LinePerformanceChart from '@/components/ui/LinePerformanceChart';
+import LinePerformanceChart from '../components/ui/LinePerformanceChart';
 
 export default function PerformanceDashboard() {
   return (
