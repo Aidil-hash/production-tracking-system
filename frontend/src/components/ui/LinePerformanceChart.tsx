@@ -4,7 +4,14 @@ import { Activity, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Area as RechartsArea } from "recharts";
+import {
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Area as RechartsArea,
+} from "recharts";
 import {
   Card,
   CardContent,
@@ -24,40 +31,46 @@ export default function LinePerformanceChart() {
   // State declarations
   const [error, setError] = useState("");
   const [lineData, setLineData] = useState<any>(null);
-  const [selectedLine, setSelectedLine] = useState('');
+  const [selectedLine, setSelectedLine] = useState("");
   const [lines, setLines] = useState([]);
-  const [lineId, setLineId] = useState(""); // Assuming lineId is set from props or context
+  const [lineId, setLineId] = useState("");
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
+  // Fetch production lines
   useEffect(() => {
     const fetchLines = async () => {
       try {
+        setError("");
         const res = await axios.get(`${API_URL}/api/lines`);
         setLines(res.data);
-        if (res.data.length > 0) setSelectedLine(res.data[0].id);
+        if (res.data.length > 0) {
+          setSelectedLine(res.data[0].id);
+          setLineId(res.data[0].id);
+        }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch lines');
+        console.error("Failed to fetch lines:", err);
+        setError(err.response?.data?.message || "Failed to fetch lines.");
       }
     };
     fetchLines();
   }, [API_URL]);
 
   // Fetch production line details
-    useEffect(() => {
-      if (!lineId) return;
-      const fetchLineData = async () => {
-        try {
-          setError('');
-          const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
-          setLineData(res.data);
-        } catch (err) {
-          setError(err.response?.data?.message || 'Failed to fetch production line data');
-        }
-      };
-  
-      fetchLineData();
-    }, [API_URL, lineId]);
+  useEffect(() => {
+    if (!lineId) return;
+    const fetchLineData = async () => {
+      try {
+        setError("");
+        const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
+        setLineData(res.data);
+      } catch (err) {
+        console.error("Failed to fetch line data:", err);
+        setError(err.response?.data?.message || "Failed to fetch production line data.");
+      }
+    };
+    fetchLineData();
+  }, [API_URL, lineId]);
 
   // Set up socket connection for real-time updates
   useEffect(() => {
@@ -67,7 +80,6 @@ export default function LinePerformanceChart() {
     });
 
     socket.on("lineOutputUpdated", (updatedLine) => {
-      // Check if the update is for the current line
       if (updatedLine._id === lineId) {
         console.log("Received real-time update for line:", updatedLine);
         setLineData(updatedLine);
@@ -79,14 +91,12 @@ export default function LinePerformanceChart() {
     };
   }, [API_URL, lineId]);
 
-  // Prepare chart data from lineData
-  // Assuming lineData contains historical logs in an array (if not, adjust accordingly)
-  // For real-time updates, you might simply update a single value.
+  // Prepare chart data
   const chartData = lineData
     ? [
         {
-          time: new Date(lineData.startTime).getTime(), // Example: starting time
-          performance: lineData.effiencyPerMinute,    // Example: current output
+          time: new Date(lineData.startTime).getTime(), // Ensure `startTime` exists
+          performance: lineData.efficiencyPerMinute, // Ensure `efficiencyPerMinute` exists
         },
       ]
     : [];
@@ -111,38 +121,44 @@ export default function LinePerformanceChart() {
         <CardDescription>Performance metrics in real time</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="time"
-              type="number"
-              scale="time"
-              domain={['dataMin', 'dataMax']}
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => new Date(value).toLocaleTimeString()}
-            />
-            <YAxis
-              dataKey="performance"
-              type="number"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={value => value}
-              domain={[0, 'auto']}
-            />
-            <ChartTooltip cursor={true} content={<ChartTooltipContent hideLabel />} />
-            <RechartsArea
-              dataKey="performance"
-              type="step"
-              fill="var(--color-performance)"
-              fillOpacity={0.4}
-              stroke="var(--color-performance)"
-            />
-          </AreaChart>
-        </ChartContainer>
+        {error ? (
+          <p className="text-red-500 text-center">{error}</p>
+        ) : chartData.length === 0 ? (
+          <p className="text-center text-gray-500">No data available for the selected line.</p>
+        ) : (
+          <ChartContainer config={chartConfig}>
+            <AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="time"
+                type="number"
+                scale="time"
+                domain={["dataMin", "dataMax"]}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value) => new Date(value).toLocaleTimeString()}
+              />
+              <YAxis
+                dataKey="performance"
+                type="number"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value) => value}
+                domain={[0, "auto"]}
+              />
+              <ChartTooltip cursor={true} content={<ChartTooltipContent hideLabel />} />
+              <RechartsArea
+                dataKey="performance"
+                type="step"
+                fill="var(--color-performance)"
+                fillOpacity={0.4}
+                stroke="var(--color-performance)"
+              />
+            </AreaChart>
+          </ChartContainer>
+        )}
       </CardContent>
       <CardFooter>
         <div className="flex w-full items-start gap-2 text-sm">

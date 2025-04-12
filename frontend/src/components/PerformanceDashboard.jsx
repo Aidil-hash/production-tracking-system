@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from "react-router-dom";
 import { Card, CardHeader, CardContent } from '../components/ui/card';
-import LogoutButton from '../components/Logout';
 import LinePerformanceChart from '../components/ui/LinePerformanceChart';
 import { Button } from "../components/ui/button";
 
@@ -19,7 +18,6 @@ export default function PerformanceDashboard() {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Other dashboard elements */}
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-center mb-4">Line Performance</h2>
           <LinePerformanceChart />
