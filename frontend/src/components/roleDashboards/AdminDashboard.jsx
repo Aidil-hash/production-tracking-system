@@ -87,8 +87,8 @@ function LinesSection({ lines, onDeleteLine }) {
                 <TableCell>{line.model}</TableCell>
                 <TableCell>{line.currentMaterialCount}</TableCell>
                 <TableCell>{line.totalOutputs}</TableCell>
-                <TableCell>{line.leader ? line.leader.name : 'None'}</TableCell>
-                <TableCell>{line.operator ? line.operator.name : 'None'}</TableCell>
+                <TableCell>{line.leaderName ? line.leader.name : 'None'}</TableCell>
+                <TableCell>{line.operatorName ? line.operator.name : 'None'}</TableCell>
                 <TableCell align="center">
                   <Button variant="contained" color="error" size="small" onClick={() => onDeleteLine(line.id)}>
                     Delete

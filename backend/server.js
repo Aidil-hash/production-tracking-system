@@ -9,10 +9,9 @@ const app = express();
 
 // Set up CORS
 app.use(cors({
-  origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000',
-    'https://orange-space-enigma-4jvrw4j46rvwf567-3000.app.github.dev/'],
+  origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization',],
   credentials: true
 }));
 
@@ -58,9 +57,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000',
-      'https://orange-space-enigma-4jvrw4j46rvwf567-3000.app.github.dev/'
-    ],
+    origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
     methods: ['GET', 'POST']
   }
 });

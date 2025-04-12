@@ -66,6 +66,8 @@ const scanSerial = async (req, res) => {
       return res.status(404).json({ message: "Production line not found." });
     }
 
+    const operatorName = await User.findById(operatorId);
+
     // Optional: Check that the operator is assigned to this line
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
       return res.status(403).json({ message: "You are not assigned to this production line." });
@@ -83,7 +85,7 @@ const scanSerial = async (req, res) => {
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: req.user.name,
+      name: operatorName ? operatorName.name : 'Unknown',
       serialNumber
     });
     await newScanLog.save();
@@ -94,10 +96,13 @@ const scanSerial = async (req, res) => {
       productionLine: line._id,
       model: line.model,
       operator: operatorId, // You might also populate operator name if needed
-      name: req.user.name,
+      name: operatorName ? operatorName.name : 'Unknown',
       serialNumber,
       scannedAt: newScanLog.scannedAt
     });
+
+    // Emit an event to update the line's current output
+    io.emit('lineOutputUpdated', line);
 
     return res.status(200).json({
       message: "Serial scanned and recorded successfully.",
@@ -244,6 +249,7 @@ const predictMaterialLow = async (req, res) => {
       model: line.model,
       currentMaterialCount: line.currentMaterialCount,
       totalOutputs: line.totalOutputs,
+      targetOutputs: line.targetOutputs,
       timeElapsedMinutes: timeElapsedMinutes.toFixed(2),
       efficiencyPerMinute: efficiency.toFixed(2),
       predictedTimeToDepletion: predictedTime.toFixed(2),

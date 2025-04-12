@@ -117,6 +117,9 @@ export default function Login() {
             <Link to="/register" className="hover:underline underline-offset-4">
               Sign up
             </Link>
+            <Link to="/performance" className="hover:underline underline-offset-4">
+              Click to see Line Performance Chart
+            </Link>
           </div>
         </div>
       </div>
