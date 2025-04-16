@@ -105,16 +105,11 @@ export default function LinePerformanceChart() {
     };
   }, [API_URL, lineId]);
 
-  // Prepare chart data
-  const chartData = lineData
-    ? [
-        {
-          time: new Date(lineData.startTime).getTime(), // Ensure `startTime` exists
-          performance: lineData.efficiencyPerMinute, // Ensure `efficiencyPerMinute` exists
-        },
-      ]
-    : [];
-  console.log("chartData:", chartData);
+  // Updated Chart data
+  const chartData = lineData?.efficiencyData?.map((point: any) => ({
+    time: new Date(point.timestamp).getTime(),
+    performance: point.efficiency,
+  })) || [];
 
   // Chart configuration
   const chartConfig = {

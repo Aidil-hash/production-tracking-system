@@ -54,13 +54,12 @@ const scanSerial = async (req, res) => {
   try {
     const { lineId } = req.params;
     const { serialNumber } = req.body;
-    const operatorId = req.user.id; // assume authentication middleware sets req.user
+    const operatorId = req.user.id;
 
     if (!serialNumber) {
       return res.status(400).json({ message: "Serial number is required." });
     }
 
-    // Use "Line" (not ProductionLine) since that's what you imported
     const line = await Line.findById(lineId);
     if (!line) {
       return res.status(404).json({ message: "Production line not found." });
@@ -68,19 +67,28 @@ const scanSerial = async (req, res) => {
 
     const operatorName = await User.findById(operatorId);
 
-    // Optional: Check that the operator is assigned to this line
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
       return res.status(403).json({ message: "You are not assigned to this production line." });
     }
 
-    // Update production line metrics: increment total outputs and decrement current material count if possible
     line.totalOutputs = (line.totalOutputs || 0) + 1;
     if (line.currentMaterialCount > 0) {
       line.currentMaterialCount -= 1;
     }
+
+    const currentTime = new Date();
+    const timeElapsedMs = currentTime - line.startTime;
+    const timeElapsedMinutes = timeElapsedMs / (1000 * 60) || 1;
+
+    const efficiency = line.totalOutputs / timeElapsedMinutes;
+
+    line.efficiencyHistory.push({
+      timestamp: currentTime,
+      efficiency: parseFloat(efficiency.toFixed(2)),
+    });
+
     await line.save();
 
-    // Create a new scan log record
     const newScanLog = new ScanLog({
       productionLine: line._id,
       model: line.model,
@@ -90,18 +98,16 @@ const scanSerial = async (req, res) => {
     });
     await newScanLog.save();
 
-    // Emit a socket event to update scan logs in real-time
     const io = req.app.get('io');
     io.emit('newScan', {
       productionLine: line._id,
       model: line.model,
-      operator: operatorId, // You might also populate operator name if needed
+      operator: operatorId,
       name: operatorName ? operatorName.name : 'Unknown',
       serialNumber,
       scannedAt: newScanLog.scannedAt
     });
 
-    // Emit an event to update the line's current output
     io.emit('lineOutputUpdated', line);
 
     return res.status(200).json({
@@ -214,11 +220,7 @@ const predictMaterialLow = async (req, res) => {
       return res.status(404).json({ message: 'Line not found' });
     }
 
-    const { linestatus } = req.body; // Assuming status is passed in the request body
-    if (linestatus) line.status = linestatus;
-    await line.save();
     const thresholdMinutes = 30;
-
     const currentTime = Date.now();
     const timeElapsedMs = currentTime - line.startTime.getTime();
     const timeElapsedMinutes = timeElapsedMs / (1000 * 60);
@@ -228,33 +230,22 @@ const predictMaterialLow = async (req, res) => {
       efficiency = line.totalOutputs / timeElapsedMinutes;
     }
 
-    if (efficiency === 0) {
-      return res.status(200).json({
-        message: 'Not enough data to predict material depletion',
-        line
-      });
-    }
+    const predictedTime = efficiency ? line.currentMaterialCount / efficiency : 0;
+    let notificationSent = predictedTime < thresholdMinutes;
 
-    const predictedTime = line.currentMaterialCount / efficiency;
-    let notificationSent = false;
-
-    if (predictedTime < thresholdMinutes) {
-      console.log(`Notification: Material on line ${line._id} is low. Predicted depletion in ${predictedTime.toFixed(2)} minutes.`);
-      notificationSent = true;
-    }
+    const recentEfficiencyData = line.efficiencyHistory.slice(-30); // last 30 records
 
     return res.status(200).json({
-      message: 'Prediction calculated',
       lineId: line._id,
       model: line.model,
       currentMaterialCount: line.currentMaterialCount,
       totalOutputs: line.totalOutputs,
       targetOutputs: line.targetOutputs,
-      timeElapsedMinutes: timeElapsedMinutes.toFixed(2),
-      efficiencyPerMinute: efficiency.toFixed(2),
       predictedTimeToDepletion: predictedTime.toFixed(2),
-      notificationSent
+      notificationSent,
+      efficiencyData: recentEfficiencyData
     });
+
   } catch (error) {
     console.error('Error predicting material low:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
