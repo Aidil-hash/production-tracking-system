@@ -88,7 +88,11 @@ const scanSerial = async (req, res) => {
 
     const efficiency = line.totalOutputs / timeElapsedMinutes;
 
-    line.efficiencyHistory = line.efficiencyHistory || [];
+    // CRITICAL: Ensure array exists and push data correctly
+    if (!Array.isArray(line.efficiencyHistory)) {
+      line.efficiencyHistory = [];
+    }
+
     line.efficiencyHistory.push({
       timestamp: currentTime,
       efficiency: parseFloat(efficiency.toFixed(2)),
