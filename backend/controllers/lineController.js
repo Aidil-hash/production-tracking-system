@@ -70,7 +70,7 @@ const scanSerial = async (req, res) => {
     }
 
     const operatorName = await User.findById(operatorId);
-    console.log("Operator found:", operatorName);
+    //console.log("Operator found:", operatorName);
 
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
       console.error("Operator not assigned to this line:", operatorId);
@@ -99,7 +99,7 @@ const scanSerial = async (req, res) => {
     });
 
     await line.save();
-    console.log("Line updated:", line);
+    //console.log("Line updated:", line);
 
     const newScanLog = new ScanLog({
       productionLine: line._id,
@@ -110,7 +110,7 @@ const scanSerial = async (req, res) => {
     });
 
     await newScanLog.save();
-    console.log("Scan log created:", newScanLog);
+    //console.log("Scan log created:", newScanLog);
 
     const io = req.app.get('io');
     if (io) {

@@ -104,7 +104,7 @@ export default function LinePerformanceChart() {
   }, [API_URL, lineId]);
 
   // Updated Chart data
-  const chartData = lineData?.efficiencyHistory?.map((point: any) => ({
+  const chartData = lineData.efficiencyHistory.map((point: any) => ({
     time: new Date(point.timestamp).getTime(),
     performance: point.efficiency,
   })) || [];
