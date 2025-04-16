@@ -44,8 +44,6 @@ router.put(
 // POST /api/lines/:lineId/scan - Only an Operator can scan
 router.post(
   '/:lineId/scan',
-  verifyToken,
-  authorizeRoles(ROLES.OPERATOR),
   scanSerial
 );
 
