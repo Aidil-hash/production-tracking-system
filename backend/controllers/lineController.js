@@ -54,10 +54,14 @@ const scanSerial = async (req, res) => {
   try {
     const { lineId } = req.params;
     const { serialNumber } = req.body;
-    const operatorId = req.user.id;
 
     if (!serialNumber) {
       return res.status(400).json({ message: "Serial number is required." });
+    }
+
+    const operatorId = req.user && req.user.id;
+    if (!operatorId) {
+      return res.status(401).json({ message: "Unauthorized: Operator not found." });
     }
 
     const line = await Line.findById(lineId);
@@ -65,23 +69,27 @@ const scanSerial = async (req, res) => {
       return res.status(404).json({ message: "Production line not found." });
     }
 
-    const operatorName = await User.findById(operatorId);
+    const operator = await User.findById(operatorId);
+    if (!operator) {
+      return res.status(404).json({ message: "Operator user not found." });
+    }
 
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
       return res.status(403).json({ message: "You are not assigned to this production line." });
     }
 
     line.totalOutputs = (line.totalOutputs || 0) + 1;
-    if (line.currentMaterialCount > 0) {
-      line.currentMaterialCount -= 1;
-    }
+    line.currentMaterialCount = Math.max((line.currentMaterialCount || 0) - 1, 0);
+
+    if (!line.startTime) line.startTime = new Date();
 
     const currentTime = new Date();
     const timeElapsedMs = currentTime - line.startTime;
-    const timeElapsedMinutes = timeElapsedMs / (1000 * 60) || 1;
+    const timeElapsedMinutes = Math.max(timeElapsedMs / (1000 * 60), 1);
 
     const efficiency = line.totalOutputs / timeElapsedMinutes;
 
+    line.efficiencyHistory = line.efficiencyHistory || [];
     line.efficiencyHistory.push({
       timestamp: currentTime,
       efficiency: parseFloat(efficiency.toFixed(2)),
@@ -93,9 +101,10 @@ const scanSerial = async (req, res) => {
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: operatorName ? operatorName.name : 'Unknown',
+      name: operator.name || 'Unknown',
       serialNumber
     });
+
     await newScanLog.save();
 
     const io = req.app.get('io');
@@ -103,7 +112,7 @@ const scanSerial = async (req, res) => {
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: operatorName ? operatorName.name : 'Unknown',
+      name: operator.name || 'Unknown',
       serialNumber,
       scannedAt: newScanLog.scannedAt
     });
@@ -115,7 +124,7 @@ const scanSerial = async (req, res) => {
       line,
       scan: newScanLog
     });
-    
+
   } catch (error) {
     console.error("Error scanning serial:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
