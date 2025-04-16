@@ -52,22 +52,28 @@ const updateLine = async (req, res) => {
 // Operator scans a serial number
 const scanSerial = async (req, res) => {
   try {
+    console.log("Request received:", req.params, req.body, req.user);
+
     const { lineId } = req.params;
     const { serialNumber } = req.body;
     const operatorId = req.user.id;
 
     if (!serialNumber) {
+      console.error("Serial number is missing");
       return res.status(400).json({ message: "Serial number is required." });
     }
 
     const line = await Line.findById(lineId);
     if (!line) {
+      console.error("Production line not found:", lineId);
       return res.status(404).json({ message: "Production line not found." });
     }
 
     const operatorName = await User.findById(operatorId);
+    console.log("Operator found:", operatorName);
 
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
+      console.error("Operator not assigned to this line:", operatorId);
       return res.status(403).json({ message: "You are not assigned to this production line." });
     }
 
@@ -89,33 +95,39 @@ const scanSerial = async (req, res) => {
     });
 
     await line.save();
+    console.log("Line updated:", line);
 
     const newScanLog = new ScanLog({
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: operatorName || 'Unknown',
-      serialNumber
+      name: operatorName ? operatorName.name : 'Unknown',
+      serialNumber,
     });
 
     await newScanLog.save();
+    console.log("Scan log created:", newScanLog);
 
     const io = req.app.get('io');
-    io.emit('newScan', {
-      productionLine: line._id,
-      model: line.model,
-      operator: operatorId,
-      name: operatorName || 'Unknown',
-      serialNumber,
-      scannedAt: newScanLog.scannedAt
-    });
+    if (io) {
+      io.emit('newScan', {
+        productionLine: line._id,
+        model: line.model,
+        operator: operatorId,
+        name: operatorName ? operatorName.name : 'Unknown',
+        serialNumber,
+        scannedAt: newScanLog.scannedAt,
+      });
 
-    io.emit('lineOutputUpdated', line);
+      io.emit('lineOutputUpdated', line);
+    } else {
+      console.error("Socket.IO instance not found");
+    }
 
     return res.status(200).json({
       message: "Serial scanned and recorded successfully.",
       line,
-      scan: newScanLog
+      scan: newScanLog,
     });
 
   } catch (error) {
