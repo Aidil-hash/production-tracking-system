@@ -64,12 +64,10 @@ export default function LinePerformanceChart() {
     const fetchLineData = async () => {
       try {
         setError("");
-        console.log(`Fetching line data for lineId: ${lineId}`);
         const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
-        console.log("Fetched line data:", res.data);
         setLineData(res.data);
+        console.log("Fetched line data:", res.data);
       } catch (err) {
-        console.error("Failed to fetch line data:", err);
         setError(err.response?.data?.message || "Failed to fetch production line data.");
       }
     };
@@ -106,7 +104,7 @@ export default function LinePerformanceChart() {
   }, [API_URL, lineId]);
 
   // Updated Chart data
-  const chartData = lineData?.efficiencyData?.map((point: any) => ({
+  const chartData = lineData?.efficiencyHistory?.map((point: any) => ({
     time: new Date(point.timestamp).getTime(),
     performance: point.efficiency,
   })) || [];
