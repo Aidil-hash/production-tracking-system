@@ -54,14 +54,10 @@ const scanSerial = async (req, res) => {
   try {
     const { lineId } = req.params;
     const { serialNumber } = req.body;
+    const operatorId = req.user.id;
 
     if (!serialNumber) {
       return res.status(400).json({ message: "Serial number is required." });
-    }
-
-    const operatorId = req.user && req.user.id;
-    if (!operatorId) {
-      return res.status(401).json({ message: "Unauthorized: Operator not found." });
     }
 
     const line = await Line.findById(lineId);
@@ -69,10 +65,7 @@ const scanSerial = async (req, res) => {
       return res.status(404).json({ message: "Production line not found." });
     }
 
-    const operator = await User.findById(operatorId);
-    if (!operator) {
-      return res.status(404).json({ message: "Operator user not found." });
-    }
+    const operatorName = await User.findById(operatorId);
 
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
       return res.status(403).json({ message: "You are not assigned to this production line." });
@@ -101,7 +94,7 @@ const scanSerial = async (req, res) => {
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: operator.name || 'Unknown',
+      name: operatorName || 'Unknown',
       serialNumber
     });
 
@@ -112,7 +105,7 @@ const scanSerial = async (req, res) => {
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: operator.name || 'Unknown',
+      name: operatorName || 'Unknown',
       serialNumber,
       scannedAt: newScanLog.scannedAt
     });
