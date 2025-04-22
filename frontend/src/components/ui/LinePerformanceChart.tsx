@@ -104,10 +104,10 @@ export default function LinePerformanceChart() {
   }, [API_URL, lineId]);
 
   // Updated Chart data
-  const chartData = lineData?.efficiencyHistory?.map((point: any) => ({
-    time: new Date(point.timestamp).getTime(),
-    performance: point.efficiency,
-  })) || [];  // Default to empty array if no data
+  const chartData = lineData?.efficiencyData?.map((point: any) => ({
+    time: new Date(point.timestamp).getTime(), // Convert timestamp to a JavaScript timestamp
+    performance: point.efficiency, // Use efficiency as the performance value
+  })) || [];  // Default to an empty array if no data is found
   console.log("Chart Data:", chartData);
 
   // Chart configuration
