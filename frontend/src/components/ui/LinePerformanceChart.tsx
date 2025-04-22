@@ -108,6 +108,7 @@ export default function LinePerformanceChart() {
     time: new Date(point.timestamp).getTime(),
     performance: point.efficiency,
   })) || [];  // Default to empty array if no data
+  console.log("Chart Data:", chartData);
 
   // Chart configuration
   const chartConfig = {
