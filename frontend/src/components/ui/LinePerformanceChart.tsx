@@ -28,98 +28,36 @@ import {
 } from "../ui/chart";
 
 export default function LinePerformanceChart() {
-  // State declarations
   const [error, setError] = useState("");
-  const [lineData, setLineData] = useState<any>(null);
-  const [selectedLine, setSelectedLine] = useState("");
-  const [lines, setLines] = useState([]);
-  const [lineId, setLineId] = useState("");
+  const [linesData, setLinesData] = useState<any[]>([]);
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-  // Fetch production lines
+  // Fetch all production lines
   useEffect(() => {
-    const fetchLines = async () => {
+    const fetchLinesData = async () => {
       try {
         setError("");
-        console.log("Fetching production lines...");
         const res = await axios.get(`${API_URL}/api/lines`);
-        console.log("Fetched lines:", res.data);
-        setLines(res.data);
-        if (res.data.length > 0) {
-          setSelectedLine(res.data[0].id);
-          setLineId(res.data[0].id);
-        }
+        setLinesData(res.data);
+        console.log("Fetched lines data:", res.data);
       } catch (err) {
         console.error("Failed to fetch lines:", err);
         setError(err.response?.data?.message || "Failed to fetch lines.");
       }
     };
-    fetchLines();
+    fetchLinesData();
   }, [API_URL]);
 
-  // Fetch production line details
-  useEffect(() => {
-    if (!lineId) return;
-    const fetchLineData = async () => {
-      try {
-        setError("");
-        const res = await axios.get(`${API_URL}/api/lines/${lineId}/predict`);
-        setLineData(res.data);
-        console.log("Fetched line data:", res.data);
-      } catch (err) {
-        setError(err.response?.data?.message || "Failed to fetch production line data.");
-      }
-    };
-    fetchLineData();
-  }, [API_URL, lineId]);
+  // Prepare chart data for multiple lines
+  const chartData = linesData.map((line: any) => ({
+    name: line.model,
+    data: line.efficiencyData.map((point: any) => ({
+      time: new Date(point.timestamp).getTime(),
+      performance: point.efficiency,
+    }))
+  }));
 
-  // Set up socket connection for real-time updates
-  useEffect(() => {
-    if (!lineId) return;
-    console.log("Connecting to socket...");
-    const socket = io(API_URL, {
-      transports: ["websocket"],
-    });
-
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
-
-    socket.on("lineOutputUpdated", (updatedLine) => {
-      console.log("Received real-time update for line:", updatedLine);
-      if (updatedLine._id === lineId) {
-        setLineData(updatedLine);
-      }
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    return () => {
-      socket.disconnect();
-      console.log("Socket connection closed");
-    };
-  }, [API_URL, lineId]);
-
-  // Updated Chart data
-  const chartData = lineData?.efficiencyData?.map((point: any) => ({
-    time: new Date(point.timestamp).getTime(), // Convert timestamp to a JavaScript timestamp
-    performance: point.efficiency, // Use efficiency as the performance value
-  })) || [];  // Default to an empty array if no data is found
-  console.log("Chart Data:", chartData);
-
-  // Chart configuration
-  const chartConfig = {
-    performance: {
-      label: "Performance",
-      color: "hsl(var(--chart-1))",
-      icon: Activity,
-    },
-  } satisfies ChartConfig;
-
-  // Format current date
   const currentDate = new Date();
   const formattedDate = format(currentDate, "MMMM dd, yyyy");
 
@@ -135,8 +73,8 @@ export default function LinePerformanceChart() {
         ) : chartData.length === 0 ? (
           <p className="text-center text-gray-500">No data available for the selected line.</p>
         ) : (
-          <ChartContainer config={chartConfig}>
-            <AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
+          <ChartContainer config={{ performance: { label: "Performance", color: "hsl(var(--chart-1))", icon: Activity } }}>
+            <AreaChart data={chartData[0]?.data} margin={{ left: 12, right: 12 }}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="time"
@@ -158,13 +96,18 @@ export default function LinePerformanceChart() {
                 domain={[0, "auto"]}
               />
               <ChartTooltip cursor={true} content={<ChartTooltipContent hideLabel />} />
-              <RechartsArea
-                dataKey="performance"
-                type="step"
-                fill="var(--color-performance)"
-                fillOpacity={0.4}
-                stroke="var(--color-performance)"
-              />
+
+              {chartData.map((lineData, index) => (
+                <RechartsArea
+                  key={index}
+                  dataKey="performance"
+                  type="step"
+                  data={lineData.data}
+                  fill={`hsl(${index * 60}, 100%, 60%)`} // Dynamic color for each line
+                  fillOpacity={0.4}
+                  stroke={`hsl(${index * 60}, 100%, 60%)`}
+                />
+              ))}
             </AreaChart>
           </ChartContainer>
         )}
