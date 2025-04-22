@@ -67,6 +67,7 @@ export default function LinePerformanceChart() {
       performance: point.efficiency,
     })) || [],
   }));
+  console.log("Chart data:", chartData);
 
   const currentDate = new Date();
   const formattedDate = format(currentDate, "MMMM dd, yyyy");
@@ -130,8 +131,8 @@ export default function LinePerformanceChart() {
     <Card>
       <CardHeader>
         <CardTitle>Line Performance</CardTitle>
-        <CardDescription>Performance metrics in real time</CardDescription>
-        <p className="text-sm text-gray-500">{formattedDate}</p>
+        <CardDescription className="text-sm text-gray-500">Performance metrics in real time</CardDescription>
+        <p>{formattedDate}</p>
       </CardHeader>
 
       <CardContent>
@@ -143,12 +144,12 @@ export default function LinePerformanceChart() {
               <SelectValue placeholder="Select the department" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
-              <SelectItem value="All">All</SelectItem>
-              <SelectItem value="E2 Drum">E2 Drum</SelectItem>
-              <SelectItem value="E3 Compact">E3 Compact</SelectItem>
-              <SelectItem value="E3 Non-Compact">E3 Non-Compact</SelectItem>
-              <SelectItem value="E4 Piano">E4 Piano</SelectItem>
-              <SelectItem value="E4 Keyboard">E4 Keyboard</SelectItem>
+              <SelectItem value="All" className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">All</SelectItem>
+              <SelectItem value="E2 Drum" className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">E2 Drum</SelectItem>
+              <SelectItem value="E3 Compact" className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">E3 Compact</SelectItem>
+              <SelectItem value="E3 Non-Compact" className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">E3 Non-Compact</SelectItem>
+              <SelectItem value="E4 Piano" className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">E4 Piano</SelectItem>
+              <SelectItem value="E4 Keyboard" className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">E4 Keyboard</SelectItem>
             </SelectContent>
           </Select>
         </div>
