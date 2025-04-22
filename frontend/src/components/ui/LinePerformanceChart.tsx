@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { TrendingUp } from "lucide-react";
+import { Activity, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -21,6 +21,7 @@ import {
 } from "../ui/card";
 import {
   ChartTooltip,
+  ChartContainer,
   ChartTooltipContent,
 } from "../ui/chart";
 import {
@@ -133,12 +134,14 @@ export default function LinePerformanceChart() {
   }, [API_URL, lineId]); // Only establish the socket connection when lineId changes
 
   return (
-    <div>
-        <div className="flex justify-between items-center">
-          <CardTitle>Line Performance</CardTitle>
-        </div>
-        <CardDescription>Performance metrics in real-time</CardDescription>
+    <Card>
+      <CardHeader>
+        <CardTitle>Line Performance</CardTitle>
+        <CardDescription>Performance metrics in real time</CardDescription>
+        <p className="text-sm text-gray-500">{formattedDate}</p> {/* Display the formatted date */}
+      </CardHeader>
 
+      <CardContent>
         {/* Department Sorting */}
           <div className="space-y-1 relative z-10 mb-4">
             <Label htmlFor="newdepartment">Department</Label>
@@ -181,18 +184,14 @@ export default function LinePerformanceChart() {
             </Select>
           </div>
 
-      <CardContent>
         {error ? (
-          <p className="text-red-500 text-center">{error}</p>
-        ) : filteredLines.length === 0 ? (
-          <p className="text-center text-gray-500">No data available for the selected department.</p>
-        ) : (
-          <div className="charts-grid">
-            {chartData.map((lineData, index) => (
-              <Card key={index}>
-                <CardContent>
-                  <AreaChart data={lineData.data} margin={{ left: 12, right: 12 }}>
-                    <CartesianGrid vertical={false} />
+            <p className="text-red-500 text-center">{error}</p>
+          ) : chartData.length === 0 ? (
+            <p className="text-center text-gray-500">No data available for the selected line.</p>
+          ) : (
+            <ChartContainer config={{ performance: { label: "Performance", color: "hsl(var(--chart-1))", icon: Activity } }}>
+              <AreaChart data={chartData[0]?.data} margin={{ left: 12, right: 12 }}>
+                <CartesianGrid vertical={false} />`
                     <XAxis
                       dataKey="time"
                       type="number"
@@ -220,12 +219,9 @@ export default function LinePerformanceChart() {
                       fillOpacity={0.4}
                       stroke="var(--color-performance)"
                     />
-                  </AreaChart>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+              </AreaChart>
+            </ChartContainer>
+            )}
 
         {/* Add More Button */}
         <div className="add-more">
@@ -242,12 +238,9 @@ export default function LinePerformanceChart() {
             <div className="flex items-center gap-2 font-medium leading-none">
               Line Performance <TrendingUp className="h-4 w-4" />
             </div>
-            <div className="flex items-center gap-2 leading-none text-muted-foreground">
-              {formattedDate}
-            </div>
           </div>
         </div>
       </CardFooter>
-    </div>
+    </Card>
   );
 }
