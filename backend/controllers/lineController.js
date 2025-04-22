@@ -123,7 +123,11 @@ const scanSerial = async (req, res) => {
         scannedAt: newScanLog.scannedAt,
       });
 
-      io.emit('lineOutputUpdated', line);
+      // Backend: Emitting the updated line data with lineId
+      io.emit('lineOutputUpdated', {
+        _id: line._id,
+        efficiencyData: line.efficiencyHistory,  // Send only the relevant data
+      });
     } else {
       console.error("Socket.IO instance not found");
     }
