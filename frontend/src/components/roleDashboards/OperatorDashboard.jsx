@@ -138,7 +138,7 @@ function OperatorDashboard() {
               onChange={(e) => setSerialNumber(e.target.value)}
               fullWidth
               sx={{ 
-                border : '1px solid #ccc',
+                border : 'solid #ccc',
                 borderRadius: 2,
                }}
             />
