@@ -129,9 +129,6 @@ function OperatorDashboard() {
               mt: 3,
               display: 'flex',
               alignItems: 'center',
-              border : '1px solid #ccc',
-              borderRadius: 2,
-              p: 2,
             }}
           >
             <TextField
@@ -143,7 +140,6 @@ function OperatorDashboard() {
               sx={{ 
                 border : '1px solid #ccc',
                 borderRadius: 2,
-                p: 2,
                }}
             />
             <Button type="submit" variant="contained" sx={{ ml: 2 }}>
