@@ -187,7 +187,7 @@ export default function LinePerformanceChart() {
                     <ChartTooltip cursor={true} content={<ChartTooltipContent hideLabel />} />
                     <RechartsArea
                       dataKey="performance"
-                      type="step"
+                      type="linear"
                       fill="var(--color-performance)"
                       fillOpacity={0.4}
                       stroke="var(--color-performance)"

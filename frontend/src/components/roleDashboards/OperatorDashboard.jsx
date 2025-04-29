@@ -129,6 +129,7 @@ function OperatorDashboard() {
               mt: 3,
               display: 'flex',
               alignItems: 'center',
+              border : '1px solid #ffff',
             }}
           >
             <TextField
