@@ -9,9 +9,9 @@ const app = express();
 
 // Set up CORS
 app.use(cors({
-  origin: ['http://172.20.10.3:3000', 'http://localhost:3000'],
+  origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization',],
   credentials: true
 }));
 
@@ -57,7 +57,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: ['http://172.20.10.3:3000', 'http://localhost:3000'],
+    origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
     methods: ['GET', 'POST']
   }
 });

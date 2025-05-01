@@ -49,10 +49,6 @@ const getAnalytics = async (req, res) => {
 
 const getScanLogs = async (req, res) => {
   try {
-    // Ensure that only engineers can access scan logs
-    if (req.user.role !== 'engineer') {
-      return res.status(403).json({ message: "Access denied. Only engineers can view scan logs." });
-    }
 
     // Read the line ID from the query parameter
     const { lineId } = req.params;

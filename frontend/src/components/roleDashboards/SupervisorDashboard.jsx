@@ -259,13 +259,6 @@ function SupervisorDashboard() {
                     <TableCell>{line.leaderName || 'No leader assigned'}</TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => handleViewDetails(line.id)}
-                        >
-                          View Details
-                        </Button>
                         {line.leaderId && (
                           <Button
                             variant="contained"

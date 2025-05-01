@@ -1,4 +1,3 @@
-// src/components/AdminDashboard.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
@@ -18,12 +17,12 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Alert,
 } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
 
-// Dummy components for each section
 function UsersSection({ users, onEditUser, onDeleteUser }) {
   return (
     <Box>
@@ -40,22 +39,32 @@ function UsersSection({ users, onEditUser, onDeleteUser }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map(user => (
-              <TableRow key={user._id}>
-                <TableCell>{user._id}</TableCell>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.role}</TableCell>
-                <TableCell align="center">
-                  <Button variant="contained" color="primary" size="small" onClick={() => onEditUser(user)}>
-                    Edit
-                  </Button>
-                  <Button variant="contained" color="error" size="small" sx={{ ml: 1 }} onClick={() => onDeleteUser(user._id)}>
-                    Delete
-                  </Button>
+            {users && users.length > 0 ? (
+              users.map(user => (
+                user && ( // Ensure user is not undefined
+                  <TableRow key={user._id}>
+                    <TableCell>{user._id || 'N/A'}</TableCell>
+                    <TableCell>{user.name || 'N/A'}</TableCell>
+                    <TableCell>{user.email || 'N/A'}</TableCell>
+                    <TableCell>{user.role || 'N/A'}</TableCell>
+                    <TableCell align="center">
+                      <Button variant="contained" color="primary" size="small" onClick={() => onEditUser(user)}>
+                        Edit
+                      </Button>
+                      <Button variant="contained" color="error" size="small" sx={{ ml: 1 }} onClick={() => onDeleteUser(user._id)}>
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  No users available.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -81,21 +90,31 @@ function LinesSection({ lines, onDeleteLine }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {lines.map(line => (
-              <TableRow key={line.id}>
-                <TableCell>{line.id}</TableCell>
-                <TableCell>{line.model}</TableCell>
-                <TableCell>{line.currentMaterialCount}</TableCell>
-                <TableCell>{line.totalOutputs}</TableCell>
-                <TableCell>{line.leader ? line.leader.name : 'None'}</TableCell>
-                <TableCell>{line.operator ? line.operator.name : 'None'}</TableCell>
-                <TableCell align="center">
-                  <Button variant="contained" color="error" size="small" onClick={() => onDeleteLine(line.id)}>
-                    Delete
-                  </Button>
+            {lines && lines.length > 0 ? (
+              lines.map(line => (
+                line && ( // Ensure line is not undefined
+                  <TableRow key={line.id}>
+                    <TableCell>{line.id || 'N/A'}</TableCell>
+                    <TableCell>{line.model || 'N/A'}</TableCell>
+                    <TableCell>{line.currentMaterialCount || 'N/A'}</TableCell>
+                    <TableCell>{line.totalOutputs || 'N/A'}</TableCell>
+                    <TableCell>{line.leaderName || 'None'}</TableCell>
+                    <TableCell>{line.operatorName || 'None'}</TableCell>
+                    <TableCell align="center">
+                      <Button variant="contained" color="error" size="small" onClick={() => onDeleteLine(line.id)}>
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  No production lines available.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -103,52 +122,49 @@ function LinesSection({ lines, onDeleteLine }) {
   );
 }
 
-
-// Main AdminDashboard component
 function AdminDashboard() {
-  const [section, setSection] = useState('users'); // 'users', 'lines', 'scanlogs'
+  const [section, setSection] = useState('users'); // 'users', 'lines'
   const [users, setUsers] = useState([]);
   const [lines, setLines] = useState([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Sidebar drawer width
   const drawerWidth = 240;
 
-  // Fetch Users
   const fetchUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_URL}/api/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log("Fetched users:", res.data); // Debugging log
       setUsers(res.data);
     } catch (err) {
+      console.error("Failed to fetch users:", err);
       setError(err.response?.data?.message || 'Failed to fetch users');
     }
   }, [API_URL]);
 
-  // Fetch Lines
   const fetchLines = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log("Fetched lines:", res.data); // Debugging log
       setLines(res.data);
     } catch (err) {
+      console.error("Failed to fetch production lines:", err);
       setError(err.response?.data?.message || 'Failed to fetch production lines');
     }
   }, [API_URL]);
-
 
   useEffect(() => {
     fetchUsers();
     fetchLines();
   }, [fetchUsers, fetchLines]);
 
-  // Handlers for delete/edit actions (dummy functions)
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
@@ -159,6 +175,7 @@ function AdminDashboard() {
       setMessage('User deleted successfully.');
       fetchUsers();
     } catch (err) {
+      console.error("Failed to delete user:", err);
       setError(err.response?.data?.message || 'Failed to delete user');
     }
   };
@@ -177,6 +194,7 @@ function AdminDashboard() {
       setMessage('User updated successfully.');
       fetchUsers();
     } catch (err) {
+      console.error("Failed to update user:", err);
       setError(err.response?.data?.message || 'Failed to update user');
     }
   };
@@ -191,6 +209,7 @@ function AdminDashboard() {
       setMessage('Production line deleted successfully.');
       fetchLines();
     } catch (err) {
+      console.error("Failed to delete production line:", err);
       setError(err.response?.data?.message || 'Failed to delete production line');
     }
   };
@@ -221,7 +240,8 @@ function AdminDashboard() {
             <ListItem button onClick={() => setSection('users')}>
               <ListItemText primary="Users" />
             </ListItem>
-            <ListItem button onClick={() => setSection('lines')}>
+            <ListItem button onClick={() => {console.log("Switching to Production Lines section");
+              setSection('lines');}}>
               <ListItemText primary="Production Lines" />
             </ListItem>
           </List>
@@ -233,14 +253,14 @@ function AdminDashboard() {
         sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3, mt: 8 }}
       >
         {error && (
-          <Typography variant="body1" color="error" align="center" mb={2}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
-          </Typography>
+          </Alert>
         )}
         {message && (
-          <Typography variant="body1" color="success.main" align="center" mb={2}>
+          <Alert severity="success" sx={{ mb: 2 }}>
             {message}
-          </Typography>
+          </Alert>
         )}
         {section === 'users' && (
           <UsersSection users={users} onEditUser={handleEditUser} onDeleteUser={handleDeleteUser} />

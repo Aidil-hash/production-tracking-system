@@ -137,6 +137,10 @@ function OperatorDashboard() {
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
               fullWidth
+              sx={{ 
+                border : 'solid #ccc',
+                borderRadius: 2,
+               }}
             />
             <Button type="submit" variant="contained" sx={{ ml: 2 }}>
               Scan

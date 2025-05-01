@@ -52,59 +52,92 @@ const updateLine = async (req, res) => {
 // Operator scans a serial number
 const scanSerial = async (req, res) => {
   try {
+    console.log("Request received:", req.params, req.body, req.user);
+
     const { lineId } = req.params;
     const { serialNumber } = req.body;
-    const operatorId = req.user.id; // assume authentication middleware sets req.user
+    const operatorId = req.user.id;
 
     if (!serialNumber) {
+      console.error("Serial number is missing");
       return res.status(400).json({ message: "Serial number is required." });
     }
 
-    // Use "Line" (not ProductionLine) since that's what you imported
     const line = await Line.findById(lineId);
     if (!line) {
+      console.error("Production line not found:", lineId);
       return res.status(404).json({ message: "Production line not found." });
     }
 
-    // Optional: Check that the operator is assigned to this line
+    const operatorName = await User.findById(operatorId);
+    //console.log("Operator found:", operatorName);
+
     if (!line.operatorId || line.operatorId.toString() !== operatorId) {
+      console.error("Operator not assigned to this line:", operatorId);
       return res.status(403).json({ message: "You are not assigned to this production line." });
     }
 
-    // Update production line metrics: increment total outputs and decrement current material count if possible
     line.totalOutputs = (line.totalOutputs || 0) + 1;
-    if (line.currentMaterialCount > 0) {
-      line.currentMaterialCount -= 1;
-    }
-    await line.save();
+    line.currentMaterialCount = Math.max((line.currentMaterialCount || 0) - 1, 0);
 
-    // Create a new scan log record
+    if (!line.startTime) line.startTime = new Date();
+
+    const currentTime = new Date();
+    const timeElapsedMs = currentTime - line.startTime;
+    const timeElapsedMinutes = Math.max(timeElapsedMs / (1000 * 60), 1);
+
+    const efficiency = line.totalOutputs / timeElapsedMinutes;
+
+    // CRITICAL: Ensure array exists and push data correctly
+    if (!Array.isArray(line.efficiencyHistory)) {
+      line.efficiencyHistory = [];
+    }
+
+    line.efficiencyHistory.push({
+      timestamp: currentTime,
+      efficiency: parseFloat(efficiency.toFixed(2)),
+    });
+
+    await line.save();
+    //console.log("Line updated:", line);
+
     const newScanLog = new ScanLog({
       productionLine: line._id,
       model: line.model,
       operator: operatorId,
-      name: req.user.name,
-      serialNumber
-    });
-    await newScanLog.save();
-
-    // Emit a socket event to update scan logs in real-time
-    const io = req.app.get('io');
-    io.emit('newScan', {
-      productionLine: line._id,
-      model: line.model,
-      operator: operatorId, // You might also populate operator name if needed
-      name: req.user.name,
+      name: operatorName ? operatorName.name : 'Unknown',
       serialNumber,
-      scannedAt: newScanLog.scannedAt
     });
+
+    await newScanLog.save();
+    //console.log("Scan log created:", newScanLog);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('newScan', {
+        productionLine: line._id,
+        model: line.model,
+        operator: operatorId,
+        name: operatorName ? operatorName.name : 'Unknown',
+        serialNumber,
+        scannedAt: newScanLog.scannedAt,
+      });
+
+      // Backend: Emitting the updated line data with lineId
+      io.emit('lineOutputUpdated', {
+        _id: line._id,
+        efficiencyData: line.efficiencyHistory,  // Send only the relevant data
+      });
+    } else {
+      console.error("Socket.IO instance not found");
+    }
 
     return res.status(200).json({
       message: "Serial scanned and recorded successfully.",
       line,
-      scan: newScanLog
+      scan: newScanLog,
     });
-    
+
   } catch (error) {
     console.error("Error scanning serial:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -204,16 +237,12 @@ const getLineEfficiency = async (req, res) => {
 const predictMaterialLow = async (req, res) => {
   try {
     const { lineId } = req.params;
-    const { linestatus } = req.body; // Assuming status is passed in the request body
-    if (linestatus) line.status = linestatus;
-    await line.save();
-    const thresholdMinutes = 30;
-
     const line = await Line.findById(lineId);
     if (!line) {
       return res.status(404).json({ message: 'Line not found' });
     }
 
+    const thresholdMinutes = 30;
     const currentTime = Date.now();
     const timeElapsedMs = currentTime - line.startTime.getTime();
     const timeElapsedMinutes = timeElapsedMs / (1000 * 60);
@@ -223,32 +252,22 @@ const predictMaterialLow = async (req, res) => {
       efficiency = line.totalOutputs / timeElapsedMinutes;
     }
 
-    if (efficiency === 0) {
-      return res.status(200).json({
-        message: 'Not enough data to predict material depletion',
-        line
-      });
-    }
+    const predictedTime = efficiency ? line.currentMaterialCount / efficiency : 0;
+    let notificationSent = predictedTime < thresholdMinutes;
 
-    const predictedTime = line.currentMaterialCount / efficiency;
-    let notificationSent = false;
-
-    if (predictedTime < thresholdMinutes) {
-      console.log(`Notification: Material on line ${line._id} is low. Predicted depletion in ${predictedTime.toFixed(2)} minutes.`);
-      notificationSent = true;
-    }
+    const recentEfficiencyData = line.efficiencyHistory.slice(-30); // last 30 records
 
     return res.status(200).json({
-      message: 'Prediction calculated',
       lineId: line._id,
       model: line.model,
       currentMaterialCount: line.currentMaterialCount,
       totalOutputs: line.totalOutputs,
-      timeElapsedMinutes: timeElapsedMinutes.toFixed(2),
-      efficiencyPerMinute: efficiency.toFixed(2),
+      targetOutputs: line.targetOutputs,
       predictedTimeToDepletion: predictedTime.toFixed(2),
-      notificationSent
+      notificationSent,
+      efficiencyData: recentEfficiencyData
     });
+
   } catch (error) {
     console.error('Error predicting material low:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });

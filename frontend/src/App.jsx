@@ -5,6 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Register from './components/Register';
+import PerformanceDashboard from './components/PerformanceDashboard';
 import PrivateRoute from './components/PrivateRoute';
 
 function AnimatedRoutes() {
@@ -14,6 +15,7 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
+        <Route path="/performance" element={<PerformanceDashboard />} />
         <Route path="/register" element={<Register />} />
         <Route
           path="/dashboard"
