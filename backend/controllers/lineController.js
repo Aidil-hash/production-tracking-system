@@ -49,98 +49,114 @@ const updateLine = async (req, res) => {
   }
 };
 
-// Operator scans a serial number
-const scanSerial = async (req, res) => {
-  try {
-    console.log("Request received:", req.params, req.body, req.user);
+// Helper function for efficiency calculation
+const calculateCurrentEfficiency = (line) => {
+  const start = line.startTime || new Date();
+  const elapsedMinutes = Math.max((new Date() - start) / (1000 * 60), 1);
+  return line.totalOutputs / elapsedMinutes;
+};
 
+const scanSerial = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
     const { lineId } = req.params;
     const { serialNumber } = req.body;
     const operatorId = req.user.id;
 
-    if (!serialNumber) {
-      console.error("Serial number is missing");
-      return res.status(400).json({ message: "Serial number is required." });
+    // Input validation
+    if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
+      return res.status(400).json({ message: "Valid serial number is required." });
     }
 
-    const line = await Line.findById(lineId);
+    // Fetch production line with operator details
+    const line = await Line.findById(lineId)
+      .populate('operatorId', 'name')
+      .session(session);
+
     if (!line) {
-      console.error("Production line not found:", lineId);
       return res.status(404).json({ message: "Production line not found." });
     }
 
-    const operatorName = await User.findById(operatorId);
-    //console.log("Operator found:", operatorName);
-
-    if (!line.operatorId || line.operatorId.toString() !== operatorId) {
-      console.error("Operator not assigned to this line:", operatorId);
-      return res.status(403).json({ message: "You are not assigned to this production line." });
+    // Authorization check
+    if (!line.operatorId || line.operatorId._id.toString() !== operatorId) {
+      return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    line.totalOutputs = (line.totalOutputs || 0) + 1;
-    line.currentMaterialCount = Math.max((line.currentMaterialCount || 0) - 1, 0);
-
-    if (!line.startTime) line.startTime = new Date();
-
-    const currentTime = new Date();
-    const timeElapsedMs = currentTime - line.startTime;
-    const timeElapsedMinutes = Math.max(timeElapsedMs / (1000 * 60), 1);
-
-    const efficiency = line.totalOutputs / timeElapsedMinutes;
-
-    // CRITICAL: Ensure array exists and push data correctly
-    if (!Array.isArray(line.efficiencyHistory)) {
-      line.efficiencyHistory = [];
+    // Material availability check
+    if (line.currentMaterialCount <= 0) {
+      return res.status(409).json({ message: "Insufficient materials for production." });
     }
 
-    line.efficiencyHistory.push({
-      timestamp: currentTime,
-      efficiency: parseFloat(efficiency.toFixed(2)),
-    });
+    // Prevent duplicate serial numbers
+    const existingScan = await ScanLog.findOne({ serialNumber }).session(session);
+    if (existingScan) {
+      return res.status(409).json({ message: "Serial number already scanned." });
+    }
 
-    await line.save();
-    //console.log("Line updated:", line);
+    // Atomic updates to prevent race conditions
+    const updatedLine = await Line.findByIdAndUpdate(
+      lineId,
+      {
+        $inc: { totalOutputs: 1, currentMaterialCount: -1 },
+        $set: { startTime: line.startTime || new Date() },
+        $push: { 
+          efficiencyHistory: {
+            timestamp: new Date(),
+            efficiency: calculateCurrentEfficiency(line)
+          }
+        }
+      },
+      { new: true, session }
+    );
 
+    // Create scan log
     const newScanLog = new ScanLog({
-      productionLine: line._id,
-      model: line.model,
+      productionLine: lineId,
+      model: updatedLine.model,
       operator: operatorId,
-      name: operatorName ? operatorName.name : 'Unknown',
+      name: line.operatorId.name,
       serialNumber,
+      efficiency: updatedLine.efficiencyHistory.slice(-1)[0].efficiency
     });
 
-    await newScanLog.save();
-    //console.log("Scan log created:", newScanLog);
+    await newScanLog.save({ session });
 
+    // Commit transaction
+    await session.commitTransaction();
+
+    // Real-time update
     const io = req.app.get('io');
     if (io) {
       io.emit('newScan', {
-        productionLine: line._id,
-        model: line.model,
+        productionLine: lineId,
+        model: updatedLine.model,
         operator: operatorId,
-        name: operatorName ? operatorName.name : 'Unknown',
+        name: line.operatorId.name,
         serialNumber,
         scannedAt: newScanLog.scannedAt,
+        efficiency: newScanLog.efficiency
       });
-
-      // Backend: Emitting the updated line data with lineId
-      io.emit('lineOutputUpdated', {
-        _id: line._id,
-        efficiencyData: line.efficiencyHistory,  // Send only the relevant data
-      });
-    } else {
-      console.error("Socket.IO instance not found");
     }
 
-    return res.status(200).json({
-      message: "Serial scanned and recorded successfully.",
-      line,
-      scan: newScanLog,
-    });
+    // Filter sensitive data from response
+    const responseData = {
+      message: "Serial scanned successfully",
+      scanId: newScanLog._id,
+      outputs: updatedLine.totalOutputs,
+      remainingMaterials: updatedLine.currentMaterialCount,
+      efficiency: newScanLog.efficiency
+    };
+
+    return res.status(200).json(responseData);
 
   } catch (error) {
-    console.error("Error scanning serial:", error);
+    await session.abortTransaction();
+    console.error("Transaction aborted:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
+  } finally {
+    session.endSession();
   }
 };
 
