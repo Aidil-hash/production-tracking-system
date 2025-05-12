@@ -99,6 +99,7 @@ export default function LinePerformanceChart() {
         performance: point.efficiency,
       })),
     }));
+    console.log("Chart Data:", chartData)
 
   return (
     <Card>

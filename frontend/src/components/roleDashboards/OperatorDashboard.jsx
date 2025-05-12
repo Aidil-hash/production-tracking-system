@@ -1,6 +1,6 @@
 // src/components/OperatorDashboard.js
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, TextField, Button } from '@mui/material';
+import { Box, Typography, TextField, Button, CircularProgress } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
 
@@ -10,11 +10,10 @@ function OperatorDashboard() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lineStatus, setLineStatus] = useState(null);
+  const [loadingScan, setLoadingScan] = useState(false);
 
-  // Use API URL from environment variables or fallback
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Fetch assigned line for the operator when component mounts
   useEffect(() => {
     const fetchOperatorLine = async () => {
       try {
@@ -30,7 +29,6 @@ function OperatorDashboard() {
     fetchOperatorLine();
   }, [API_URL]);
 
-  // Fetch line status when the lineId changes
   useEffect(() => {
     const fetchLineStatus = async () => {
       if (!lineId) return;
@@ -47,13 +45,14 @@ function OperatorDashboard() {
     fetchLineStatus();
   }, [API_URL, lineId]);
 
-  // Handle serial scanning
   const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber) {
       setError('Please enter a serial number');
       return;
     }
+
+    setLoadingScan(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post(
@@ -64,11 +63,12 @@ function OperatorDashboard() {
       setMessage('Scan successful!');
       setError('');
       setSerialNumber('');
-      // Optionally, update lineStatus with the latest data from the response
       setLineStatus(res.data.line);
     } catch (err) {
       setMessage('');
       setError(err.response?.data?.message || 'Scan failed');
+    } finally {
+      setLoadingScan(false);
     }
   };
 
@@ -77,6 +77,7 @@ function OperatorDashboard() {
       <Typography variant="h4" align="center" gutterBottom>
         Operator Dashboard
       </Typography>
+
       {error && (
         <Typography variant="body1" color="error" align="center" mb={2}>
           {error}
@@ -87,34 +88,23 @@ function OperatorDashboard() {
           {message}
         </Typography>
       )}
+
       <LogoutButton />
 
       {lineId ? (
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-          <Typography variant="h6">
+          <Typography variant="h6" gutterBottom>
             Assigned Line ID: {lineId}
           </Typography>
+
           {lineStatus ? (
-            <Box
-              sx={{
-                mt: 3,
-                p: 2,
-                border: '1px solid #ccc',
-                borderRadius: 2,
-              }}
-            >
+            <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Line Status
               </Typography>
-              <Typography variant="body1">
-                Model: {lineStatus.model}
-              </Typography>
-              <Typography variant="body1">
-                Current Material Count: {lineStatus.currentMaterialCount}
-              </Typography>
-              <Typography variant="body1">
-                Total Outputs: {lineStatus.totalOutputs}
-              </Typography>
+              <Typography>Model: {lineStatus.model}</Typography>
+              <Typography>Current Material Count: {lineStatus.currentMaterialCount}</Typography>
+              <Typography>Total Outputs: {lineStatus.totalOutputs}</Typography>
             </Box>
           ) : (
             <Typography variant="body1" sx={{ mt: 2 }}>
@@ -128,6 +118,7 @@ function OperatorDashboard() {
             sx={{
               mt: 3,
               display: 'flex',
+              gap: 2,
               alignItems: 'center',
             }}
           >
@@ -137,13 +128,18 @@ function OperatorDashboard() {
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
               fullWidth
-              sx={{ 
-                border : 'solid #ccc',
+              sx={{
+                backgroundColor: '#fff',
                 borderRadius: 2,
-               }}
+              }}
             />
-            <Button type="submit" variant="contained" sx={{ ml: 2 }}>
-              Scan
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loadingScan}
+              sx={{ minWidth: 100 }}
+            >
+              {loadingScan ? <CircularProgress size={24} color="inherit" /> : 'Scan'}
             </Button>
           </Box>
         </Box>

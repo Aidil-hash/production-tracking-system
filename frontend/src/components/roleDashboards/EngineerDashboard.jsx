@@ -119,7 +119,7 @@ function EngineerDashboard() {
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/api/lines`, 
-        { model: newLineModel, materialCount: newLineMaterialCount, linetargetOutputs: newLineTarget, newdepartment: newLineDepartment },
+        { model: newLineModel, materialCount: newLineMaterialCount, targetOutputs: newLineTarget, department: newLineDepartment },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Optionally, refresh the lines list after adding a new line

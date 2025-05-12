@@ -1,14 +1,19 @@
-// controllers/lineController.js
-
 const mongoose = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
 const User = require('../models/User');
 
-// Create or initialize a new production line
+// Utility function
+const calculateCurrentEfficiency = (line) => {
+  const start = line.startTime || new Date();
+  const elapsedMinutes = Math.max((new Date() - start) / (1000 * 60), 1);
+  return line.totalOutputs / elapsedMinutes;
+};
+
+// Create a production line
 const createLine = async (req, res) => {
   try {
-    const { model, materialCount, linetargetOutputs, newdepartment } = req.body;
+    const { model, materialCount, targetOutputs, department } = req.body;
     if (!model || materialCount == null) {
       return res.status(400).json({ message: 'Model and materialCount are required' });
     }
@@ -16,8 +21,8 @@ const createLine = async (req, res) => {
     const newLine = new Line({
       model,
       currentMaterialCount: materialCount,
-      targetOutputs: linetargetOutputs,
-      department: newdepartment,
+      targetOutputs,
+      department,
     });
     await newLine.save();
 
@@ -28,7 +33,7 @@ const createLine = async (req, res) => {
   }
 };
 
-// Update an existing line’s model or material count
+// Update a line's status
 const updateLine = async (req, res) => {
   try {
     const { lineId } = req.params;
@@ -49,13 +54,7 @@ const updateLine = async (req, res) => {
   }
 };
 
-// Helper function for efficiency calculation
-const calculateCurrentEfficiency = (line) => {
-  const start = line.startTime || new Date();
-  const elapsedMinutes = Math.max((new Date() - start) / (1000 * 60), 1);
-  return line.totalOutputs / elapsedMinutes;
-};
-
+// Serial scanning handler
 const scanSerial = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -65,43 +64,34 @@ const scanSerial = async (req, res) => {
     const { serialNumber } = req.body;
     const operatorId = req.user.id;
 
-    // Input validation
     if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
       return res.status(400).json({ message: "Valid serial number is required." });
     }
 
-    // Fetch production line with operator details
     const line = await Line.findById(lineId)
       .populate('operatorId', 'name')
       .session(session);
 
-    if (!line) {
-      return res.status(404).json({ message: "Production line not found." });
-    }
+    if (!line) return res.status(404).json({ message: "Production line not found." });
 
-    // Authorization check
     if (!line.operatorId || line.operatorId._id.toString() !== operatorId) {
       return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    // Material availability check
     if (line.currentMaterialCount <= 0) {
       return res.status(409).json({ message: "Insufficient materials for production." });
     }
 
-    // Prevent duplicate serial numbers
     const existingScan = await ScanLog.findOne({ serialNumber }).session(session);
     if (existingScan) {
       return res.status(409).json({ message: "Serial number already scanned." });
     }
 
-    // Calculate efficiency based on current data
     const projectedEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
       totalOutputs: line.totalOutputs + 1,
     });
 
-    // Atomic update
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
@@ -110,29 +100,25 @@ const scanSerial = async (req, res) => {
         $push: {
           efficiencyHistory: {
             timestamp: new Date(),
-            efficiency: projectedEfficiency
-          }
-        }
+            efficiency: projectedEfficiency,
+          },
+        },
       },
       { new: true, session }
     );
 
-    // Create scan log
     const newScanLog = new ScanLog({
       productionLine: lineId,
       model: updatedLine.model,
       operator: operatorId,
       name: line.operatorId.name,
       serialNumber,
-      efficiency: projectedEfficiency
+      efficiency: projectedEfficiency,
     });
 
     await newScanLog.save({ session });
-
-    // Commit transaction
     await session.commitTransaction();
 
-    // Emit real-time event
     const io = req.app.get('io');
     if (io) {
       io.emit('newScan', {
@@ -142,19 +128,17 @@ const scanSerial = async (req, res) => {
         name: line.operatorId.name,
         serialNumber,
         scannedAt: newScanLog.scannedAt,
-        efficiency: projectedEfficiency
+        efficiency: projectedEfficiency,
       });
     }
 
-    // Respond with essential data
     return res.status(200).json({
       message: "Serial scanned successfully",
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
       remainingMaterials: updatedLine.currentMaterialCount,
-      efficiency: projectedEfficiency
+      efficiency: projectedEfficiency,
     });
-
   } catch (error) {
     console.error("Scan error:", error);
     await session.abortTransaction();
@@ -164,16 +148,12 @@ const scanSerial = async (req, res) => {
   }
 };
 
-
-// Get info about a specific line
+// Get one line
 const getLine = async (req, res) => {
   try {
     const { lineId } = req.params;
-    // For MongoDB, something like:
     const line = await Line.findById(lineId);
-    if (!line) {
-      return res.status(404).json({ message: 'Line not found' });
-    }
+    if (!line) return res.status(404).json({ message: 'Line not found' });
     return res.json(line);
   } catch (error) {
     console.error('Error fetching line:', error);
@@ -181,72 +161,50 @@ const getLine = async (req, res) => {
   }
 };
 
-// Get all lines
+// Get all lines (optimized)
 const getAllLines = async (req, res) => {
   try {
-    const lines = await Line.find();
+    const lines = await Line.find().populate('leaderId operatorId', 'name');
 
-    const formattedLines = await Promise.all(
-      lines.map(async (l) => {
-        // Lookup leader if leaderId is set
-        let leaderDoc = null;
-        if (l.leaderId) {
-          leaderDoc = await User.findById(l.leaderId);
-        }
+    const formatted = lines.map((l) => ({
+      id: l._id.toString(),
+      model: l.model,
+      department: l.department,
+      leaderName: l.leaderId?.name || 'No leader',
+      operatorName: l.operatorId?.name || 'No operator',
+      currentMaterialCount: l.currentMaterialCount,
+      totalOutputs: l.totalOutputs,
+      targetOutputs: l.targetOutputs,
+      startTime: l.startTime,
+      linestatus: l.linestatus,
+      efficiencyHistory: l.efficiencyHistory,
+    }));
 
-        // Lookup operator if operatorId is set
-        let operatorDoc = null;
-        if (l.operatorId) {
-          operatorDoc = await User.findById(l.operatorId);
-        }
-
-        return {
-          id: l._id.toString(),
-          model: l.model,
-          leaderId: l.leaderId,
-          leaderName: leaderDoc ? leaderDoc.name : 'No leader',
-          operatorId: l.operatorId,
-          operatorName: operatorDoc ? operatorDoc.name : 'No operator',
-          currentMaterialCount: l.currentMaterialCount,
-          totalOutputs: l.totalOutputs,
-          targetOutputs: l.targetOutputs,
-          startTime: l.startTime,
-        };
-      })
-    );
-
-    return res.status(200).json(formattedLines);
+    return res.status(200).json(formatted);
   } catch (error) {
     console.error('Error fetching lines:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// Calculate efficiency
+// Efficiency info
 const getLineEfficiency = async (req, res) => {
   try {
     const { lineId } = req.params;
     const line = await Line.findById(lineId);
-    if (!line) {
-      return res.status(404).json({ message: 'Line not found' });
-    }
+    if (!line) return res.status(404).json({ message: 'Line not found' });
+    if (!line.startTime) return res.status(400).json({ message: "Start time not set." });
 
-    const currentTime = Date.now();
-    const timeElapsedMs = currentTime - line.startTime.getTime();
-    const timeElapsedMinutes = timeElapsedMs / (1000 * 60);
-
-    let efficiency = 0;
-    if (timeElapsedMinutes > 0) {
-      efficiency = line.totalOutputs / timeElapsedMinutes;
-    }
+    const efficiency = calculateCurrentEfficiency(line);
+    const timeElapsed = ((Date.now() - line.startTime.getTime()) / (1000 * 60)).toFixed(2);
 
     return res.status(200).json({
       lineId: line._id,
       model: line.model,
       totalOutputs: line.totalOutputs,
       targetOutputs: line.targetOutputs,
-      timeElapsedMinutes: timeElapsedMinutes.toFixed(2),
-      efficiencyPerMinute: efficiency.toFixed(2)
+      timeElapsedMinutes: timeElapsed,
+      efficiencyPerMinute: efficiency.toFixed(2),
     });
   } catch (error) {
     console.error('Error calculating efficiency:', error);
@@ -254,29 +212,17 @@ const getLineEfficiency = async (req, res) => {
   }
 };
 
-// Predict material low
+// Material depletion prediction
 const predictMaterialLow = async (req, res) => {
   try {
     const { lineId } = req.params;
     const line = await Line.findById(lineId);
-    if (!line) {
-      return res.status(404).json({ message: 'Line not found' });
-    }
+    if (!line) return res.status(404).json({ message: 'Line not found' });
+    if (!line.startTime) return res.status(400).json({ message: "Start time not set." });
 
-    const thresholdMinutes = 30;
-    const currentTime = Date.now();
-    const timeElapsedMs = currentTime - line.startTime.getTime();
-    const timeElapsedMinutes = timeElapsedMs / (1000 * 60);
-
-    let efficiency = 0;
-    if (timeElapsedMinutes > 0) {
-      efficiency = line.totalOutputs / timeElapsedMinutes;
-    }
-
+    const efficiency = calculateCurrentEfficiency(line);
     const predictedTime = efficiency ? line.currentMaterialCount / efficiency : 0;
-    let notificationSent = predictedTime < thresholdMinutes;
-
-    const recentEfficiencyData = line.efficiencyHistory.slice(-30); // last 30 records
+    const notificationSent = predictedTime < 30;
 
     return res.status(200).json({
       lineId: line._id,
@@ -286,15 +232,15 @@ const predictMaterialLow = async (req, res) => {
       targetOutputs: line.targetOutputs,
       predictedTimeToDepletion: predictedTime.toFixed(2),
       notificationSent,
-      efficiencyData: recentEfficiencyData
+      efficiencyData: line.efficiencyHistory.slice(-30),
     });
-
   } catch (error) {
     console.error('Error predicting material low:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+// Delete line
 const deleteLine = async (req, res) => {
   try {
     const { id } = req.params;
@@ -306,6 +252,7 @@ const deleteLine = async (req, res) => {
     if (!deletedLine) {
       return res.status(404).json({ message: 'Line not found' });
     }
+
     return res.status(200).json({ message: 'Production line deleted successfully' });
   } catch (error) {
     console.error('Error deleting line:', error);
