@@ -210,7 +210,7 @@ function SupervisorDashboard() {
             value={selectedLine}
             onValueChange={(val) => setSelectedLine(val)}
           >
-            <SelectTrigger className="w-700" id="selectedLine">
+            <SelectTrigger className="w-full" id="selectedLine">
               <SelectValue placeholder="--Select Line--" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
@@ -226,7 +226,7 @@ function SupervisorDashboard() {
             value={selectedLine}
             onValueChange={(val) => setSelectedLeader(val)}
           >
-            <SelectTrigger className="w-700" id="selectedLeader">
+            <SelectTrigger className="w-full" id="selectedLeader">
               <SelectValue placeholder="--Select Leader--" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
