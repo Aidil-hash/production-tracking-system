@@ -57,36 +57,50 @@ export default function LinePerformanceChart() {
 
   // Real-time socket updates
   useEffect(() => {
-    const socket = io(API_URL, { transports: ["websocket"] });
-    socket.on("newScan", (scanData) => {
-      setLinesData((prev) =>
-        prev.map((line) => {
-          if (line._id?.toString() === scanData.productionLine?.toString()) {
-            const alreadyExists = line.efficiencyHistory.some(
-              (entry) =>
-                entry.timestamp === scanData.scannedAt &&
-                entry.efficiency === scanData.efficiency
-            );
+  const socket = io(API_URL, { transports: ["websocket"] });
 
-            if (alreadyExists) return line; // Don't add duplicate
+  socket.on("newScan", (scanData) => {
+    console.log("🛰️ Received newScan:", scanData);
 
-            return {
-              ...line,
-              efficiencyHistory: [
-                ...line.efficiencyHistory,
-                {
-                  timestamp: scanData.scannedAt,
-                  efficiency: scanData.efficiency,
-                },
-              ],
-            };
+    setLinesData((prev) =>
+      prev.map((line) => {
+        // Ensure ID comparison is consistent
+        if (line._id?.toString() === scanData.productionLine?.toString()) {
+          // Prevent duplicate entry
+          const alreadyExists = line.efficiencyHistory.some(
+            (entry) =>
+              entry.timestamp === scanData.scannedAt &&
+              entry.efficiency === scanData.efficiency
+          );
+
+          if (alreadyExists) {
+            console.log("⚠️ Duplicate entry skipped");
+            return line;
           }
-          return line;
-        })
-      );
-    });
-    return () => socket.disconnect();
-  }, [API_URL]);
+
+          // Append new scan data
+          const updatedLine = {
+            ...line,
+            efficiencyHistory: [
+              ...line.efficiencyHistory,
+              {
+                timestamp: scanData.scannedAt,
+                efficiency: scanData.efficiency,
+              },
+            ],
+          };
+
+          console.log("✅ Appended new scan to line:", updatedLine._id);
+          return updatedLine;
+        }
+
+        return line;
+      })
+    );
+  });
+
+  return () => socket.disconnect();
+}, [API_URL]);
 
   // Time filtering helper
   const getFilteredData = (history: any[]) => {
