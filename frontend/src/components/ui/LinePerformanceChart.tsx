@@ -59,44 +59,10 @@ export default function LinePerformanceChart() {
   useEffect(() => {
   const socket = io(API_URL, { transports: ["websocket"] });
 
-  socket.on("newScan", (scanData) => {
-    console.log("🛰️ Received newScan:", scanData);
-
-    setLinesData((prev) =>
-      prev.map((line) => {
-        // Ensure ID comparison is consistent
-        if (line._id?.toString() === scanData.productionLine?.toString()) {
-          // Prevent duplicate entry
-          const alreadyExists = line.efficiencyHistory.some(
-            (entry) =>
-              entry.timestamp === scanData.scannedAt &&
-              entry.efficiency === scanData.efficiency
-          );
-
-          if (alreadyExists) {
-            console.log("⚠️ Duplicate entry skipped");
-            return line;
-          }
-
-          // Append new scan data
-          const updatedLine = {
-            ...line,
-            efficiencyHistory: [
-              ...line.efficiencyHistory,
-              {
-                timestamp: scanData.scannedAt,
-                efficiency: scanData.efficiency,
-              },
-            ],
-          };
-
-          console.log("✅ Appended new scan to line:", updatedLine._id);
-          return updatedLine;
-        }
-
-        return line;
-      })
-    );
+  socket.on("newScan", () => {
+    axios.get(`${API_URL}/api/lines`).then((res) => {
+      setLinesData(res.data);
+    });
   });
 
   return () => socket.disconnect();

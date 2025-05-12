@@ -126,9 +126,13 @@ const scanSerial = async (req, res) => {
         model: updatedLine.model,
         operator: operatorId,
         name: line.operatorId.name,
+        department: updatedLine.department,
+        totalOutputs: updatedLine.totalOutputs,
+        currentMaterialCount: updatedLine.currentMaterialCount,
+        efficiency: projectedEfficiency,
+        efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
         scannedAt: new Date().toISOString(),
-        efficiency: projectedEfficiency,
       });
     }
 
