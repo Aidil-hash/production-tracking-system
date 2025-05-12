@@ -155,24 +155,27 @@ export default function LinePerformanceChart() {
                   {line.name} – {line.department}
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={line.data}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="time"
-                          type="number"
-                          domain={["dataMin", "dataMax"]}
-                          tickFormatter={(ts) => format(new Date(ts), "HH:mm")}
-                        />
-                        <YAxis tickFormatter={(v) => `${v.toFixed(1)}/min`} />
-                        <RechartsArea
-                          type="monotone"
-                          dataKey="performance"
-                          stroke="#8884d8"
-                          fill="#8884d8"
-                          fillOpacity={0.3}
-                        />
+                  {line.data.length === 0 ? (
+                    <div className="text-muted-foreground text-center py-4">No efficiency data available.</div>
+                  ) : (
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={line.data}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="time"
+                            type="number"
+                            domain={["dataMin", "dataMax"]}
+                            tickFormatter={(ts) => format(new Date(ts), "HH:mm")}
+                          />
+                          <YAxis tickFormatter={(v) => `${v.toFixed(1)}/min`} />
+                          <RechartsArea
+                            type="monotone"
+                            dataKey="performance"
+                            stroke="#8884d8"
+                            fill="#8884d8"
+                            fillOpacity={0.3}
+                          />
                         <Tooltip
                           content={({ active, payload }) =>
                             active && payload?.length ? (
@@ -188,6 +191,7 @@ export default function LinePerformanceChart() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
                 </AccordionContent>
               </AccordionItem>
             ))}

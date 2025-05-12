@@ -97,7 +97,7 @@ function OperatorDashboard() {
             Assigned Line ID: {lineId}
           </Typography>
 
-          {lineStatus ? (
+          {lineStatus && lineStatus.model ? (
             <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Line Status
@@ -129,7 +129,7 @@ function OperatorDashboard() {
               onChange={(e) => setSerialNumber(e.target.value)}
               fullWidth
               sx={{
-                backgroundColor: '#fff',
+                backgroundColor: '#ccc',
                 borderRadius: 2,
               }}
             />
