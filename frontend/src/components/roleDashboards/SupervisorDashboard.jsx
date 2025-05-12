@@ -12,12 +12,16 @@ import {
   TableRow,
   Paper,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
+import { Label } from '../ui/label';
 import LogoutButton from '../Logout';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../ui/select";
 
 function SupervisorDashboard() {
   const [lines, setLines] = useState([]);
@@ -198,47 +202,48 @@ function SupervisorDashboard() {
         </Box>
       )}
 
-      {/* Section to assign leader to a production line */}
-      <Box sx={{ mt: 4, maxWidth: 600, mx: 'auto' }}>
-        <Typography variant="h6" gutterBottom>
-          Assign Leader to Line
-        </Typography>
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Select Line</InputLabel>
+      {/* Assign leader to line */}
+        <div className="mb-6 space-y-1 relative z-10">
+          <h2 className="text-lg font-semibold mb-2">Assign Line to Leader</h2>
+          <Label htmlFor="selectedLine">Select Line</Label>
           <Select
             value={selectedLine}
-            onChange={(e) => setSelectedLine(e.target.value)}
+            onValueChange={(val) => setSelectedLine(val)}
           >
-            <MenuItem value="">
-              <em>--Select a line--</em>
-            </MenuItem>
-            {lines.map((line) => (
-              <MenuItem key={line.id} value={line.id}>
-                {line.model}
-              </MenuItem>
-            ))}
+            <SelectTrigger className="w-full" id="selectedLine">
+              <SelectValue placeholder="--Select Line--" />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
+              {lines.map((line) => (
+                <SelectItem key={line._id} value={line._id}
+                className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
+                  {line.model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+            
           </Select>
-        </FormControl>
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Select Leader</InputLabel>
           <Select
-            value={selectedLeader}
-            onChange={(e) => setSelectedLeader(e.target.value)}
+            value={selectedLine}
+            onValueChange={(val) => setSelectedLeader(val)}
           >
-            <MenuItem value="">
-              <em>--Select a leader--</em>
-            </MenuItem>
-            {leaders.map((leader) => (
-              <MenuItem key={leader._id} value={leader._id}>
-                {leader.name}
-              </MenuItem>
-            ))}
+            <SelectTrigger className="w-full" id="selectedLeader">
+              <SelectValue placeholder="--Select Leader--" />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
+              {leaders.map((leader) => (
+                <SelectItem key={leader._id} value={leader._id}
+                className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
+                  {leader.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <Button variant="contained" fullWidth onClick={handleAssignLeader}>
-          Assign Leader
-        </Button>
-      </Box>
+          <Button variant="contained" fullWidth onClick={handleAssignLeader}>
+            Assign Leader
+          </Button>
+        </div>
+      
 
       {/* Line assigned to leader */}
       <Box sx={{ mt: 4 }}>
