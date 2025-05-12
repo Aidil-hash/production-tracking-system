@@ -48,6 +48,7 @@ export default function LinePerformanceChart() {
             efficiencyHistory: line.efficiencyHistory || [],
           }))
         );
+        console.log("line Data:", res.data);
       } catch (err) {
         setError("Failed to fetch production lines");
       }
