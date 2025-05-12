@@ -92,7 +92,7 @@ export default function LinePerformanceChart() {
   const chartData = linesData
     .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
     .map((line) => ({
-      _id: line._id,
+      _id: line.id,
       name: line.model,
       department: line.department,
       data: getFilteredData(line.efficiencyHistory).map((point: any) => ({
@@ -150,7 +150,7 @@ export default function LinePerformanceChart() {
         ) : (
           <Accordion type="multiple" className="space-y-4">
             {chartData.map((line) => (
-              <AccordionItem value={line._id} key={line._id}>
+              <AccordionItem key={line._id || line.name} value={line._id || line.name}>
                 <AccordionTrigger>
                   {line.name} – {line.department}
                 </AccordionTrigger>
