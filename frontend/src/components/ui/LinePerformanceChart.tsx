@@ -168,7 +168,7 @@ export default function LinePerformanceChart() {
                       </div>
 
                       <div style={{ width: '100%', height: 150 }}>
-                        <AreaChart width={1000} height={150} data={line.data}>
+                        <AreaChart width={1500} height={150} data={line.data}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="time"
