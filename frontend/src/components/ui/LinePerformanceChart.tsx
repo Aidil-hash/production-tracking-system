@@ -117,13 +117,13 @@ export default function LinePerformanceChart() {
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value="E2 Drum">E2 Drum</SelectItem>
-                <SelectItem value="E3 Compact">E3 Compact</SelectItem>
-                <SelectItem value="E3 Non-Compact">E3 Non-Compact</SelectItem>
-                <SelectItem value="E4 Piano">E4 Piano</SelectItem>
-                <SelectItem value="E4 Keyboard">E4 Keyboard</SelectItem>
+              <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+                <SelectItem value="All" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">All</SelectItem>
+                <SelectItem value="E2 Drum" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E2 Drum</SelectItem>
+                <SelectItem value="E3 Compact" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E3 Compact</SelectItem>
+                <SelectItem value="E3 Non-Compact" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E3 Non-Compact</SelectItem>
+                <SelectItem value="E4 Piano" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E4 Piano</SelectItem>
+                <SelectItem value="E4 Keyboard" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E4 Keyboard</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -134,12 +134,12 @@ export default function LinePerformanceChart() {
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">Last 1 Hour</SelectItem>
-                <SelectItem value="6h">Last 6 Hours</SelectItem>
-                <SelectItem value="12h">Last 12 Hours</SelectItem>
-                <SelectItem value="24h">Last 24 Hours</SelectItem>
-                <SelectItem value="All">All Time</SelectItem>
+              <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+                <SelectItem value="1h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 1 Hour</SelectItem>
+                <SelectItem value="6h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 6 Hours</SelectItem>
+                <SelectItem value="12h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 12 Hours</SelectItem>
+                <SelectItem value="24h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 24 Hours</SelectItem>
+                <SelectItem value="All" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">All Time</SelectItem>
               </SelectContent>
             </Select>
           </div>
