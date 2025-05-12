@@ -1,6 +1,6 @@
 // controllers/lineController.js
 
-const { model } = require('mongoose');
+const mongoose = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
 const User = require('../models/User');
@@ -55,8 +55,6 @@ const calculateCurrentEfficiency = (line) => {
   const elapsedMinutes = Math.max((new Date() - start) / (1000 * 60), 1);
   return line.totalOutputs / elapsedMinutes;
 };
-
-import mongoose from 'mongoose';
 
 const scanSerial = async (req, res) => {
   const session = await mongoose.startSession();
