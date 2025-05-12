@@ -158,9 +158,17 @@ export default function LinePerformanceChart() {
                   {line.data.length === 0 ? (
                     <div className="text-muted-foreground text-center py-4">No efficiency data available.</div>
                   ) : (
-                    <div className="h-[300px]">
-                      <div style={{ width: '100%', height: 300 }}>
-                        <AreaChart width={600} height={300} data={line.data}>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-muted-foreground px-1">
+                        <div><strong>Total Outputs:</strong> {line.data.length}</div>
+                        <div>
+                          <strong>Average Efficiency:</strong>{" "}
+                          {(line.data.reduce((sum, d) => sum + d.performance, 0) / line.data.length).toFixed(2)} /min
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%', height: 200 }}>
+                        <AreaChart width={600} height={200} data={line.data}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="time"
@@ -176,21 +184,21 @@ export default function LinePerformanceChart() {
                             fill="#8884d8"
                             fillOpacity={0.3}
                           />
-                        <Tooltip
-                          content={({ active, payload }) =>
-                            active && payload?.length ? (
-                              <div className="bg-background p-2 rounded-lg border">
-                                <div>
-                                  Efficiency: {payload[0].value.toFixed(2)}/min<br />
-                                  {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}
+                          <Tooltip
+                            content={({ active, payload }) =>
+                              active && payload?.length ? (
+                                <div className="bg-background p-2 rounded-lg border">
+                                  <div>
+                                    Efficiency: {payload[0].value.toFixed(2)}/min<br />
+                                    {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : null
-                          }
-                        />
-                      </AreaChart>
+                              ) : null
+                            }
+                          />
+                        </AreaChart>
+                      </div>
                     </div>
-                  </div>
                   )}
                 </AccordionContent>
               </AccordionItem>
