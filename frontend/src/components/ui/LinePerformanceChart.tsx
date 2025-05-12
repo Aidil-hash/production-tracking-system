@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, subHours } from "date-fns";
 import axios from "axios";
 import { io } from "socket.io-client";
 import {
@@ -10,6 +10,7 @@ import {
   YAxis,
   Area as RechartsArea,
   ResponsiveContainer,
+  Tooltip
 } from "recharts";
 import {
   Card,
@@ -19,26 +20,34 @@ import {
   CardTitle,
 } from "../ui/card";
 import {
-  ChartTooltip,
-} from "../ui/chart";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { Label } from '../ui/label';
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../ui/select";
+import { Label } from "../ui/label";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
 
 export default function LinePerformanceChart() {
   const [error, setError] = useState("");
   const [linesData, setLinesData] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("All");
+  const [timeFilter, setTimeFilter] = useState<string>("All");
+
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-  // Fetch initial production lines data
+  // Fetch initial lines
   useEffect(() => {
     const fetchLinesData = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/lines`);
-        setLinesData(res.data.map((line: any) => ({
-          ...line,
-          efficiencyHistory: line.efficiencyHistory || []
-        })));
+        setLinesData(
+          res.data.map((line: any) => ({
+            ...line,
+            efficiencyHistory: line.efficiencyHistory || [],
+          }))
+        );
       } catch (err) {
         setError("Failed to fetch production lines");
       }
@@ -46,40 +55,46 @@ export default function LinePerformanceChart() {
     fetchLinesData();
   }, [API_URL]);
 
-  // Socket.io setup for real-time updates
+  // Real-time socket updates
   useEffect(() => {
     const socket = io(API_URL, { transports: ["websocket"] });
-
     socket.on("newScan", (scanData) => {
-      setLinesData(prev => prev.map(line => {
-        if (line._id === scanData.productionLine) {
-          return {
-            ...line,
-            efficiencyHistory: [
-              ...line.efficiencyHistory,
-              {
-                timestamp: scanData.scannedAt,
-                efficiency: scanData.efficiency
-              }
-            ]
-          };
-        }
-        return line;
-      }));
+      setLinesData((prev) =>
+        prev.map((line) => {
+          if (line._id === scanData.productionLine) {
+            return {
+              ...line,
+              efficiencyHistory: [
+                ...line.efficiencyHistory,
+                {
+                  timestamp: scanData.scannedAt,
+                  efficiency: scanData.efficiency,
+                },
+              ],
+            };
+          }
+          return line;
+        })
+      );
     });
-
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [API_URL]);
 
-  // Process data for charts
+  // Time filtering helper
+  const getFilteredData = (history: any[]) => {
+    if (timeFilter === "All") return history;
+    const hours = parseInt(timeFilter.replace("h", ""));
+    const cutoff = subHours(new Date(), hours).getTime();
+    return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+  };
+
   const chartData = linesData
-    .filter(line => selectedDepartment === "All" || line.department === selectedDepartment)
-    .map(line => ({
+    .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
+    .map((line) => ({
       _id: line._id,
       name: line.model,
-      data: line.efficiencyHistory.map((point: any) => ({
+      department: line.department,
+      data: getFilteredData(line.efficiencyHistory).map((point: any) => ({
         time: new Date(point.timestamp).getTime(),
         performance: point.efficiency,
       })),
@@ -89,43 +104,55 @@ export default function LinePerformanceChart() {
     <Card>
       <CardHeader>
         <CardTitle>Production Line Efficiency</CardTitle>
-        <CardDescription>
-          Real-time efficiency metrics from scanned serials
-        </CardDescription>
+        <CardDescription>Real-time efficiency by line</CardDescription>
       </CardHeader>
 
       <CardContent>
-        <div className="mb-4">
-          <Label>Filter by Department</Label>
-          <Select
-            value={selectedDepartment}
-            onValueChange={setSelectedDepartment}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Departments</SelectItem>
-              <SelectItem value="E2 Drum">E2 Drum</SelectItem>
-              <SelectItem value="E3 Compact">E3 Compact</SelectItem>
-              <SelectItem value="E3 Non-Compact">E3 Non-Compact</SelectItem>
-              <SelectItem value="E4 Piano">E4 Piano</SelectItem>
-              <SelectItem value="E4 Keyboard">E4 Keyboard</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="mb-4 flex flex-wrap gap-4">
+          <div>
+            <Label>Filter by Department</Label>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All</SelectItem>
+                <SelectItem value="E2 Drum">E2 Drum</SelectItem>
+                <SelectItem value="E3 Compact">E3 Compact</SelectItem>
+                <SelectItem value="E3 Non-Compact">E3 Non-Compact</SelectItem>
+                <SelectItem value="E4 Piano">E4 Piano</SelectItem>
+                <SelectItem value="E4 Keyboard">E4 Keyboard</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Time Range</Label>
+            <Select value={timeFilter} onValueChange={setTimeFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1h">Last 1 Hour</SelectItem>
+                <SelectItem value="6h">Last 6 Hours</SelectItem>
+                <SelectItem value="12h">Last 12 Hours</SelectItem>
+                <SelectItem value="24h">Last 24 Hours</SelectItem>
+                <SelectItem value="All">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {error ? (
           <div className="text-red-500">{error}</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Accordion type="multiple" className="space-y-4">
             {chartData.map((line) => (
-              <Card key={line._id}>
-                <CardHeader>
-                  <CardTitle>{line.name}</CardTitle>
-                  <CardDescription>{line.department}</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <AccordionItem value={line._id} key={line._id}>
+                <AccordionTrigger>
+                  {line.name} – {line.department}
+                </AccordionTrigger>
+                <AccordionContent>
                   <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={line.data}>
@@ -133,12 +160,10 @@ export default function LinePerformanceChart() {
                         <XAxis
                           dataKey="time"
                           type="number"
-                          domain={['dataMin', 'dataMax']}
-                          tickFormatter={(ts) => format(new Date(ts), 'HH:mm')}
+                          domain={["dataMin", "dataMax"]}
+                          tickFormatter={(ts) => format(new Date(ts), "HH:mm")}
                         />
-                        <YAxis
-                          tickFormatter={(value) => `${value.toFixed(1)}/min`}
-                        />
+                        <YAxis tickFormatter={(v) => `${v.toFixed(1)}/min`} />
                         <RechartsArea
                           type="monotone"
                           dataKey="performance"
@@ -146,29 +171,25 @@ export default function LinePerformanceChart() {
                           fill="#8884d8"
                           fillOpacity={0.3}
                         />
-                        <ChartTooltip
-                          content={({ active, payload }) => (
-                            <div className="bg-background p-2 rounded-lg border">
-                              {payload?.map((entry) => (
-                                <div key={entry.name}>
-                                  Efficiency: {entry.value?.toFixed(2)}/min
-                                  <br />
-                                  {format(
-                                    new Date(entry.payload.time),
-                                    'MMM dd, HH:mm:ss'
-                                  )}
+                        <Tooltip
+                          content={({ active, payload }) =>
+                            active && payload?.length ? (
+                              <div className="bg-background p-2 rounded-lg border">
+                                <div>
+                                  Efficiency: {payload[0].value.toFixed(2)}/min<br />
+                                  {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                              </div>
+                            ) : null
+                          }
                         />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                </CardContent>
-              </Card>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         )}
       </CardContent>
     </Card>

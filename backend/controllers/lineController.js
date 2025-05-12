@@ -56,10 +56,12 @@ const calculateCurrentEfficiency = (line) => {
   return line.totalOutputs / elapsedMinutes;
 };
 
+import mongoose from 'mongoose';
+
 const scanSerial = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  
+
   try {
     const { lineId } = req.params;
     const { serialNumber } = req.body;
@@ -95,16 +97,22 @@ const scanSerial = async (req, res) => {
       return res.status(409).json({ message: "Serial number already scanned." });
     }
 
-    // Atomic updates to prevent race conditions
+    // Calculate efficiency based on current data
+    const projectedEfficiency = calculateCurrentEfficiency({
+      ...line.toObject(),
+      totalOutputs: line.totalOutputs + 1,
+    });
+
+    // Atomic update
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
         $inc: { totalOutputs: 1, currentMaterialCount: -1 },
         $set: { startTime: line.startTime || new Date() },
-        $push: { 
+        $push: {
           efficiencyHistory: {
             timestamp: new Date(),
-            efficiency: calculateCurrentEfficiency(line)
+            efficiency: projectedEfficiency
           }
         }
       },
@@ -118,7 +126,7 @@ const scanSerial = async (req, res) => {
       operator: operatorId,
       name: line.operatorId.name,
       serialNumber,
-      efficiency: updatedLine.efficiencyHistory.slice(-1)[0].efficiency
+      efficiency: projectedEfficiency
     });
 
     await newScanLog.save({ session });
@@ -126,7 +134,7 @@ const scanSerial = async (req, res) => {
     // Commit transaction
     await session.commitTransaction();
 
-    // Real-time update
+    // Emit real-time event
     const io = req.app.get('io');
     if (io) {
       io.emit('newScan', {
@@ -136,29 +144,28 @@ const scanSerial = async (req, res) => {
         name: line.operatorId.name,
         serialNumber,
         scannedAt: newScanLog.scannedAt,
-        efficiency: newScanLog.efficiency
+        efficiency: projectedEfficiency
       });
     }
 
-    // Filter sensitive data from response
-    const responseData = {
+    // Respond with essential data
+    return res.status(200).json({
       message: "Serial scanned successfully",
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
       remainingMaterials: updatedLine.currentMaterialCount,
-      efficiency: newScanLog.efficiency
-    };
-
-    return res.status(200).json(responseData);
+      efficiency: projectedEfficiency
+    });
 
   } catch (error) {
+    console.error("Scan error:", error);
     await session.abortTransaction();
-    console.error("Transaction aborted:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   } finally {
     session.endSession();
   }
 };
+
 
 // Get info about a specific line
 const getLine = async (req, res) => {
