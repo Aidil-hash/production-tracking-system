@@ -62,6 +62,14 @@ export default function LinePerformanceChart() {
       setLinesData((prev) =>
         prev.map((line) => {
           if (line._id?.toString() === scanData.productionLine?.toString()) {
+            const alreadyExists = line.efficiencyHistory.some(
+              (entry) =>
+                entry.timestamp === scanData.scannedAt &&
+                entry.efficiency === scanData.efficiency
+            );
+
+            if (alreadyExists) return line; // Don't add duplicate
+
             return {
               ...line,
               efficiencyHistory: [
