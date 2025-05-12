@@ -159,8 +159,8 @@ export default function LinePerformanceChart() {
                     <div className="text-muted-foreground text-center py-4">No efficiency data available.</div>
                   ) : (
                     <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={line.data}>
+                      <div style={{ width: '100%', height: 300 }}>
+                        <AreaChart width={600} height={300} data={line.data}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="time"
@@ -189,7 +189,7 @@ export default function LinePerformanceChart() {
                           }
                         />
                       </AreaChart>
-                    </ResponsiveContainer>
+                    </div>
                   </div>
                   )}
                 </AccordionContent>

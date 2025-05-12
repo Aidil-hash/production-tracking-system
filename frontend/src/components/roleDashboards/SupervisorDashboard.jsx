@@ -95,6 +95,10 @@ function SupervisorDashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage('Leader assigned to line successfully!');
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(res.data);
       setError('');
       // Optionally refresh the lines list
     } catch (err) {

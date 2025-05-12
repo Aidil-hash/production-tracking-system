@@ -1,4 +1,3 @@
-// src/components/OperatorDashboard.js
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, TextField, Button, CircularProgress } from '@mui/material';
 import axios from 'axios';
@@ -14,6 +13,7 @@ function OperatorDashboard() {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+  // Fetch assigned line when component mounts
   useEffect(() => {
     const fetchOperatorLine = async () => {
       try {
@@ -29,22 +29,7 @@ function OperatorDashboard() {
     fetchOperatorLine();
   }, [API_URL]);
 
-  useEffect(() => {
-    const fetchLineStatus = async () => {
-      if (!lineId) return;
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/lines/${lineId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setLineStatus(res.data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch line status');
-      }
-    };
-    fetchLineStatus();
-  }, [API_URL, lineId]);
-
+  // Handle serial scanning
   const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber) {
@@ -60,10 +45,11 @@ function OperatorDashboard() {
         { serialNumber },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setMessage('Scan successful!');
       setError('');
       setSerialNumber('');
-      setLineStatus(res.data.line);
+      setLineStatus(res.data.line); // response includes updated line info
     } catch (err) {
       setMessage('');
       setError(err.response?.data?.message || 'Scan failed');
@@ -97,7 +83,7 @@ function OperatorDashboard() {
             Assigned Line ID: {lineId}
           </Typography>
 
-          {lineStatus && lineStatus.model ? (
+          {lineStatus && lineStatus.model && (
             <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Line Status
@@ -106,10 +92,6 @@ function OperatorDashboard() {
               <Typography>Current Material Count: {lineStatus.currentMaterialCount}</Typography>
               <Typography>Total Outputs: {lineStatus.totalOutputs}</Typography>
             </Box>
-          ) : (
-            <Typography variant="body1" sx={{ mt: 2 }}>
-              Loading line status...
-            </Typography>
           )}
 
           <Box
@@ -128,10 +110,7 @@ function OperatorDashboard() {
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
               fullWidth
-              sx={{
-                backgroundColor: '#ccc',
-                borderRadius: 2,
-              }}
+              sx={{ backgroundColor: '#fff', borderRadius: 2 }}
             />
             <Button
               type="submit"

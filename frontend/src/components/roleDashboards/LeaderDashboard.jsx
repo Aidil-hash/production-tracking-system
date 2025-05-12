@@ -232,7 +232,7 @@ function LeaderDashboard() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        className="bg-red-500 hover:bg-red-700 text-white px-3 py-1 text-xs"
+                        className="bg-red-500 hover:bg-red-700 text-white"
                         onClick={() => handleDetachOperator(line.id)}
                       >
                         Detach Operator
