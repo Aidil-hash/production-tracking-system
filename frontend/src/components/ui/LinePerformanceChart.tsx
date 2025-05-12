@@ -9,7 +9,6 @@ import {
   XAxis,
   YAxis,
   Area as RechartsArea,
-  ResponsiveContainer,
   Tooltip
 } from "recharts";
 import {
@@ -62,7 +61,7 @@ export default function LinePerformanceChart() {
     socket.on("newScan", (scanData) => {
       setLinesData((prev) =>
         prev.map((line) => {
-          if (line._id === scanData.productionLine) {
+          if (line._id?.toString() === scanData.productionLine?.toString()) {
             return {
               ...line,
               efficiencyHistory: [

@@ -127,7 +127,7 @@ const scanSerial = async (req, res) => {
         operator: operatorId,
         name: line.operatorId.name,
         serialNumber,
-        scannedAt: newScanLog.scannedAt,
+        scannedAt: new Date(),
         efficiency: projectedEfficiency,
       });
     }
