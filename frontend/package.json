@@ -25,6 +25,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.5.0",
     "frontend": "file:",
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.483.0",
     "pouchdb": "^9.0.0",
     "react": "^19.0.0",
