@@ -3,34 +3,33 @@ import { BrowserMultiFormatReader } from '@zxing/library';
 
 const BarcodeScanner = ({ onScanSuccess }) => {
   const [scanning, setScanning] = useState(false);
-  const videoRef = useRef(null);
+  const videoRef = useRef(null); // Video reference to display the feed
   const [scanner, setScanner] = useState(null);
 
   useEffect(() => {
     if (!scanning) return;
 
-    // Set up ZXing scanner
     const codeReader = new BrowserMultiFormatReader();
     setScanner(codeReader);
 
     const startScanning = () => {
       if (videoRef.current) {
+        // Start scanning from the video device
         codeReader
           .decodeFromVideoDevice(
-            null, // Automatically choose the camera
-            videoRef.current,
+            null, // Auto-select camera device
+            videoRef.current, // The video element to display the feed
             (result, error) => {
               if (result) {
-                onScanSuccess(result.getText()); // Call success handler with scanned text
+                onScanSuccess(result.getText());
                 codeReader.reset(); // Stop the scanner after success
               } else if (error) {
-                // Handle errors (you can log or display them)
-                console.error(error);
+                console.error(error); // Log error if scanning fails
               }
             }
           )
-          .then(() => console.log('Started scanning successfully'))
-          .catch((err) => console.error('Failed to start scanning', err));
+          .then(() => console.log('Scanning started'))
+          .catch((err) => console.error('Error starting scanning:', err));
       }
     };
 
@@ -38,14 +37,17 @@ const BarcodeScanner = ({ onScanSuccess }) => {
 
     return () => {
       if (scanner) {
-        scanner.reset();
+        scanner.reset(); // Reset the scanner when done
       }
     };
   }, [scanning, onScanSuccess, scanner]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* The video element to display the camera feed */}
       <video ref={videoRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* Add scanning indicator if scanning */}
       {scanning && (
         <div
           style={{
@@ -56,7 +58,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             width: '250px',
             height: '250px',
             border: '2px dashed green',
-            backgroundColor: 'rgba(0, 255, 0, 0.2)', // Light green background
+            backgroundColor: 'rgba(0, 255, 0, 0.2)',
           }}
         />
       )}

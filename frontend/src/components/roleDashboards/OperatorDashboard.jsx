@@ -119,10 +119,10 @@ function OperatorDashboard() {
 
             <Button
               variant="outlined"
-              onClick={() => setScanning(!scanning)}
-              sx={{ minWidth: 100 }}
+              onClick={() => setScanning((prev) => !prev)}
+              sx={{ mt: 2 }}
             >
-              {scanning ? 'Stop Scanning' : 'Start Scanning'}
+              {scanning ? 'Stop Camera Scan' : 'Scan via Camera'}
             </Button>
             
             {scanning && (
