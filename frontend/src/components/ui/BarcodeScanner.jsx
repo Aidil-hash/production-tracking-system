@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
 
 const BarcodeScanner = ({ onScanSuccess }) => {
-  const videoRef = useRef(null); // Reference for the video element
+  const videoRef = useRef(null); // Reference for video element
   const [scanning, setScanning] = useState(false);
   const [scanner, setScanner] = useState(null);
 
@@ -12,56 +12,52 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     const codeReader = new BrowserMultiFormatReader();
     setScanner(codeReader);
 
-    // Start scanning the barcode from the camera feed
     const startScanning = () => {
       if (videoRef.current) {
+        // Start scanning using ZXing from the video stream
         codeReader
           .decodeFromVideoDevice(
             null, // Automatically use the first available camera
-            videoRef.current, // Attach video element
+            videoRef.current, // Video element reference
             (result, error) => {
               if (result) {
-                onScanSuccess(result.getText()); // Pass the result on success
-                codeReader.reset(); // Stop scanning after a successful scan
+                onScanSuccess(result.getText()); // Call success handler
+                codeReader.reset(); // Stop scanning after success
               } else if (error) {
                 console.error(error); // Log error if scanning fails
               }
             }
           )
-          .then(() => console.log('Scanning started successfully'))
           .catch((err) => console.error('Failed to start scanning:', err));
       }
     };
 
-    // Call to start scanning
     startScanning();
 
-    // Clean up scanner when component is unmounted or scanning is stopped
     return () => {
       if (scanner) {
-        scanner.reset();
+        scanner.reset(); // Reset scanner on cleanup
       }
     };
   }, [scanning, onScanSuccess, scanner]);
 
   useEffect(() => {
-    // Access the user's camera (rear camera preferred)
+    // Access the camera and attach to the video element
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' } })
       .then((stream) => {
-        // Attach video stream to the video element
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       })
-      .catch((err) => console.log('Error accessing camera:', err));
+      .catch((err) => {
+        console.log('Error accessing camera: ', err);
+      });
   }, []);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Video element to show camera feed */}
-      <video ref={videoRef} style={{ width: '100%', height: '100%' }} />
-      {/* Scanning box positioned in the middle of the video feed */}
+      <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       {scanning && (
         <div
           style={{
@@ -71,8 +67,8 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             transform: 'translate(-50%, -50%)',
             width: '250px',
             height: '250px',
-            border: '2px dashed green', // Green dashed border for scanning box
-            backgroundColor: 'rgba(0, 255, 0, 0.2)', // Light green background for visibility
+            border: '2px dashed green',
+            backgroundColor: 'rgba(0, 255, 0, 0.2)', // Light green box for scanning area
           }}
         />
       )}
