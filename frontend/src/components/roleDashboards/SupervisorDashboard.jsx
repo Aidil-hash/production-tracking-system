@@ -211,7 +211,11 @@ function SupervisorDashboard() {
             onValueChange={(val) => setSelectedLine(val)}
           >
             <SelectTrigger className="w-full" id="line">
-              <SelectValue placeholder="--Select Line--" />
+              <SelectValue>
+                {selectedLine
+                  ? lines.find(line => line._id === selectedLine)?.model
+                  : '--Select Line--'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {lines.map((line) => (
@@ -228,7 +232,11 @@ function SupervisorDashboard() {
             onValueChange={(val) => setSelectedLeader(val)}
           >
             <SelectTrigger className="w-full" id="leader">
-              <SelectValue placeholder="--Select Leader--" />
+              <SelectValue>
+                {selectedLeader
+                  ? leaders.find(leader => leader._id === selectedLeader)?.name
+                  : '--Select Leader--'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {leaders.map((leader) => (
