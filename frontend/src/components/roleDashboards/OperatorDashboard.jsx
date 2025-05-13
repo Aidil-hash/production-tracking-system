@@ -116,26 +116,24 @@ function OperatorDashboard() {
             >
               {loadingScan ? <CircularProgress size={24} color="inherit" /> : 'Scan'}
             </Button>
-          </Box>
 
-          <Button
-            variant="outlined"
-            onClick={() => setScanning((prev) => !prev)}
-            sx={{ mt: 2 }}
-          >
-            {scanning ? 'Stop Camera Scan' : 'Scan via Camera'}
-          </Button>
-
-          {scanning && (
-            <Box sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => setScanning(!scanning)}
+              sx={{ minWidth: 100 }}
+            >
+              {scanning ? 'Stop Scanning' : 'Start Scanning'}
+            </Button>
+            
+            {scanning && (
               <BarcodeScanner
-                onScanSuccess={(code) => {
-                  setSerialNumber(code);
+                onScanSuccess={(decodedText) => {
+                  setSerialNumber(decodedText);
                   setScanning(false);
                 }}
               />
-            </Box>
-          )}
+            )}
+          </Box>
         </Box>
       )}
     </Box>
