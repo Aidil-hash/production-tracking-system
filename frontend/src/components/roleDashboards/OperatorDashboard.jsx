@@ -126,17 +126,17 @@ function OperatorDashboard() {
             </Button>
             
             {scanning && (
-              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', width: '100%' }}>
-                <Box sx={{ width: '80%', maxWidth: '500px', height: '400px' }}>
-                  <BarcodeScanner
-                    onScanSuccess={(code) => {
-                      setSerialNumber(code);
-                      setScanning(false);
-                    }}
-                  />
+                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', width: '100%' }}>
+                  <Box sx={{ width: '80%', maxWidth: '600px', height: '400px' }}>
+                    <BarcodeScanner
+                      onScanSuccess={(code) => {
+                        setSerialNumber(code);
+                        setScanning(false);
+                      }}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            )}
+              )}
           </Box>
         </Box>
       )}
