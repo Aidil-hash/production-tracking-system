@@ -128,7 +128,7 @@ function OperatorDashboard() {
             
             {scanning && (
               <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', width: '1000px' }}>
-                <Box sx={{ width: '80%', maxWidth: '600px', height: '400px' }}>
+                <Box sx={{ width: '600px', height: '400px' }}>
                   <BarcodeScanner
                     onScanSuccess={(code) => {
                       setSerialNumber(code);
