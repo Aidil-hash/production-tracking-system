@@ -1,36 +1,38 @@
-import React, { useEffect } from 'react';
-import {Html5QrcodeScanner} from "html5-qrcode";
+import React, { useEffect } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 const BarcodeScanner = ({ onScanSuccess }) => {
   useEffect(() => {
-    const html5QrcodeScanner = new Html5QrcodeScanner("reader", {
-      rememberLastUsedCamera: false
+    const scanner = new Html5QrcodeScanner("reader", {
+      fps: 25, // Frames per second
+      qrbox: 250, // Size of the QR box
+      rememberLastUsedCamera: true, // Optional: remember last used camera
     });
 
-    html5QrcodeScanner.start(
-    { facingMode: "environment" }, 
-    {
-        fps: 20,
-        qrbox: 250,
-        aspectRatio: 1.0,
-        deviceId: null,  // Keep this as null unless you are specifying the device manually
-        videoConstraints: {
-        facingMode: "environment",
-        },
-    },
-    (decodedText) => {
-        onScanSuccess(decodedText);
-        html5QrcodeScanner.stop();
-    },
-    (errorMessage) => {
-        // Handle errors
-        console.log("QR Code scan error: ", errorMessage);
-    }
-    );
+    // Start the scanner with the environment-facing camera
+    scanner.start(
+      { facingMode: "environment" }, // Specify the facing mode
+      {
+        fps: 25, // Frames per second
+        qrbox: 250, // Size of the QR code box for scanning
+        aspectRatio: 1.0, // Aspect ratio of the scanning box
+      },
+      (decodedText) => {
+        console.log("Scanned QR Code:", decodedText);
+        onScanSuccess(decodedText); // Call the success callback
+      },
+      (errorMessage) => {
+        console.log("Scan error:", errorMessage); // Log any scan errors
+      }
+    ).catch((error) => {
+      console.error("Failed to start scanner:", error);
+    });
 
     return () => {
-      html5QrcodeScanner.stop().then(() => {
-        html5QrcodeScanner.clear();
+      scanner.stop().then(() => {
+        scanner.clear();
+      }).catch((error) => {
+        console.error("Error stopping the scanner:", error);
       });
     };
   }, [onScanSuccess]);
