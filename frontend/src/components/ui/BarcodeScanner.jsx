@@ -27,7 +27,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     };
   }, [onScanSuccess]);
 
-  return <div id="reader" style={{ width: "100%" }} />;
+  return <div id="reader" style={{ width: "100%", border: "2px dashed lime", height: "300px" }} />;
 };
 
 export default BarcodeScanner;
