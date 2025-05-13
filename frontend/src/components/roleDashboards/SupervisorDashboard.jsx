@@ -203,50 +203,47 @@ function SupervisorDashboard() {
       )}
 
       {/* Assign leader to line */}
-        <div className="mb-6 space-y-1 relative z-10">
+        <div className="mb-6 space-y-4 relative z-10">
           <h2 className="text-lg font-semibold mb-2">Assign Line to Leader</h2>
+
+          {/* Line Selector */}
           <Label htmlFor="line">Select Line</Label>
-          <Select
-            value={selectedLine}
-            onValueChange={(val) => setSelectedLine(val)}
-          >
+          <Select value={selectedLine} onValueChange={(val) => setSelectedLine(val)}>
             <SelectTrigger className="w-full" id="line">
-              <SelectValue>
-                {selectedLine
-                  ? lines.find(line => line._id === selectedLine)?.model
-                  : '--Select Line--'}
-              </SelectValue>
+              <SelectValue placeholder="--Select Line--" />
             </SelectTrigger>
-            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
               {lines.map((line) => (
-                <SelectItem key={line._id} value={line._id}
-                className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
+                <SelectItem
+                  key={line._id}
+                  value={line._id}
+                  className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer"
+                >
                   {line.model}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {/* Leader Selector */}
           <Label htmlFor="leader">Select Leader</Label>
-          <Select
-            value={selectedLeader}
-            onValueChange={(val) => setSelectedLeader(val)}
-          >
+          <Select value={selectedLeader} onValueChange={(val) => setSelectedLeader(val)}>
             <SelectTrigger className="w-full" id="leader">
-              <SelectValue>
-                {selectedLeader
-                  ? leaders.find(leader => leader._id === selectedLeader)?.name
-                  : '--Select Leader--'}
-              </SelectValue>
+              <SelectValue placeholder="--Select Leader--" />
             </SelectTrigger>
-            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
               {leaders.map((leader) => (
-                <SelectItem key={leader._id} value={leader._id}
-                className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
+                <SelectItem
+                  key={leader._id}
+                  value={leader._id}
+                  className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer"
+                >
                   {leader.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
           <Button variant="contained" fullWidth onClick={handleAssignLeader}>
             Assign Leader
           </Button>
