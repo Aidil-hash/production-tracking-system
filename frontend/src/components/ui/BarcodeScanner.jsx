@@ -14,8 +14,6 @@ const BarcodeScanner = ({ onScanSuccess }) => {
         deviceId: null,  // Keep this as null unless you are specifying the device manually
         videoConstraints: {
         facingMode: "environment",
-        width: { ideal: 1920 },  // Set a higher resolution
-        height: { ideal: 1080 }, // Set a higher resolution
         },
     },
     (decodedText) => {
