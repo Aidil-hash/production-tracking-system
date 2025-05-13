@@ -58,16 +58,16 @@ export default function LinePerformanceChart() {
 
   // Real-time socket updates
   useEffect(() => {
-  const socket = io(API_URL, { transports: ["websocket"] });
+    const socket = io(API_URL, { transports: ["websocket"] });
 
-  socket.on("newScan", () => {
-    axios.get(`${API_URL}/api/lines`).then((res) => {
-      setLinesData(res.data);
+    socket.on("newScan", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
     });
-  });
 
-  return () => socket.disconnect();
-}, [API_URL]);
+    return () => socket.disconnect();
+  }, [API_URL]);
 
   // Time filtering helper
   const getFilteredData = (history: any[]) => {
@@ -77,9 +77,11 @@ export default function LinePerformanceChart() {
     return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
   };
 
+  const colors = ["#4F46E5", "#22C55E", "#F97316", "#3B82F6", "#EF4444", "#94A3B8", "#EAB308"];
+
   const chartData = linesData
     .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
-    .map((line) => ({
+    .map((line,index) => ({
       _id: line.id,
       name: line.model,
       department: line.department,
@@ -87,6 +89,7 @@ export default function LinePerformanceChart() {
         time: new Date(point.timestamp).getTime(),
         performance: point.efficiency,
       })),
+      color: colors[index % colors.length], // cycle colors
     }));
     console.log("Chart Data:", chartData)
 
@@ -169,8 +172,8 @@ export default function LinePerformanceChart() {
                           <RechartsArea
                             type="monotone"
                             dataKey="performance"
-                            stroke="#8884d8"
-                            fill="#8884d8"
+                            stroke={line.color}
+                            fill={line.color}
                             fillOpacity={0.3}
                           />
                           <Tooltip
