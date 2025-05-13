@@ -4,7 +4,7 @@ import axios from 'axios';
 import LogoutButton from '../Logout';
 
 function OperatorDashboard() {
-  const [lineId, setLineId] = useState('');
+  const [assignedLine, setAssignedLine] = useState(null); // Now holds full object
   const [serialNumber, setSerialNumber] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -13,23 +13,21 @@ function OperatorDashboard() {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Fetch assigned line when component mounts
   useEffect(() => {
-    const fetchOperatorLine = async () => {
+    const fetchLine = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/operators/assignedLine`, {
+        const response = await axios.get(`${API_URL}/api/operators/assignedLine`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setLineId(res.data.lineId);
+        setAssignedLine(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch assigned line');
+        setError(err.response?.data?.message || 'Could not fetch assigned line.');
       }
     };
-    fetchOperatorLine();
+    fetchLine();
   }, [API_URL]);
 
-  // Handle serial scanning
   const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber) {
@@ -40,16 +38,21 @@ function OperatorDashboard() {
     setLoadingScan(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(
-        `${API_URL}/api/lines/${lineId}/scan`,
+      const response = await axios.post(
+        `${API_URL}/api/lines/${assignedLine.lineId}/scan`,
         { serialNumber },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-
       setMessage('Scan successful!');
       setError('');
       setSerialNumber('');
-      setLineStatus(res.data.line); // response includes updated line info
+      setLineStatus(response.data.line);
+      const res = await axios.get(`${API_URL}/api/operators/assignedLine`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAssignedLine(res.data);
     } catch (err) {
       setMessage('');
       setError(err.response?.data?.message || 'Scan failed');
@@ -65,25 +68,25 @@ function OperatorDashboard() {
       </Typography>
 
       {error && (
-        <Typography variant="body1" color="error" align="center" mb={2}>
+        <Typography color="error" align="center" mb={2}>
           {error}
         </Typography>
       )}
       {message && (
-        <Typography variant="body1" color="success.main" align="center" mb={2}>
+        <Typography color="success.main" align="center" mb={2}>
           {message}
         </Typography>
       )}
 
       <LogoutButton />
 
-      {lineStatus && lineStatus.model ? (
+      {assignedLine && (
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
-            Assigned Line: {lineStatus.model}
+            Assigned Line Model: {assignedLine.model}
           </Typography>
 
-          {lineStatus && lineStatus.model && (
+          {lineStatus && (
             <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Line Status
@@ -97,12 +100,7 @@ function OperatorDashboard() {
           <Box
             component="form"
             onSubmit={handleScan}
-            sx={{
-              mt: 3,
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-            }}
+            sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}
           >
             <TextField
               label="Serial Number"
@@ -122,10 +120,6 @@ function OperatorDashboard() {
             </Button>
           </Box>
         </Box>
-      ) : (
-        <Typography variant="body1" align="center">
-          Loading assigned line...
-        </Typography>
       )}
     </Box>
   );
