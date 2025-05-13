@@ -1,89 +1,55 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/library';
+import React, { useEffect } from 'react';
+import {Html5QrcodeScanner} from "html5-qrcode";
 
 const BarcodeScanner = ({ onScanSuccess }) => {
-  const videoRef = useRef(null); // Reference for the video element
-  const [scanning, setScanning] = useState(false);
-  const [scanner, setScanner] = useState(null);
-
-  // Start scanning when scanning state is true
   useEffect(() => {
-    if (!scanning) return;
+    const html5QrCode = new Html5QrcodeScanner("reader");
 
-    const codeReader = new BrowserMultiFormatReader();
-    setScanner(codeReader);
-
-    const startScanning = () => {
-      if (videoRef.current) {
-        // Start decoding the barcode from the video stream
-        codeReader
-          .decodeFromVideoDevice(
-            null, // Automatically use the first available camera
-            videoRef.current, // The video element where the camera feed is displayed
-            (result, error) => {
-              if (result) {
-                onScanSuccess(result.getText()); // Pass the scanned text
-                codeReader.reset(); // Stop scanning after success
-              } else if (error) {
-                console.error(error);
-              }
-            }
-          )
-          .catch((err) => console.error('Error starting scanner:', err));
-      }
-    };
-
-    startScanning();
+    html5QrCode.start(
+    { facingMode: "environment" }, 
+    {
+        fps: 20,
+        qrbox: 250,
+        aspectRatio: 1.0,
+        deviceId: null,  // Keep this as null unless you are specifying the device manually
+        videoConstraints: {
+        facingMode: "environment",
+        width: { ideal: 1920 },  // Set a higher resolution
+        height: { ideal: 1080 }, // Set a higher resolution
+        },
+    },
+    (decodedText) => {
+        onScanSuccess(decodedText);
+        html5QrCode.stop();
+    },
+    (errorMessage) => {
+        // Handle errors
+        console.log("QR Code scan error: ", errorMessage);
+    }
+    );
 
     return () => {
-      if (scanner) {
-        scanner.reset(); // Stop scanning on cleanup
-      }
-    };
-  }, [scanning, onScanSuccess, scanner]);
-
-  // Access the camera and display it in the video element
-  useEffect(() => {
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' } })
-      .then((stream) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          console.log('Camera stream assigned:', stream); // Log the stream to verify
-        }
-      })
-      .catch((err) => {
-        console.error('Error accessing camera: ', err); // Log any error
+      html5QrCode.stop().then(() => {
+        html5QrCode.clear();
       });
-  }, []);
+    };
+  }, [onScanSuccess]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* The video element where the stream will be displayed */}
-      <video
-        ref={videoRef}
+    <div id="reader" style={{ position: 'relative', width: '100%', height: '100%', border: '2px dashed lime' }}>
+      {/* Add a scanning box indicator */}
+      <div 
         style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover', // Ensures the video covers the container area
-          display: 'block', // Ensures the video is rendered as a block element
-          backgroundColor: 'black', // Add a background to the video element for better visibility
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '250px',
+          height: '250px',
+          border: '2px dashed #00ff00',  // Green dashed border
+          backgroundColor: 'rgba(0, 255, 0, 0.2)',  // Semi-transparent background for the box
         }}
-      />
-      {scanning && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '250px',
-            height: '250px',
-            border: '2px dashed green',
-            backgroundColor: 'rgba(0, 255, 0, 0.2)', // Green scanning box
-          }}
-        />
-      )}
+      ></div>
     </div>
   );
 };
