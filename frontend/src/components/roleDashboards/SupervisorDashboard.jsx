@@ -208,17 +208,13 @@ function SupervisorDashboard() {
 
           {/* Line Selector */}
           <Label htmlFor="line">Select Line</Label>
-          <Select value={selectedLine} onValueChange={(val) => setSelectedLine(val)}>
+          <Select value={selectedLine} onValueChange={setSelectedLine}>
             <SelectTrigger className="w-full" id="line">
               <SelectValue placeholder="--Select Line--" />
             </SelectTrigger>
-            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+            <SelectContent>
               {lines.map((line) => (
-                <SelectItem
-                  key={line._id}
-                  value={line._id}
-                  className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer"
-                >
+                <SelectItem key={line.id} value={line.id}>
                   {line.model}
                 </SelectItem>
               ))}
