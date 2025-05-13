@@ -5,19 +5,19 @@ const BarcodeScanner = ({ onScanSuccess }) => {
   useEffect(() => {
     // Create a new instance of Html5QrcodeScanner
     const scanner = new Html5QrcodeScanner("reader", {
-      fps: 10, // Frames per second
+      fps: 25, // Frames per second
       qrbox: 250, // Size of the QR code box
-      rememberLastUsedCamera: true, // Optional: remember the last used camera
+      rememberLastUsedCamera: false, // Optional: remember the last used camera
     });
 
     // Log the scanner object to make sure it's initialized correctly
     console.log("Scanner initialized:", scanner);
 
     // Start the scanner with the environment-facing camera
-    scanner.start(
+    scanner.render(
       { facingMode: "environment" }, // Specify the facing mode
       {
-        fps: 10, // Frames per second
+        fps: 25, // Frames per second
         qrbox: 250, // Size of the QR code box
         aspectRatio: 1.0, // Aspect ratio of the scanning box
       },
@@ -31,6 +31,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     ).catch((error) => {
       console.error("Failed to start scanner:", error);
     });
+    console.log(scanner.render);
 
     return () => {
       // Cleanup the scanner on unmount
