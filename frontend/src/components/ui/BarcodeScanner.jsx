@@ -3,9 +3,9 @@ import {Html5QrcodeScanner} from "html5-qrcode";
 
 const BarcodeScanner = ({ onScanSuccess }) => {
   useEffect(() => {
-    const html5QrCode = new Html5QrcodeScanner("reader");
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader");
 
-    html5QrCode.start(
+    html5QrcodeScanner.start(
     { facingMode: "environment" }, 
     {
         fps: 20,
@@ -20,7 +20,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     },
     (decodedText) => {
         onScanSuccess(decodedText);
-        html5QrCode.stop();
+        html5QrcodeScanner.stop();
     },
     (errorMessage) => {
         // Handle errors
@@ -29,8 +29,8 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     );
 
     return () => {
-      html5QrCode.stop().then(() => {
-        html5QrCode.clear();
+      html5QrcodeScanner.stop().then(() => {
+        html5QrcodeScanner.clear();
       });
     };
   }, [onScanSuccess]);
