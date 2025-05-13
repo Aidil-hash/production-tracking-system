@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
   Area as RechartsArea,
+  ResponsiveContainer,
   Tooltip
 } from "recharts";
 import {
@@ -26,7 +27,7 @@ import {
   SelectItem,
 } from "../ui/select";
 import { Label } from "../ui/label";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent} from "../ui/accordion";
 
 export default function LinePerformanceChart() {
   const [error, setError] = useState("");
@@ -155,8 +156,9 @@ export default function LinePerformanceChart() {
                       </div>
 
                       <div style={{ width: '100%', height: 150 }}>
-                        <AreaChart width={1500} height={150} data={line.data}>
-                          <CartesianGrid strokeDasharray="3 3" />
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={line.data}>
+                          <CartesianGrid strokeDasharray="1 1" />
                           <XAxis
                             dataKey="time"
                             type="number"
@@ -184,6 +186,7 @@ export default function LinePerformanceChart() {
                             }
                           />
                         </AreaChart>
+                      </ResponsiveContainer>
                       </div>
                     </div>
                   )}
