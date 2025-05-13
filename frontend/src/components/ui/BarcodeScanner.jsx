@@ -18,11 +18,11 @@ const BarcodeScanner = ({ onScanSuccess }) => {
         // Start decoding the barcode from the video stream
         codeReader
           .decodeFromVideoDevice(
-            null, // Automatically select the first available camera
-            videoRef.current, // Attach the video feed to this element
+            null, // Automatically use the first available camera
+            videoRef.current, // The video element where the camera feed is displayed
             (result, error) => {
               if (result) {
-                onScanSuccess(result.getText()); // Send the result back
+                onScanSuccess(result.getText()); // Pass the scanned text
                 codeReader.reset(); // Stop scanning after success
               } else if (error) {
                 console.error(error);
@@ -42,8 +42,8 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     };
   }, [scanning, onScanSuccess, scanner]);
 
+  // Access the camera and display it in the video element
   useEffect(() => {
-    // Access the camera and attach the stream to the video element
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' } })
       .then((stream) => {
@@ -60,8 +60,16 @@ const BarcodeScanner = ({ onScanSuccess }) => {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* The video element where the stream will be displayed */}
-      <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-      
+      <video
+        ref={videoRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover', // Ensures the video covers the container area
+          display: 'block', // Ensures the video is rendered as a block element
+          backgroundColor: 'black', // Add a background to the video element for better visibility
+        }}
+      />
       {scanning && (
         <div
           style={{
