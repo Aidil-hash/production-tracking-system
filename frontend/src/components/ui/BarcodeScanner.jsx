@@ -6,19 +6,27 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     const html5QrCode = new Html5Qrcode("reader");
 
     html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: 250,
-      },
-      (decodedText) => {
-        onScanSuccess(decodedText);
-        html5QrCode.stop();
-      },
-      (errorMessage) => {
-        // Handle errors silently
-      }
-    );
+        { facingMode: "environment" }, 
+        {
+            fps: 20,
+            qrbox: 250,
+            aspectRatio: 1.0,
+            deviceId: null,  // Keep this as null unless you are specifying the device manually
+            videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1920 },  // Set a higher resolution
+            height: { ideal: 1080 }, // Set a higher resolution
+            },
+        },
+        (decodedText) => {
+            onScanSuccess(decodedText);
+            html5QrCode.stop();
+        },
+        (errorMessage) => {
+            // Handle errors
+            console.log(errorMessage);
+        }
+        );
 
     return () => {
       html5QrCode.stop().then(() => {
@@ -27,7 +35,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
     };
   }, [onScanSuccess]);
 
-  return <div id="reader" style={{ width: "100%", border: "2px dashed lime", height: "300px" }} />;
+  return <div id="reader" style={{ width: "100%", height: "400px", border: "2px dashed lime" }} />;
 };
 
 export default BarcodeScanner;
