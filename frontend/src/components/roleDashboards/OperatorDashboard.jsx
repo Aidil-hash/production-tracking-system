@@ -77,10 +77,10 @@ function OperatorDashboard() {
 
       <LogoutButton />
 
-      {lineId ? (
+      {lineStatus.model ? (
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
-            Assigned Line ID: {lineId}
+            Assigned Line: {lineStatus.model}
           </Typography>
 
           {lineStatus && lineStatus.model && (

@@ -205,12 +205,12 @@ function SupervisorDashboard() {
       {/* Assign leader to line */}
         <div className="mb-6 space-y-1 relative z-10">
           <h2 className="text-lg font-semibold mb-2">Assign Line to Leader</h2>
-          <Label htmlFor="selectedLine">Select Line</Label>
+          <Label htmlFor="line">Select Line</Label>
           <Select
             value={selectedLine}
             onValueChange={(val) => setSelectedLine(val)}
           >
-            <SelectTrigger className="w-full" id="selectedLine">
+            <SelectTrigger className="w-full" id="line">
               <SelectValue placeholder="--Select Line--" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
@@ -222,11 +222,12 @@ function SupervisorDashboard() {
               ))}
             </SelectContent>
           </Select>
+          <Label htmlFor="leader">Select Leader</Label>
           <Select
-            value={selectedLine}
+            value={selectedLeader}
             onValueChange={(val) => setSelectedLeader(val)}
           >
-            <SelectTrigger className="w-full" id="selectedLeader">
+            <SelectTrigger className="w-full" id="leader">
               <SelectValue placeholder="--Select Leader--" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
