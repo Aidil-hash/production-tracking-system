@@ -77,8 +77,6 @@ export default function LinePerformanceChart() {
     return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
   };
 
-  const colors = ["#4F46E5", "#22C55E", "#F97316", "#3B82F6", "#EF4444", "#94A3B8", "#EAB308"];
-
   const chartData = linesData
     .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
     .map((line,index) => ({
@@ -89,7 +87,6 @@ export default function LinePerformanceChart() {
         time: new Date(point.timestamp).getTime(),
         performance: point.efficiency,
       })),
-      color: colors[index % colors.length], // cycle colors
     }));
     console.log("Chart Data:", chartData)
 
@@ -172,8 +169,8 @@ export default function LinePerformanceChart() {
                           <RechartsArea
                             type="monotone"
                             dataKey="performance"
-                            stroke={line.color}
-                            fill={line.color}
+                            stroke="#4F46E5"
+                            fill="#4F46E5"
                             fillOpacity={0.3}
                           />
                           <Tooltip
