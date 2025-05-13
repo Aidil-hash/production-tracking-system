@@ -117,7 +117,7 @@ function OperatorDashboard() {
               {loadingScan ? <CircularProgress size={24} color="inherit" /> : 'Scan'}
             </Button>
           </Box>
-          <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
             <Button
               variant="outlined"
               onClick={() => setScanning((prev) => !prev)}
