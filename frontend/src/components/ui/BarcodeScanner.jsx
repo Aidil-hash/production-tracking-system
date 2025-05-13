@@ -3,7 +3,9 @@ import {Html5QrcodeScanner} from "html5-qrcode";
 
 const BarcodeScanner = ({ onScanSuccess }) => {
   useEffect(() => {
-    const html5QrcodeScanner = new Html5QrcodeScanner("reader");
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", {
+      rememberLastUsedCamera: false
+    });
 
     html5QrcodeScanner.start(
     { facingMode: "environment" }, 
