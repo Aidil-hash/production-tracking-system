@@ -212,7 +212,7 @@ function SupervisorDashboard() {
             <SelectTrigger className="w-full" id="line">
               <SelectValue placeholder="--Select Line--" />
             </SelectTrigger>
-            <SelectContent className="z-70 bg-zinc-900 text-white border border-zinc-700">
+            <SelectContent className="z-100 bg-zinc-900 text-white border border-zinc-700">
               {lines.map((line) => (
                 <SelectItem key={line.id} value={line.id} className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
                   {line.model}
