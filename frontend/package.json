@@ -37,7 +37,8 @@
     "tailwind-merge": "^3.0.2",
     "tailwind-variants": "^1.0.0",
     "tailwindcss-animate": "^1.0.7",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "webrtc-adapter": "^9.0.3"
   },
   "scripts": {
     "start": "react-scripts start",
