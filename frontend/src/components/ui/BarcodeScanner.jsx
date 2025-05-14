@@ -46,6 +46,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
   }, []);
 
   useEffect(() => {
+    const qrboxSize = window.innerWidth < 600 ? 200 : 400; // Adjust the scanning box size for mobile or desktop
     // Only initialize the Quagga scanner once the camera is ready
     if (scannerInitialized) {
       Quagga.init(
@@ -55,19 +56,19 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             type: "LiveStream",
             target: videoRef.current, // Use the video element for the camera feed
             constraints: {
-              width: 640,
-              height: 480,
+              width: 1000,
+              height: 750,
             },
             area: { // defines rectangle of the detection/localization area
-              top: "15%",    // top offset
-              right: "15%",  // right offset
-              left: "15%",   // left offset
-              bottom: "15%"  // bottom offset
+              top: "0%",    // top offset
+              right: "0%",  // right offset
+              left: "0%",   // left offset
+              bottom: "0%"  // bottom offset
             },
             singleChannel: false // true: only the red color-channel is read
           },
           decoder: {
-            readers: ["code_39_reader"], // Supported barcode formats
+            readers: ["code_39_reader", "code_128_reader"], // Supported barcode formats
             debug: {
               drawBoundingBox: true,
               showFrequency: false,
@@ -79,6 +80,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
           locator: {
             patchSize: "medium", // Adjust patch size for mobile devices
           },
+          qrbox: qrboxSize, // Set the size of the QR code box
         },
         (err) => {
           if (err) {
@@ -111,6 +113,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
         style={{ width: "100%", height: "auto" }}
         muted
         autoPlay
+        playsInline
       />
     </div>
   );
