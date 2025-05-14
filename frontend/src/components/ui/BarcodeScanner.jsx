@@ -3,36 +3,28 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 
 const BarcodeScanner = ({ onScanSuccess }) => {
   useEffect(() => {
+    // Create an instance of Html5QrcodeScanner
     const scanner = new Html5QrcodeScanner("reader", {
-      fps: 25, // Frames per second
-      qrbox: 250, // Size of the QR code box
-      rememberLastUsedCamera: false, // Optional: remember the last used camera
+      fps: 25,
+      qrbox: 250,
+      rememberLastUsedCamera: true,
     });
-    console.log("Scanner initialized:", scanner);
 
-    // Verify that `scanner.start` is available
-    if (scanner && typeof scanner.start === "function") {
-      scanner.render(
-        { facingMode: "environment" }, // Specify the facing mode
-        {
-          fps: 25, // Frames per second
-          qrbox: 250, // Size of the QR code box
-          aspectRatio: 1.0, // Aspect ratio of the scanning box
-        },
-        (decodedText) => {
-          console.log("Scanned QR Code:", decodedText);
-          onScanSuccess(decodedText); // Call the success callback
-        },
-        (errorMessage) => {
-          console.log("Scan error:", errorMessage); // Log any scan errors
-        }
-      );
-    } else {
-      console.error("Scanner initialization failed or start method is unavailable.");
-    }
+    // Start the scanner using render method (for v2.x)
+    scanner.render(
+      // Success callback for when a QR code is scanned
+      (decodedText) => {
+        console.log("Scanned QR Code:", decodedText);
+        onScanSuccess(decodedText); // Handle the scan success
+      },
+      // Error callback to handle scanning issues
+      (errorMessage) => {
+        console.error("Scan error:", errorMessage); // Handle errors
+      }
+    );
 
+    // Cleanup when the component unmounts
     return () => {
-      // Cleanup the scanner on unmount
       try {
         scanner.stop().then(() => {
           scanner.clear();

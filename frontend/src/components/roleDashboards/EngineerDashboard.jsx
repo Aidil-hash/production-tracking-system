@@ -30,23 +30,18 @@ function EngineerDashboard() {
   const [message, setMessage] = useState('');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  useEffect(() => {
-    const socket = io(API_URL);
-    socket.on('newScan', (data) => {
-      if (data.productionLine === selectedLine) {
-        setScanLogs((prevLogs) => [
-          {
-            operator: data.operator.name,
-            serialNumber: data.serialNumber,
-            scannedAt: data.scannedAt,
-            lineModel: data.productionLine.model,
-          },
-          ...prevLogs,
-        ]);
-      }
-    });
-    return () => socket.disconnect();
-  }, [API_URL, selectedLine]);
+  // Real-time socket updates
+    useEffect(() => {
+      const socket = io(API_URL, { transports: ["websocket"] });
+  
+      socket.on("newScan", () => {
+        axios.get(`${API_URL}/api/engineer/allscanlogs`).then((res) => {
+          setScanLogs(res.data);
+        });
+      });
+  
+      return () => socket.disconnect();
+    }, [API_URL]);
 
   useEffect(() => {
     const fetchLines = async () => {
