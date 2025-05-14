@@ -8,9 +8,10 @@ const BarcodeScanner = ({ onScanSuccess }) => {
       qrbox: 250, // Size of the QR code box
       rememberLastUsedCamera: false, // Optional: remember the last used camera
     });
+    console.log("Scanner initialized:", scanner);
 
-    // Initialize the scanner and handle errors correctly
-    try {
+    // Verify that `scanner.start` is available
+    if (scanner && typeof scanner.start === "function") {
       scanner.start(
         { facingMode: "environment" }, // Specify the facing mode
         {
@@ -26,8 +27,8 @@ const BarcodeScanner = ({ onScanSuccess }) => {
           console.log("Scan error:", errorMessage); // Log any scan errors
         }
       );
-    } catch (error) {
-      console.error("Error initializing the scanner:", error);
+    } else {
+      console.error("Scanner initialization failed or start method is unavailable.");
     }
 
     return () => {
