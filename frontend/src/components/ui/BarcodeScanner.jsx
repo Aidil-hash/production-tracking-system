@@ -46,7 +46,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             target: videoRef.current, // Use the video element for the camera feed
           },
           decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"], // Supported barcode formats
+            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader", "code_39_reader"], // Supported barcode formats
           },
         },
         (err) => {
