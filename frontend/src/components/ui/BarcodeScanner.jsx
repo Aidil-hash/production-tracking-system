@@ -12,7 +12,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
 
     // Verify that `scanner.start` is available
     if (scanner && typeof scanner.start === "function") {
-      scanner.start(
+      scanner.render(
         { facingMode: "environment" }, // Specify the facing mode
         {
           fps: 25, // Frames per second
