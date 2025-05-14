@@ -212,9 +212,9 @@ function SupervisorDashboard() {
             <SelectTrigger className="w-full" id="line">
               <SelectValue placeholder="--Select Line--" />
             </SelectTrigger>
-            <SelectContent className="z-100 bg-zinc-900 text-white border border-zinc-700">
+            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
               {lines.map((line) => (
-                <SelectItem key={line.id} value={line.id} className="z-100 hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
+                <SelectItem key={line.id} value={line.id} className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
                   {line.model}
                 </SelectItem>
               ))}
@@ -227,7 +227,7 @@ function SupervisorDashboard() {
             <SelectTrigger className="w-full" id="leader">
               <SelectValue placeholder="--Select Leader--" />
             </SelectTrigger>
-            <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+            <SelectContent className=" bg-zinc-900 text-white border border-zinc-700">
               {leaders.map((leader) => (
                 <SelectItem
                   key={leader._id}
