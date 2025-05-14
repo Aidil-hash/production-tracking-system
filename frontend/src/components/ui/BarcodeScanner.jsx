@@ -5,7 +5,6 @@ import adapter from "webrtc-adapter"; // Import webrtc-adapter
 const BarcodeScanner = ({ onScanSuccess }) => {
   const videoRef = useRef(null); // Reference to the video element
   const [scannerInitialized, setScannerInitialized] = useState(false);
-  const qrboxSize = window.innerWidth < 600 ? 200 : 250;
 
   useEffect(() => {
     // Initialize the camera using webrtc-adapter for cross-browser compatibility
@@ -37,6 +36,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
   }, []);
 
   useEffect(() => {
+    const qrboxSize = window.innerWidth < 600 ? 200 : 250; // Set the QR box size based on screen width
     // Only initialize the Quagga scanner once the camera is ready
     if (scannerInitialized) {
       Quagga.init(
