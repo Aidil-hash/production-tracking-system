@@ -1,47 +1,49 @@
-import React, { useEffect } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import React, { useEffect, useRef } from "react";
+import Quagga from "quagga";
 
 const BarcodeScanner = ({ onScanSuccess }) => {
-  useEffect(() => {
-    // Create an instance of Html5QrcodeScanner
-    const scanner = new Html5QrcodeScanner("reader", {
-      fps: 25,
-      qrbox: 250,
-      rememberLastUsedCamera: true,
-      scanTypeSelector: {
-        supportedScanTypes: ["QR_CODE", "EAN_13", "EAN_8", "CODE_128", "CODE_39"], // Allow scanning for various barcode types
-      },
-    });
+  const videoRef = useRef(null);
 
-    // Start the scanner using render method (for v2.x)
-    scanner.render(
-      // Success callback for when a QR code is scanned
-      (decodedText) => {
-        console.log("Scanned QR Code:", decodedText);
-        onScanSuccess(decodedText); // Handle the scan success
+  useEffect(() => {
+    // Initialize QuaggaJS and start the barcode scanner
+    Quagga.init(
+      {
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: videoRef.current, // The video element where the camera stream will be shown
+        },
+        decoder: {
+          readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"], // Supported barcode formats
+        },
       },
-      // Error callback to handle scanning issues
-      (errorMessage) => {
-        console.error("Scan error:", errorMessage); // Handle errors
+      (err) => {
+        if (err) {
+          console.error("Quagga initialization error:", err);
+          return;
+        }
+        // Start scanning once initialized
+        Quagga.start();
       }
     );
 
-    // Cleanup when the component unmounts
+    // Listen for barcode detection event
+    Quagga.onDetected((result) => {
+      console.log("Barcode detected:", result);
+      onScanSuccess(result.codeResult.code); // Return the scanned barcode value to parent
+    });
+
     return () => {
-      try {
-        scanner.stop().then(() => {
-          scanner.clear();
-        }).catch((error) => {
-          console.error("Error stopping the scanner:", error);
-        });
-      } catch (error) {
-        console.error("Error during cleanup:", error);
-      }
+      // Cleanup QuaggaJS instance on unmount
+      Quagga.stop();
     };
   }, [onScanSuccess]);
 
-  return <div id="reader" style={{ position: 'relative', width: '100%', height: '100%', border: '2px dashed lime' }}/>
-    
+  return (
+    <div>
+      <video ref={videoRef} style={{ width: "100%", height: "auto" }} />
+    </div>
+  );
 };
 
 export default BarcodeScanner;
