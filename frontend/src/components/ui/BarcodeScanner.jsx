@@ -105,8 +105,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
   }, [scannerInitialized, onScanSuccess]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      {/* Video Feed */}
+    <div>
       <video
         ref={videoRef} // Attach the video element reference
         style={{ width: "100%", height: "auto" }}
@@ -115,7 +114,6 @@ const BarcodeScanner = ({ onScanSuccess }) => {
       />
       {/* Scanning Box */}
       <div
-        className="scanning-box"
         style={{
           position: "absolute",
           top: "50%", // Center the box vertically
@@ -128,7 +126,6 @@ const BarcodeScanner = ({ onScanSuccess }) => {
           boxSizing: "border-box",
         }}
       >
-        {/* This is the scanning box. You can adjust its size and position as needed */}
       </div>
     </div>
   );
