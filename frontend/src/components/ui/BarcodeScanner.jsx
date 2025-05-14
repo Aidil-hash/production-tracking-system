@@ -67,7 +67,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             singleChannel: false // true: only the red color-channel is read
           },
           decoder: {
-            readers: ["code_128_reader"], // Supported barcode formats
+            readers: ["code_39_reader"], // Supported barcode formats
             debug: {
               drawBoundingBox: true,
               showFrequency: false,
