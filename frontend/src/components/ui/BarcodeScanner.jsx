@@ -118,9 +118,9 @@ const BarcodeScanner = ({ onScanSuccess }) => {
         className="scanning-box"
         style={{
           position: "absolute",
-          top: "30%", // Adjust this to position the box where you want
-          left: "50%",
-          transform: "translateX(-50%)", // Center the box horizontally
+          top: "50%", // Center the box vertically
+          left: "50%", // Center the box horizontally
+          transform: "translate(-50%, -50%)", // Offset by 50% for true centering
           width: "80%", // Width of the scanning box
           height: "200px", // Height of the scanning box
           border: "2px solid #00FF00", // Green border for the scanning box
