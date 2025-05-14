@@ -112,21 +112,6 @@ const BarcodeScanner = ({ onScanSuccess }) => {
         muted
         autoPlay
       />
-      {/* Scanning Box */}
-      <div
-        style={{
-          position: "absolute",
-          top: "50%", // Center the box vertically
-          left: "50%", // Center the box horizontally
-          transform: "translate(-50%, -50%)", // Offset by 50% for true centering
-          width: "500px", // Width of the scanning box
-          height: "100px", // Height of the scanning box
-          border: "2px solid #00FF00", // Green border for the scanning box
-          backgroundColor: "rgba(0, 255, 0, 0.2)", // Semi-transparent background
-          boxSizing: "border-box",
-        }}
-      >
-      </div>
     </div>
   );
 };
