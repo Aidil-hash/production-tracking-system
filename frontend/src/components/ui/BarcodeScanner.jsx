@@ -12,7 +12,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
       try {
         // Get the video stream from the camera
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true, // Use video stream (camera feed)
+          video: {facingMode: "environment"}, // Use video stream (camera feed)
         });
 
         // Attach the stream to the video element
@@ -23,8 +23,18 @@ const BarcodeScanner = ({ onScanSuccess }) => {
         // Initialize Quagga scanner only after the camera is ready
         setScannerInitialized(true);
       } catch (error) {
-        console.error("Error accessing camera:", error);
-      }
+          // If rear camera is not available, fall back to the front camera
+          console.warn("Rear camera not available, falling back to front camera.");
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" }, // Use the front camera if rear camera fails
+          });
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+          // Initialize Quagga scanner only after the camera is ready
+          setScannerInitialized(true);
+        }
     };
 
     initializeCamera();
@@ -47,8 +57,6 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             constraints: {
               width: 640,
               height: 480,
-              facingMode: "environment",
-              deviceId: "7832475934759384534"
             },
             area: { // defines rectangle of the detection/localization area
               top: "15%",    // top offset
