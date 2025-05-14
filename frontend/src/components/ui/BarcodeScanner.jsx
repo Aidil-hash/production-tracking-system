@@ -67,7 +67,7 @@ const BarcodeScanner = ({ onScanSuccess }) => {
             singleChannel: false // true: only the red color-channel is read
           },
           decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader", "code_39_reader"], // Supported barcode formats
+            readers: ["code_128_reader"], // Supported barcode formats
             debug: {
               drawBoundingBox: true,
               showFrequency: false,
@@ -105,13 +105,31 @@ const BarcodeScanner = ({ onScanSuccess }) => {
   }, [scannerInitialized, onScanSuccess]);
 
   return (
-    <div>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      {/* Video Feed */}
       <video
         ref={videoRef} // Attach the video element reference
         style={{ width: "100%", height: "auto" }}
         muted
         autoPlay
       />
+      {/* Scanning Box */}
+      <div
+        className="scanning-box"
+        style={{
+          position: "absolute",
+          top: "30%", // Adjust this to position the box where you want
+          left: "50%",
+          transform: "translateX(-50%)", // Center the box horizontally
+          width: "80%", // Width of the scanning box
+          height: "200px", // Height of the scanning box
+          border: "2px solid #00FF00", // Green border for the scanning box
+          backgroundColor: "rgba(0, 255, 0, 0.2)", // Semi-transparent background
+          boxSizing: "border-box",
+        }}
+      >
+        {/* This is the scanning box. You can adjust its size and position as needed */}
+      </div>
     </div>
   );
 };
