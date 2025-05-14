@@ -5,6 +5,7 @@ import adapter from "webrtc-adapter"; // Import webrtc-adapter
 const BarcodeScanner = ({ onScanSuccess }) => {
   const videoRef = useRef(null); // Reference to the video element
   const [scannerInitialized, setScannerInitialized] = useState(false);
+  const qrboxSize = window.innerWidth < 600 ? 200 : 250;
 
   useEffect(() => {
     // Initialize the camera using webrtc-adapter for cross-browser compatibility
@@ -48,6 +49,10 @@ const BarcodeScanner = ({ onScanSuccess }) => {
           decoder: {
             readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader", "code_39_reader"], // Supported barcode formats
           },
+          locator: {
+            patchSize: "medium", // Adjust patch size for mobile devices
+          },
+          qrbox: qrboxSize, // Set the size of the QR box for scanning
         },
         (err) => {
           if (err) {
