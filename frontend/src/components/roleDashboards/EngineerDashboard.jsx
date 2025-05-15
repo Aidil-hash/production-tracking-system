@@ -247,6 +247,7 @@ function EngineerDashboard() {
         </div>
         </div>
 
+      <div className="flex justify-center mt-4">
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} className="z-50">
         <DrawerTrigger asChild>
           <Button variant="outline">Add New Production Line</Button>
@@ -278,8 +279,8 @@ function EngineerDashboard() {
             value={selectedOperator}
             onValueChange={(val) => setSelectedOperator(val)}
           >
-            <SelectTrigger className="w-full" id="operator">
-              <SelectValue placeholder="--Select an operator--" className="text-white" />
+            <SelectTrigger className="w-full text-white" id="operator">
+              <SelectValue placeholder="--Select an operator--"/>
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
               {operators.length > 0 ? (
@@ -331,8 +332,8 @@ function EngineerDashboard() {
             value={newLineDepartment}
             onValueChange={(val) => setNewLineDepartment(val)}
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select the department" className="text-white" />
+            <SelectTrigger className="w-full text-white">
+              <SelectValue placeholder="Select the department"/>
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
               {[
@@ -403,6 +404,7 @@ function EngineerDashboard() {
           <p className="text-center">No scan logs available.</p>
         )}
       </div>
+    </div>
     </div>
   );
 }

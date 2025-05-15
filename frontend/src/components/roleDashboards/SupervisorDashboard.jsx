@@ -39,7 +39,7 @@ function SupervisorDashboard() {
     <Card className="p-4">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Leader Dashboard</h1>
+          <h1 className="text-xl font-bold">Supervisor Dashboard</h1>
           <LogoutButton />
         </div>
       </CardHeader>
