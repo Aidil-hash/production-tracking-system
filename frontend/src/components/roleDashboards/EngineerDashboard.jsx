@@ -22,7 +22,6 @@ import {
 } from "../ui/table"
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
@@ -248,7 +247,6 @@ function EngineerDashboard() {
         </div>
         </div>
 
-      <div className="flex justify-center">
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} className="z-50">
         <DrawerTrigger asChild>
           <Button variant="outline">Add New Production Line</Button>
@@ -367,7 +365,7 @@ function EngineerDashboard() {
               <Button
                 type="submit"
                 className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                onClick={[handleAddNewLine]}
+                onClick={handleAddNewLine}
               >
                 Add New Line
               </Button>
@@ -375,7 +373,6 @@ function EngineerDashboard() {
         </div>
         </DrawerContent>
       </Drawer>
-      </div>
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Scan Logs</h2>
