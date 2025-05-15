@@ -150,7 +150,7 @@ function EngineerDashboard() {
 
   const handleAddNewLine = async (e) => {
     e.preventDefault();
-    if (!newLineModel || !newLineMaterialCount || !newLineTarget || !newLineDepartment || !newTargetEff=== '') {
+    if (!newLineModel || !newLineMaterialCount || !newLineTarget || !newLineDepartment || !newTargetEff || !selectedOperator=== '') {
       setError('Please enter all details.');
       return;
     }
@@ -168,7 +168,7 @@ function EngineerDashboard() {
       setNewLineTarget('');
       setNewLineDepartment('');
       setnewTargetEff('');
-      setSelectedOperator(null);
+      setSelectedOperator('');
       setIsDrawerOpen(false);
       // Refresh lines
       const linesRes = await axios.get(`${API_URL}/api/lines`, {
@@ -368,6 +368,7 @@ function EngineerDashboard() {
         </div>
         </DrawerContent>
       </Drawer>
+      </div>
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Scan Logs</h2>
@@ -404,7 +405,6 @@ function EngineerDashboard() {
           <p className="text-center">No scan logs available.</p>
         )}
       </div>
-    </div>
     </div>
   );
 }
