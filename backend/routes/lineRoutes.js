@@ -27,9 +27,7 @@ router.post(
 );
 
 // GET /api/lines - Get all production lines
-router.get('/', getAllLines, async (req, res) => {
-  const { lineId } = req.params;
-});
+router.get('/', getAllLines );
 
 // GET /api/lines/:lineId - Get a specific production line
 router.get('/:lineId', verifyToken, getLine);

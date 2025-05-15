@@ -24,15 +24,11 @@ app.use(express.json());
 const userRoutes = require('./routes/userRoutes');
 const lineRoutes = require('./routes/lineRoutes');
 const authRoutes = require('./routes/authRoutes');
-const leaderRoutes = require('./routes/leaderRoutes');
 const operatorRoutes = require('./routes/operatorRoutes');
-const supervisorRoutes = require('./routes/supervisorRoutes');
 const engineerRoutes = require('./routes/engineerRoutes');
 
 // Use the routes
-app.use('/api/leaders', leaderRoutes);
 app.use('/api/operators', operatorRoutes);
-app.use('/api/supervisors', supervisorRoutes);
 app.use('/api/engineer', engineerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/lines', lineRoutes);

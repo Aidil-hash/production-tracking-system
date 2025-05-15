@@ -13,7 +13,7 @@ const calculateCurrentEfficiency = (line) => {
 // Create a production line
 const createLine = async (req, res) => {
   try {
-    const { model, materialCount, targetOutputs, department } = req.body;
+    const { model, materialCount, targetOutputs, department, targetEfficiency } = req.body;
     if (!model || materialCount == null) {
       return res.status(400).json({ message: 'Model and materialCount are required' });
     }
@@ -23,6 +23,7 @@ const createLine = async (req, res) => {
       currentMaterialCount: materialCount,
       targetOutputs,
       department,
+      targetEfficiency,
     });
     await newLine.save();
 
@@ -168,13 +169,12 @@ const getLine = async (req, res) => {
 // Get all lines (optimized)
 const getAllLines = async (req, res) => {
   try {
-    const lines = await Line.find().populate('leaderId operatorId', 'name');
+    const lines = await Line.find().populate('operatorId', 'name');
 
     const formatted = lines.map((l) => ({
       id: l._id.toString(),
       model: l.model,
       department: l.department,
-      leaderName: l.leaderId?.name || 'No leader',
       operatorName: l.operatorId?.name || 'No operator',
       currentMaterialCount: l.currentMaterialCount,
       totalOutputs: l.totalOutputs,
@@ -253,7 +253,6 @@ const startLine = async (req, res) => {
     if (line.startTime) {
       return res.status(400).json({ message: 'Line already started' });
     }
-
     line.startTime = new Date();
     line.linestatus = 'running'; // Optional
     await line.save();

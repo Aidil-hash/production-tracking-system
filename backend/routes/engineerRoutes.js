@@ -9,4 +9,10 @@ router.get('/:lineId/analytics', verifyToken, getAnalytics);
 router.get('/:lineId/scanlogs', verifyToken, getScanLogs);
 router.get('/allscanlogs', verifyToken, getAllScans);
 
+// New endpoint for assigning a production line to an operator
+router.put('/assignLine', verifyToken, assignLineToOperator);
+
+// Detach operator route
+router.put('/detachOperator', verifyToken, detachOperatorFromLine);
+
 module.exports = router;

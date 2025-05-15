@@ -9,6 +9,7 @@ const productionLineSchema = new mongoose.Schema({
   linestatus: { type: String },
   department: { type: String, required: true },
   operatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // assigned operator
+  targetEfficiency: { type: Number, default: 0 }, // target efficiency
   startTime: { type: Date },
 
   efficiencyHistory: [{
