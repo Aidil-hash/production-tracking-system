@@ -266,7 +266,7 @@ function EngineerDashboard() {
           </Table>
         </div>
         </div>
-        
+
       <div className="flex justify-center">
       <Drawer>
         <DrawerTrigger asChild>
@@ -275,8 +275,8 @@ function EngineerDashboard() {
         <DrawerContent>
         <div className="mx-auto w-full max-w-sm">
           <DrawerHeader>
-            <DrawerTitle>Add New Production Line</DrawerTitle>
-            <DrawerDescription>Set your production line.</DrawerDescription>
+            <DrawerTitle className="text-white">Add New Production Line</DrawerTitle>
+            <DrawerDescription className="text-white">Set your production line.</DrawerDescription>
           </DrawerHeader>
       <form onSubmit={handleAddNewLine}>
         {/* Model Field */}
@@ -299,7 +299,7 @@ function EngineerDashboard() {
             onValueChange={(val) => setSelectedOperator(val)}
           >
             <SelectTrigger className="w-full" id="operator">
-              <SelectValue placeholder="--Select an operator--" />
+              <SelectValue className="text-white" placeholder="--Select an operator--" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {operators.map((operator) => (
@@ -343,7 +343,7 @@ function EngineerDashboard() {
             <Label htmlFor="newdepartment">Department</Label>
             <Select onValueChange={(value) => setNewLineDepartment(value)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select the department" />
+                <SelectValue className="text-white" placeholder="Select the department" />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 text-white border border-zinc-700">
               <SelectItem
