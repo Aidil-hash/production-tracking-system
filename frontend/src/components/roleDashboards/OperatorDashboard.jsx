@@ -30,6 +30,25 @@ function OperatorDashboard() {
     fetchLine();
   }, [API_URL]);
 
+  const handleStart = async () => {
+    if (!assignedLine) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(
+        `${API_URL}/api/lines/${assignedLine.lineId}/start`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setLineStatus(response.data.line);
+      setMessage('Line started successfully');
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to start line');
+    }
+  };
+
   const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber) {
@@ -92,6 +111,21 @@ function OperatorDashboard() {
               <Typography>Model: {lineStatus.model}</Typography>
               <Typography>Current Material Count: {lineStatus.currentMaterialCount}</Typography>
               <Typography>Total Outputs: {lineStatus.totalOutputs}</Typography>
+
+              {lineStatus.startTime ? (
+                <Typography sx={{ mt: 1 }}>
+                  Started at: {new Date(lineStatus.startTime).toLocaleString()}
+                </Typography>
+              ) : (
+                <Button
+                  variant="contained"
+                  onClick={handleStart}
+                  disabled={loadingScan}
+                  sx={{ mt: 2, minWidth: 100 }}
+                >
+                  Start
+                </Button>
+              )}
             </Box>
           )}
 
@@ -117,6 +151,7 @@ function OperatorDashboard() {
               {loadingScan ? <CircularProgress size={24} color="inherit" /> : 'Scan'}
             </Button>
           </Box>
+
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
             <Button
               variant="outlined"
@@ -125,7 +160,7 @@ function OperatorDashboard() {
             >
               {scanning ? 'Stop Camera Scan' : 'Scan via Camera'}
             </Button>
-            
+
             {scanning && (
               <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', width: '1000px' }}>
                 <Box sx={{ width: '600px', height: '400px' }}>

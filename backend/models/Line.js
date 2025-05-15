@@ -8,9 +8,8 @@ const productionLineSchema = new mongoose.Schema({
   targetOutputs: { type: Number, default: 0 },
   linestatus: { type: String },
   department: { type: String, required: true },
-  leaderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // assigned leader
   operatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // assigned operator
-  startTime: { type: Date, default: Date.now },
+  startTime: { type: Date },
 
   efficiencyHistory: [{
     timestamp: { type: Date, required: true, default: Date.now },

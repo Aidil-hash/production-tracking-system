@@ -244,6 +244,27 @@ const predictMaterialLow = async (req, res) => {
   }
 };
 
+const startLine = async (req, res) => {
+  try {
+    const { lineId } = req.params;
+    const line = await Line.findById(lineId);
+    if (!line) return res.status(404).json({ message: 'Line not found' });
+
+    if (line.startTime) {
+      return res.status(400).json({ message: 'Line already started' });
+    }
+
+    line.startTime = new Date();
+    line.linestatus = 'running'; // Optional
+    await line.save();
+
+    return res.status(200).json({ message: 'Line started', line });
+  } catch (error) {
+    console.error('Error starting line:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Delete line
 const deleteLine = async (req, res) => {
   try {
@@ -272,5 +293,6 @@ module.exports = {
   getAllLines,
   getLineEfficiency,
   predictMaterialLow,
-  deleteLine
+  deleteLine,
+  startLine,
 };
