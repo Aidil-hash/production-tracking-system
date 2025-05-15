@@ -151,9 +151,9 @@ function EngineerDashboard() {
 
   const handleAddNewLine = async (e) => {
     e.preventDefault();
-    if (!newLineModel || !newLineMaterialCount || !newLineTarget || !newLineDepartment || !newTargetEff || !selectedOperator=== '') {
+    if (!newLineModel || !newLineTarget || !newLineDepartment || !newTargetEff || !selectedOperator=== '') {
       setError('Please enter all details.');
-      console.log(newLineModel, newLineMaterialCount, newLineTarget, newLineDepartment, newTargetEff, selectedOperator);
+      console.log(newLineModel, newLineTarget, newLineDepartment, newTargetEff, selectedOperator);
       return;
     }
     try {
