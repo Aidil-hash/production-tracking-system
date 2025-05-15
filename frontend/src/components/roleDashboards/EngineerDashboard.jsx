@@ -266,6 +266,7 @@ function EngineerDashboard() {
           </Table>
         </div>
         </div>
+        
       <div className="flex justify-center">
       <Drawer>
         <DrawerTrigger asChild>
@@ -344,7 +345,7 @@ function EngineerDashboard() {
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select the department" />
               </SelectTrigger>
-              <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+              <SelectContent className="bg-zinc-900 text-white border border-zinc-700">
               <SelectItem
                 value="E2 Drum"
                 className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
