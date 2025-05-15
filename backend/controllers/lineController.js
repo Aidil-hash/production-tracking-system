@@ -20,7 +20,6 @@ const createLine = async (req, res) => {
 
     const newLine = new Line({
       model,
-      currentMaterialCount: materialCount,
       targetOutputs,
       department,
       targetEfficiency,
