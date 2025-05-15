@@ -299,7 +299,7 @@ function EngineerDashboard() {
             onValueChange={(val) => setSelectedOperator(val)}
           >
             <SelectTrigger className="w-full" id="operator">
-              <SelectValue className="text-white" placeholder="--Select an operator--" />
+              <SelectValue className="text-white"/>
             </SelectTrigger>
             <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700" >
               {operators.map((operator) => (
@@ -343,7 +343,7 @@ function EngineerDashboard() {
             <Label htmlFor="newdepartment">Department</Label>
             <Select onValueChange={(value) => setNewLineDepartment(value)}>
               <SelectTrigger className="w-full">
-                <SelectValue className="text-white" placeholder="Select the department" />
+                <SelectValue className="text-white"/>
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 text-white border border-zinc-700">
               <SelectItem
