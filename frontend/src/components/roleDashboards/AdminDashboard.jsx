@@ -84,7 +84,6 @@ function LinesSection({ lines, onDeleteLine }) {
               <TableCell>Model</TableCell>
               <TableCell>Current Material Count</TableCell>
               <TableCell>Total Outputs</TableCell>
-              <TableCell>Leader</TableCell>
               <TableCell>Operator</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
@@ -98,7 +97,6 @@ function LinesSection({ lines, onDeleteLine }) {
                     <TableCell>{line.model || 'N/A'}</TableCell>
                     <TableCell>{line.currentMaterialCount || 'N/A'}</TableCell>
                     <TableCell>{line.totalOutputs || 'N/A'}</TableCell>
-                    <TableCell>{line.leaderName || 'None'}</TableCell>
                     <TableCell>{line.operatorName || 'None'}</TableCell>
                     <TableCell align="center">
                       <Button variant="contained" color="error" size="small" onClick={() => onDeleteLine(line.id)}>

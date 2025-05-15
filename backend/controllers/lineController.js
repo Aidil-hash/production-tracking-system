@@ -13,9 +13,9 @@ const calculateCurrentEfficiency = (line) => {
 // Create a production line
 const createLine = async (req, res) => {
   try {
-    const { model, materialCount, targetOutputs, department, targetEfficiency } = req.body;
-    if (!model || materialCount == null) {
-      return res.status(400).json({ message: 'Model and materialCount are required' });
+    const { model, targetOutputs, department, targetEfficiency, operatorId } = req.body;
+    if (!model || department == null) {
+      return res.status(400).json({ message: 'Model and department are required' });
     }
 
     const newLine = new Line({
@@ -24,6 +24,7 @@ const createLine = async (req, res) => {
       targetOutputs,
       department,
       targetEfficiency,
+      operatorId,
     });
     await newLine.save();
 

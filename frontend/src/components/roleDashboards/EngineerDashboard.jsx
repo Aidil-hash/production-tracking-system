@@ -47,7 +47,7 @@ function EngineerDashboard() {
   const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState(null);
-  const [lineId, setLineId] = useState('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Real-time socket updates
@@ -98,28 +98,6 @@ function EngineerDashboard() {
     };
     fetchLines();
   }, [API_URL]);
-
-  
-  // Handle assigning line to operator
-  const handleAssign = async () => {
-    try {
-      setError('');
-      setMessage('');
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_URL}/api/engineer/assignLine`,
-        { lineId, operatorId: selectedOperator },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage('Line assigned to operator successfully!');
-      const res = await axios.get(`${API_URL}/api/lines`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setLines(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to assign line to operator');
-    }
-  };
 
   // Handle detaching operator from a production line
   const handleDetachOperator = async (lineId) => {
@@ -190,6 +168,9 @@ function EngineerDashboard() {
       setNewLineMaterialCount('');
       setNewLineTarget('');
       setNewLineDepartment('');
+      setnewTargetEff('');
+      setSelectedOperator(null);
+      setIsDrawerOpen(false);
       // Refresh lines
       const linesRes = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -268,7 +249,7 @@ function EngineerDashboard() {
         </div>
 
       <div className="flex justify-center">
-      <Drawer className="z-50">
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} className="z-50">
         <DrawerTrigger asChild>
           <Button variant="outline">Add New Production Line</Button>
         </DrawerTrigger>
@@ -320,7 +301,7 @@ function EngineerDashboard() {
             type="number"
             value={newTargetEff}
             onChange={(e) => setnewTargetEff(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md"
+            className="w-full border border-gray-300 p-2 rounded-md text-white"
             placeholder="Enter target target efficiency"
           />
         </div>
@@ -333,7 +314,7 @@ function EngineerDashboard() {
             type="number"
             value={newLineTarget}
             onChange={(e) => setNewLineTarget(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md"
+            className="w-full border border-gray-300 p-2 rounded-md text-white"
             placeholder="Enter target output"
           />
         </div>
@@ -382,16 +363,14 @@ function EngineerDashboard() {
         </form>
 
           <DrawerFooter>
-            <DrawerClose asChild>
               {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                onClick={[handleAddNewLine, handleAssign]}
+                onClick={[handleAddNewLine]}
               >
                 Add New Line
               </Button>
-            </DrawerClose>
           </DrawerFooter>
         </div>
         </DrawerContent>
