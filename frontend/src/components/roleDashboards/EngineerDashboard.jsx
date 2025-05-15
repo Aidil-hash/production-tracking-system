@@ -42,11 +42,11 @@ function EngineerDashboard() {
   const [newLineModel, setNewLineModel] = useState('');
   const [newLineMaterialCount, setNewLineMaterialCount] = useState('');
   const [newLineTarget, setNewLineTarget] = useState('');
-  const [newLineDepartment, setNewLineDepartment] = useState('');
+  const [newLineDepartment, setNewLineDepartment] = useState(null);
   const [newTargetEff, setnewTargetEff] = useState('');
   const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
-  const [selectedOperator, setSelectedOperator] = useState('');
+  const [selectedOperator, setSelectedOperator] = useState(null);
   const [lineId, setLineId] = useState('');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
