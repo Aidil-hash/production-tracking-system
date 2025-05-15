@@ -257,6 +257,7 @@ function EngineerDashboard() {
             <DrawerTitle className="text-white">Add New Production Line</DrawerTitle>
             <DrawerDescription className="text-white">Set your production line.</DrawerDescription>
           </DrawerHeader>
+
       <form onSubmit={handleAddNewLine}>
         {/* Model Field */}
         <div className="mb-4">
@@ -265,7 +266,7 @@ function EngineerDashboard() {
             id="model"
             value={newLineModel}
             onChange={(e) => setNewLineModel(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md"
+            className="w-full border border-gray-300 p-2 rounded-md text-white"
             placeholder="Enter model"
           />
         </div>
