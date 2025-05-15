@@ -74,6 +74,7 @@ function EngineerDashboard() {
         });
         const operatorData = res.data.filter((user) => user.role === 'operator');
         setOperators(operatorData);
+        console.log('Fetched operators:', operatorData); // Debugging log
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch operators');
       }
@@ -152,6 +153,7 @@ function EngineerDashboard() {
     e.preventDefault();
     if (!newLineModel || !newLineMaterialCount || !newLineTarget || !newLineDepartment || !newTargetEff || !selectedOperator=== '') {
       setError('Please enter all details.');
+      console.log(newLineModel, newLineMaterialCount, newLineTarget, newLineDepartment, newTargetEff, selectedOperator);
       return;
     }
     try {
