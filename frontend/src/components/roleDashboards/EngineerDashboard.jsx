@@ -271,23 +271,30 @@ function EngineerDashboard() {
           />
         </div>
 
-        {/* Initial Material Count Field */}
         <div className="mb-4">
           <Label htmlFor="operator">Select Operator</Label>
           <Select
+            key={operators.length} // Force redraw if list updates
             value={selectedOperator}
             onValueChange={(val) => setSelectedOperator(val)}
           >
             <SelectTrigger className="w-full" id="operator">
-              <SelectValue className="text-white" placeholder="--Select an operator--" />
+              <SelectValue placeholder="--Select an operator--" className="text-white" />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 text-white border border-zinc-700" >
-              {operators.map((operator) => (
-                <SelectItem key={operator._id} value={operator._id}
-                className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer">
-                  {operator.name}
-                </SelectItem>
-              ))}
+            <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
+              {operators.length > 0 ? (
+                operators.map((operator) => (
+                  <SelectItem
+                    key={operator._id}
+                    value={operator._id}
+                    className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer"
+                  >
+                    {operator.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="px-4 py-2 text-sm text-gray-400">No operators available</div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -318,59 +325,45 @@ function EngineerDashboard() {
           />
         </div>
 
-        {/*Department Field */}
-          <div className="space-y-1 relative z-10 mb-4">
-            <Label htmlFor="newdepartment">Department</Label>
-            <Select onValueChange={(value) => setNewLineDepartment(value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue className="text-white" placeholder="Select the department" />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 text-white border border-zinc-700">
-              <SelectItem
-                value="E2 Drum"
-                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
-              >
-                E2 Drum
-              </SelectItem>
-              <SelectItem
-                value="E3 Compact"
-                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
-              >
-                E3 Compact
-              </SelectItem>
-              <SelectItem
-                value="E3 Non-Compact"
-                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
-              >
-                E3 Non-Compact
-              </SelectItem>
-              <SelectItem
-                value="E4 Piano"
-                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
-              >
-                E4 Piano
-              </SelectItem>
-              <SelectItem
-                value="E4 Keyboard"
-                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
-              >
-                E4 Keyboard
-              </SelectItem>
+        <div className="mb-4">
+          <Label htmlFor="newdepartment">Department</Label>
+          <Select
+            value={newLineDepartment}
+            onValueChange={(val) => setNewLineDepartment(val)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select the department" className="text-white" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
+              {[
+                "E2 Drum",
+                "E3 Compact",
+                "E3 Non-Compact",
+                "E4 Piano",
+                "E4 Keyboard"
+              ].map((dept) => (
+                <SelectItem
+                  key={dept}
+                  value={dept}
+                  className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
+                >
+                  {dept}
+                </SelectItem>
+              ))}
             </SelectContent>
-            </Select>
-          </div>
-        </form>
-
+          </Select>
+        </div>
           <DrawerFooter>
               {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                onClick={handleAddNewLine}
+                //onClick={handleAddNewLine}
               >
                 Add New Line
               </Button>
           </DrawerFooter>
+        </form>
         </div>
         </DrawerContent>
       </Drawer>
