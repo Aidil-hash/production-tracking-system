@@ -56,7 +56,7 @@ router.get('/:lineId/efficiency', verifyToken, getLineEfficiency);
 router.get('/:lineId/predict', predictMaterialLow);
 
 // PATCH /api/lines/:lineId/start - Start the production line
-router.patch('/lines/:lineId/start', startLine);
+router.patch('/:lineId/start', startLine);
 
 // DELETE /api/lines/:id
 router.delete('/:id', verifyToken, deleteLine);
