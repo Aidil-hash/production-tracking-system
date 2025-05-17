@@ -222,11 +222,15 @@ const startLine = async (req, res) => {
     if (line.startTime) {
       return res.status(400).json({ message: 'Line already started' });
     }
-    line.startTime = new Date();
-    line.linestatus = 'running'; // Optional
-    await line.save();
 
-    return res.status(200).json({ message: 'Line started', line });
+    // Update the production line to remove the assigned operator
+    const updatedLine = await ProductionLine.findByIdAndUpdate(
+      lineId,
+      { startTime : new Date() }, // or undefined, depending on your schema
+      {linestatus : 'running'},
+    );
+
+    return res.status(200).json({ message: 'Line started', updatedLine });
   } catch (error) {
     console.error('Error starting line:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
