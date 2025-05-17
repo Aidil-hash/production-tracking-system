@@ -25,16 +25,16 @@ const createLine = async (req, res) => {
     }
 
     const targetEff = calculateTargetEfficiency({
-      ...line.toObject(),
+      targetOutputs: targetOutputs
     });
 
     const newLine = new Line({
       model,
       targetOutputs,
       department,
-      targetEfficiency : targetEff,
+      targetEfficiency: targetEff,
       operatorId,
-      linestatus: 'STOPPED',
+      linestatus: 'STOPPED'
     });
     await newLine.save();
 
