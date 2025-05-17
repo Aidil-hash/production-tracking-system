@@ -11,23 +11,34 @@ const calculateCurrentEfficiency = (line) => {
 };
 
 const calculateTargetEfficiency = (line) => {
-  const shiftDurationHours = 8; // 8-hour shift in hours
-  const shiftDurationMs = shiftDurationHours * 60 * 60 * 1000;
+  // Get today's 7:45 PM
+  const today = new Date();
+  const shiftEnd = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+    19, // 7 PM in 24-hour format
+    45  // 45 minutes
+  );
 
   if (!line.startTime) {
-    return line.targetOutputs / (shiftDurationHours * 60);
+    // If line hasn't started, calculate based on remaining time until 7:45 PM
+    const now = new Date();
+    const remainingMs = shiftEnd.getTime() - now.getTime();
+    const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1); // at least 1 minute
+    return line.targetOutputs / remainingMinutes;
   }
 
   const now = Date.now();
-  const shiftEndTime = new Date(line.startTime).getTime() + shiftDurationMs;
   
-  // If shift has ended, return 0 or last target
-  if (now >= shiftEndTime) {
+  // If current time is past 7:45 PM, return 0
+  if (now >= shiftEnd.getTime()) {
     return 0;
   }
 
-  const remainingMs = shiftEndTime - now;
-  const remainingMinutes = remainingMs / (60 * 1000);
+  // Calculate remaining time until 7:45 PM
+  const remainingMs = shiftEnd.getTime() - now;
+  const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1); // at least 1 minute
   const remainingOutputs = line.targetOutputs - line.totalOutputs;
 
   return Math.max(remainingOutputs / remainingMinutes, 0);

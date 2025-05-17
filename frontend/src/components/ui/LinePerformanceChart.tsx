@@ -74,6 +74,13 @@ export default function LinePerformanceChart() {
         setLinesData(res.data);
       });
     });
+
+    // Handle new lines
+    socket.on("lineStarted", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
   
     // Handle target updates
     socket.on("targetUpdate", (data) => {
@@ -111,6 +118,7 @@ export default function LinePerformanceChart() {
       socket.off("newScan");
       socket.off("newLine");
       socket.off("targetUpdate");
+      socket.off("lineStarted");
       socket.off("error");
       socket.off("connect_error");
       socket.disconnect();
@@ -204,10 +212,10 @@ export default function LinePerformanceChart() {
                   ) : (
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm text-muted-foreground px-1">
-                        <div className="text-gray-800" ><strong>Total Outputs:</strong> {line.data.length}</div>
-                        <div className="text-gray-800">
-                          <strong>Line Status:</strong>{' '}
-                          <span className={`px-2 py-1 rounded-md border ${
+                        <div className="text-gray-800 text-[14px]" ><strong>Total Outputs:</strong> {line.totalOutputs}</div>
+                        <div className="text-gray-800 text-[14px]">
+                          <strong className="text-[14px]">Line Status:</strong>{' '}
+                          <span className={`px-2 py-1 rounded-md border text-[14px] ${
                             line.linestatus === 'RUNNING' 
                               ? 'bg-green-500 text-green-900' 
                               : 'bg-red-500 text-red-800'
@@ -215,8 +223,8 @@ export default function LinePerformanceChart() {
                             {line.linestatus}
                           </span>
                         </div>
-                        <div className="text-gray-800">
-                          <strong>Average Efficiency:</strong>{" "}
+                        <div className="text-gray-800 text-[14px]">
+                          <strong className="text-[14px]">Average Efficiency:</strong>{" "}
                           {(line.data.reduce((sum, d) => sum + d.performance, 0) / line.data.length).toFixed(2)} /min
                         </div>
                       </div>
