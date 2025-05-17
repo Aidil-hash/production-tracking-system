@@ -13,7 +13,8 @@ const productionLineSchema = new mongoose.Schema({
 
   efficiencyHistory: [{
     timestamp: { type: Date, required: true, default: Date.now },
-    efficiency: { type: Number, required: true }
+    efficiency: { type: Number, required: true },
+    target: { type: Number, required: true },
   }],
 });
 

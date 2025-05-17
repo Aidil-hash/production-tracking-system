@@ -86,26 +86,27 @@ export default function LinePerformanceChart() {
       data: getFilteredData(line.efficiencyHistory).map((point: any) => ({
         time: new Date(point.timestamp).getTime(),
         performance: point.efficiency,
+        target: point.target,
       })),
     }));
     console.log("Chart Data:", chartData)
 
   return (
-    <Card>
+    <Card className="bg-white">
       <CardHeader>
-        <CardTitle>Production Line Efficiency</CardTitle>
-        <CardDescription>Real-time efficiency by line</CardDescription>
+        <CardTitle className="text-gray-800">Production Line Efficiency</CardTitle>
+        <CardDescription className="text-gray-800">Real-time efficiency by line</CardDescription>
       </CardHeader>
 
       <CardContent>
         <div className="mb-4 flex flex-wrap gap-4">
           <div>
-            <Label>Filter by Department</Label>
+            <Label className="text-gray-800">Filter by Department</Label>
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select department" />
+              <SelectTrigger className="w-[200px] text-gray-800">
+                <SelectValue placeholder="Select department" className="text-gray-800"/>
               </SelectTrigger>
-              <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+              <SelectContent className="bg-white text-gray-800 border border-gray-200 z-10">
                 <SelectItem value="All" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">All</SelectItem>
                 <SelectItem value="E2 Drum" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E2 Drum</SelectItem>
                 <SelectItem value="E3 Compact" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">E3 Compact</SelectItem>
@@ -117,12 +118,12 @@ export default function LinePerformanceChart() {
           </div>
 
           <div>
-            <Label>Time Range</Label>
+            <Label className="text-gray-800">Time Range</Label>
             <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[200px] text-gray-800">
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
-              <SelectContent className="z-50 bg-zinc-900 text-white border border-zinc-700">
+              <SelectContent className="bg-white text-gray-800 border border-gray-200 z-20">
                 <SelectItem value="1h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 1 Hour</SelectItem>
                 <SelectItem value="6h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 6 Hours</SelectItem>
                 <SelectItem value="12h" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">Last 12 Hours</SelectItem>
@@ -138,8 +139,8 @@ export default function LinePerformanceChart() {
         ) : (
           <Accordion type="multiple" className="space-y-4">
             {chartData.map((line) => (
-              <AccordionItem key={line._id || line.name} value={line._id || line.name}>
-                <AccordionTrigger>
+              <AccordionItem key={line._id || line.name} value={line._id || line.name} className="bg-white">
+                <AccordionTrigger className="text-gray-800">
                   {line.name} – {line.department}
                 </AccordionTrigger>
                 <AccordionContent>
@@ -148,8 +149,8 @@ export default function LinePerformanceChart() {
                   ) : (
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm text-muted-foreground px-1">
-                        <div><strong>Total Outputs:</strong> {line.data.length}</div>
-                        <div>
+                        <div className="text-gray-800"><strong>Total Outputs:</strong> {line.data.length}</div>
+                        <div className="text-gray-800">
                           <strong>Average Efficiency:</strong>{" "}
                           {(line.data.reduce((sum, d) => sum + d.performance, 0) / line.data.length).toFixed(2)} /min
                         </div>
@@ -157,7 +158,7 @@ export default function LinePerformanceChart() {
 
                       <div style={{ width: '100%', height: 150 }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={line.data}>
+                        <AreaChart data={line.data} stackOffset="expand">
                           <CartesianGrid strokeDasharray="1 1" />
                           <XAxis
                             dataKey="time"
@@ -173,11 +174,18 @@ export default function LinePerformanceChart() {
                             fill="#4F46E5"
                             fillOpacity={0.3}
                           />
+                          <RechartsArea
+                            type="monotone"
+                            dataKey="target"
+                            stroke="#2edb37"
+                            fill="#2edb37"
+                            fillOpacity={0.3}
+                          />
                           <Tooltip
                             content={({ active, payload }) =>
                               active && payload?.length ? (
-                                <div className="bg-background p-2 rounded-lg border">
-                                  <div>
+                                <div className="bg-white p-2 rounded-lg border">
+                                  <div className="text-gray-800">
                                     Efficiency: {payload[0].value.toFixed(2)}/min<br />
                                     {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}
                                   </div>

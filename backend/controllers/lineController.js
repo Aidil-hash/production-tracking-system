@@ -102,6 +102,7 @@ const scanSerial = async (req, res) => {
           efficiencyHistory: {
             timestamp: new Date(),
             efficiency: projectedEfficiency,
+            target: line.targetEfficiency,
           },
         },
       },
