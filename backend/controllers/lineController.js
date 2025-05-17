@@ -223,14 +223,38 @@ const startLine = async (req, res) => {
       return res.status(400).json({ message: 'Line already started' });
     }
 
-    // Update the production line to remove the assigned operator
-    const updatedLine = await ProductionLine.findByIdAndUpdate(
+    // Update the line with start time and status
+    const updatedLine = await Line.findByIdAndUpdate(
       lineId,
-      { startTime : Date.now(), linestatus : 'running' },
+      { 
+        startTime: Date.now(), 
+        linestatus: 'running',
+        efficiencyHistory: [{
+          timestamp: Date.now(),
+          efficiency: 0
+        }]
+      },
       { new: true }
-    );
+    ).populate('operatorId', 'name');
 
-    return res.status(200).json({ message: 'Line started', updatedLine });
+    if (!updatedLine) {
+      return res.status(404).json({ message: 'Line update failed' });
+    }
+
+    // Emit socket event if socket.io is configured
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('lineStarted', {
+        lineId: updatedLine._id,
+        status: updatedLine.linestatus,
+        startTime: updatedLine.startTime
+      });
+    }
+
+    return res.status(200).json({ 
+      message: 'Line started successfully', 
+      line: updatedLine 
+    });
   } catch (error) {
     console.error('Error starting line:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });

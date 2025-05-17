@@ -115,7 +115,12 @@ function OperatorDashboard() {
                 <Button
                   variant="contained"
                   onClick={handleStart}
-                  sx={{ mt: 2, minWidth: 100 }}
+                  sx={{ mt: 2, minWidth: 100,
+                    backgroundColor: '#25994b', // Custom color
+                    '&:hover': {
+                      backgroundColor: '#208541', // Darker shade on hover
+                    },
+                   }}
                 >
                   Start
                 </Button>
