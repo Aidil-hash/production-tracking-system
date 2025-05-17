@@ -96,20 +96,20 @@ function OperatorDashboard() {
             Assigned Line Model: {assignedLine.model}
           </Typography>
 
-          {lineStatus && (
+          {assignedLine && (
             <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Line Status
               </Typography>
-              <Typography>Model: {lineStatus.model}</Typography>
-              <Typography>Target Outputs: {lineStatus.targetOutputs}</Typography>
-              <Typography>Total Outputs: {lineStatus.totalOutputs}</Typography>
+              <Typography>Model: {assignedLine.model}</Typography>
+              <Typography>Target Outputs: {assignedLine.targetOutputs}</Typography>
+              <Typography>Total Outputs: {assignedLine.totalOutputs}</Typography>
             </Box>
           )}
 
-              {lineStatus.startTime ? (
+              {assignedLine.startTime ? (
                 <Typography sx={{ mt: 1 }}>
-                  Started at: {new Date(lineStatus.startTime).toLocaleString()}
+                  Started at: {new Date(assignedLine.startTime).toLocaleString()}
                 </Typography>
               ) : (
                 <Button
