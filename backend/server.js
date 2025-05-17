@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const connectDB = require('./config/database'); // adjust path if needed
+const { updateTargetRates } = require('./controllers/lineController');
 const cors = require('cors');
 const path = require('path');
 
@@ -54,8 +55,23 @@ const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
     origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
-    methods: ['GET', 'POST']
-  }
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  pingTimeout: 60000, // Add timeout config
+  pingInterval: 25000
+});
+
+io.on('connection', (socket) => {
+  console.log('A client connected:', socket.id);
+  
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log(`Client disconnected (${reason}):`, socket.id);
+  });
 });
 
 // Store the Socket.IO instance in app locals for use in controllers
@@ -67,6 +83,16 @@ io.on('connection', (socket) => {
     console.log('Client disconnected:', socket.id);
   });
 });
+
+const UPDATE_INTERVAL = 60000; // Update every minute
+
+setInterval(async () => {
+  try {
+    await updateTargetRates(io);
+  } catch (error) {
+    console.error('Error in target rate update interval:', error);
+  }
+}, UPDATE_INTERVAL);
 
 // Export the app for testing
 module.exports = app;

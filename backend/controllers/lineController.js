@@ -6,14 +6,31 @@ const User = require('../models/User');
 // Utility function
 const calculateCurrentEfficiency = (line) => {
   const start = line.startTime || new Date();
-  const elapsedMinutes = Math.max((new Date() - start) / (1000 * 60), 1);
-  return line.totalOutputs / elapsedMinutes;
+  const elapsedHours = Math.max((new Date() - start) / (1000 * 60), 1);
+  return line.totalOutputs / elapsedHours;
 };
 
 const calculateTargetEfficiency = (line) => {
-  // Calculate expected outputs per minute based on target
-  const shiftDurationMinutes = 8 * 60; // Assuming 8-hour shift
-  return line.targetOutputs / shiftDurationMinutes;
+  const shiftDurationHours = 8; // 8-hour shift in hours
+  const shiftDurationMs = shiftDurationHours * 60 * 60 * 1000;
+
+  if (!line.startTime) {
+    return line.targetOutputs / (shiftDurationHours * 60);
+  }
+
+  const now = Date.now();
+  const shiftEndTime = new Date(line.startTime).getTime() + shiftDurationMs;
+  
+  // If shift has ended, return 0 or last target
+  if (now >= shiftEndTime) {
+    return 0;
+  }
+
+  const remainingMs = shiftEndTime - now;
+  const remainingMinutes = remainingMs / (60 * 1000);
+  const remainingOutputs = line.targetOutputs - line.totalOutputs;
+
+  return Math.max(remainingOutputs / remainingMinutes, 0);
 };
 
 // Create a production line
@@ -116,15 +133,24 @@ const scanSerial = async (req, res) => {
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
-        $inc: { totalOutputs: 1},
-        $set: { startTime: line.startTime || new Date() },
+        $inc: { totalOutputs: 1 },
+        $set: { 
+          startTime: line.startTime || new Date(),
+          targetEfficiency: calculateTargetEfficiency({
+            ...line.toObject(),
+            totalOutputs: line.totalOutputs + 1
+          })
+        },
         $push: {
           efficiencyHistory: {
             timestamp: new Date(),
             efficiency: projectedEfficiency,
-            target: line.targetEfficiency,
-          },
-        },
+            target: calculateTargetEfficiency({
+              ...line.toObject(),
+              totalOutputs: line.totalOutputs + 1
+            })
+          }
+        }
       },
       { new: true, session }
     );
@@ -218,7 +244,7 @@ const getLineEfficiency = async (req, res) => {
     if (!line.startTime) return res.status(400).json({ message: "Start time not set." });
 
     const efficiency = calculateCurrentEfficiency(line);
-    const timeElapsed = ((Date.now() - line.startTime.getTime()) / (1000 * 60)).toFixed(2);
+    const timeElapsed = ((Date.now() - line.startTime.getTime()) / (1000 * 60 * 60)).toFixed(2);
 
     return res.status(200).json({
       lineId: line._id,
@@ -283,6 +309,39 @@ const startLine = async (req, res) => {
   }
 };
 
+const updateTargetRates = async (io) => {
+  try {
+    const activeLines = await Line.find({ 
+      startTime: { $ne: null },
+      linestatus: 'RUNNING'
+    });
+
+    for (const line of activeLines) {
+      const newTarget = calculateTargetEfficiency(line);
+      
+      await Line.findByIdAndUpdate(line._id, {
+        $set: { targetEfficiency: newTarget },
+        $push: {
+          efficiencyHistory: {
+            timestamp: new Date(),
+            efficiency: calculateCurrentEfficiency(line),
+            target: newTarget
+          }
+        }
+      });
+
+      if (io) {
+        io.emit('targetUpdate', {
+          lineId: line._id,
+          targetEfficiency: newTarget
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error updating target rates:', error);
+  }
+};
+
 // Delete line
 const deleteLine = async (req, res) => {
   try {
@@ -311,5 +370,6 @@ module.exports = {
   getAllLines,
   getLineEfficiency,
   deleteLine,
+  updateTargetRates,
   startLine,
 };

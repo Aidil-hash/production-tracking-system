@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { format, subHours } from "date-fns";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -10,13 +10,14 @@ import {
   YAxis,
   Area as RechartsArea,
   ResponsiveContainer,
-  Tooltip
+  Tooltip,
 } from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
+  CardFooter,
   CardTitle,
 } from "../ui/card";
 import {
@@ -59,50 +60,90 @@ export default function LinePerformanceChart() {
   // Real-time socket updates
   useEffect(() => {
     const socket = io(API_URL, { transports: ["websocket"] });
-
+  
+    // Handle new scans
     socket.on("newScan", () => {
       axios.get(`${API_URL}/api/lines`).then((res) => {
         setLinesData(res.data);
       });
     });
-
-    return () => socket.disconnect();
+  
+    // Handle new lines
+    socket.on("newLine", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
+  
+    // Handle target updates
+    socket.on("targetUpdate", (data) => {
+      setLinesData(prevLines => 
+        prevLines.map(line => {
+          if (line.id === data.lineId) {
+            return {
+              ...line,
+              efficiencyHistory: [
+                ...line.efficiencyHistory,
+                {
+                  timestamp: new Date(),
+                  efficiency: line.efficiencyHistory[line.efficiencyHistory.length - 1]?.efficiency || 0,
+                  target: data.targetEfficiency
+                }
+              ]
+            };
+          }
+          return line;
+        })
+      );
+    });
+  
+    socket.on("error", (error) => {
+      console.error("Socket error:", error);
+      setError("Connection error occurred");
+    });
+  
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setError("Failed to connect to server");
+    });
+  
+    return () => {
+      socket.off("newScan");
+      socket.off("newLine");
+      socket.off("targetUpdate");
+      socket.off("error");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
   }, [API_URL]);
 
-    // Real-time socket updates
-    useEffect(() => {
-      const socket = io(API_URL, { transports: ["websocket"] });
-  
-      socket.on("newLine", () => {
-        axios.get(`${API_URL}/api/lines`).then((res) => {
-          setLinesData(res.data);
-        });
-      });
-  
-      return () => socket.disconnect();
-    }, [API_URL]);
-
   // Time filtering helper
-  const getFilteredData = (history: any[]) => {
-    if (timeFilter === "All") return history;
-    const hours = parseInt(timeFilter.replace("h", ""));
-    const cutoff = subHours(new Date(), hours).getTime();
-    return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
-  };
-
-  const chartData = linesData
-    .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
-    .map((line,index) => ({
-      _id: line.id,
-      name: line.model,
-      department: line.department,
-      linestatus: line.linestatus,
-      data: getFilteredData(line.efficiencyHistory).map((point: any) => ({
-        time: new Date(point.timestamp).getTime(),
-        performance: point.efficiency,
-        target: point.target,
-      })),
-    }));
+  const chartData = useMemo(() => {
+    const getFilteredData = (history: any[]) => {
+      if (timeFilter === "All") return history;
+      const hours = parseInt(timeFilter.replace("h", ""));
+      const cutoff = subHours(new Date(), hours).getTime();
+      return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+    };
+  
+    return linesData
+      .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
+      .map((line) => ({
+        _id: line.id,
+        name: line.model,
+        department: line.department,
+        linestatus: line.linestatus,
+        totalOutputs: line.totalOutputs,
+        targetOutputs: line.targetOutputs,
+        data: getFilteredData(line.efficiencyHistory || [])
+          .map((point: any) => ({
+            time: new Date(point.timestamp).getTime(),
+            performance: Number(point.efficiency) || 0,
+            target: Number(point.target) || 0,
+          }))
+          .sort((a, b) => a.time - b.time),
+      }));
+  }, [linesData, selectedDepartment, timeFilter]);
     console.log("Chart Data:", chartData)
 
   return (
@@ -183,6 +224,16 @@ export default function LinePerformanceChart() {
                       <div style={{ width: '100%', height: 150 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={line.data} stackOffset="expand">
+                        <defs>
+                          <linearGradient id="performanceGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.1}/>
+                          </linearGradient>
+                          <linearGradient id="targetGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#2EDB37" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#2EDB37" stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
                           <CartesianGrid strokeDasharray="1 1" />
                           <XAxis
                             dataKey="time"
@@ -191,20 +242,20 @@ export default function LinePerformanceChart() {
                             tickFormatter={(ts) => format(new Date(ts), "HH:mm")}
                           />
                           <YAxis tickFormatter={(v) => `${v.toFixed(1)}/min`} />
-                          <RechartsArea
-                            type="monotone"
-                            dataKey="performance"
-                            stroke="#4F46E5"
-                            fill="#4F46E5"
-                            fillOpacity={0.3}
-                          />
-                          <RechartsArea
-                            type="monotone"
-                            dataKey="target"
-                            stroke="#2EDB37"
-                            fill="#2EDB37"
-                            fillOpacity={0.3}
-                          />
+                            <RechartsArea
+                              type="monotone"
+                              dataKey="performance"
+                              stroke="#4F46E5"
+                              fill="url(#performanceGradient)"
+                              name="performance" // Add name for legend
+                            />
+                            <RechartsArea
+                              type="monotone"
+                              dataKey="target"
+                              stroke="#2EDB37"
+                              fill="url(#targetGradient)"
+                              name="target" // Add name for legend
+                            />
                           <Tooltip
                             content={({ active, payload }) =>
                               active && payload?.length ? (
@@ -212,7 +263,7 @@ export default function LinePerformanceChart() {
                                   <div className="text-gray-800">
                                     Efficiency: {payload[0].value.toFixed(2)}/min<br />
                                     {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}<br />
-                                    <strong>Target:</strong> {payload[0].payload.target}/min<br />
+                                    <strong>Target:</strong> {payload[0].payload.target.toFixed(2)}/min<br />
                                   </div>
                                 </div>
                               ) : null
@@ -229,6 +280,18 @@ export default function LinePerformanceChart() {
           </Accordion>
         )}
       </CardContent>
+      <CardFooter className="border-t pt-4">
+        <div className="flex items-center justify-center w-full gap-8">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#4F46E5]"></div>
+            <span className="text-sm text-gray-800">Current Efficiency</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#2EDB37]"></div>
+            <span className="text-sm text-gray-800">Target Efficiency</span>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
