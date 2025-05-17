@@ -38,6 +38,15 @@ const createLine = async (req, res) => {
     });
     await newLine.save();
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('newLine', {
+        model: newLine.model,
+        operator: operatorId,
+        department: newLine.department,
+      });
+    }
+
     return res.status(201).json({ message: 'Production line created', line: newLine });
   } catch (error) {
     console.error('Error creating line:', error);

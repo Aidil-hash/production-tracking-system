@@ -69,6 +69,19 @@ export default function LinePerformanceChart() {
     return () => socket.disconnect();
   }, [API_URL]);
 
+    // Real-time socket updates
+    useEffect(() => {
+      const socket = io(API_URL, { transports: ["websocket"] });
+  
+      socket.on("newLine", () => {
+        axios.get(`${API_URL}/api/lines`).then((res) => {
+          setLinesData(res.data);
+        });
+      });
+  
+      return () => socket.disconnect();
+    }, [API_URL]);
+
   // Time filtering helper
   const getFilteredData = (history: any[]) => {
     if (timeFilter === "All") return history;
