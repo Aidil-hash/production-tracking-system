@@ -109,7 +109,7 @@ function OperatorDashboard() {
                 Line Status
               </Typography>
               <Typography>Model: {lineStatus.model}</Typography>
-              <Typography>Current Material Count: {lineStatus.currentMaterialCount}</Typography>
+              <Typography>Target Outputs: {lineStatus.targetOutputs}</Typography>
               <Typography>Total Outputs: {lineStatus.totalOutputs}</Typography>
 
               {lineStatus.startTime ? (

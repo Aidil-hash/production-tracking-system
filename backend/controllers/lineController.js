@@ -79,8 +79,8 @@ const scanSerial = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    if (line.currentMaterialCount <= 0) {
-      return res.status(409).json({ message: "Insufficient materials for production." });
+    if (line.targetOutputs) {
+      return res.status(409).json({ message: "Target reached." });
     }
 
     const existingScan = await ScanLog.findOne({ serialNumber }).session(session);
@@ -96,7 +96,7 @@ const scanSerial = async (req, res) => {
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
-        $inc: { totalOutputs: 1, currentMaterialCount: -1 },
+        $inc: { totalOutputs: 1},
         $set: { startTime: line.startTime || new Date() },
         $push: {
           efficiencyHistory: {
@@ -129,7 +129,6 @@ const scanSerial = async (req, res) => {
         name: line.operatorId.name,
         department: updatedLine.department,
         totalOutputs: updatedLine.totalOutputs,
-        currentMaterialCount: updatedLine.currentMaterialCount,
         efficiency: projectedEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
@@ -141,7 +140,6 @@ const scanSerial = async (req, res) => {
       message: "Serial scanned successfully",
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
-      remainingMaterials: updatedLine.currentMaterialCount,
       efficiency: projectedEfficiency,
     });
   } catch (error) {
@@ -176,7 +174,6 @@ const getAllLines = async (req, res) => {
       model: l.model,
       department: l.department,
       operatorName: l.operatorId?.name || 'No operator',
-      currentMaterialCount: l.currentMaterialCount,
       totalOutputs: l.totalOutputs,
       targetOutputs: l.targetOutputs,
       startTime: l.startTime,
@@ -212,34 +209,6 @@ const getLineEfficiency = async (req, res) => {
     });
   } catch (error) {
     console.error('Error calculating efficiency:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-// Material depletion prediction
-const predictMaterialLow = async (req, res) => {
-  try {
-    const { lineId } = req.params;
-    const line = await Line.findById(lineId);
-    if (!line) return res.status(404).json({ message: 'Line not found' });
-    if (!line.startTime) return res.status(400).json({ message: "Start time not set." });
-
-    const efficiency = calculateCurrentEfficiency(line);
-    const predictedTime = efficiency ? line.currentMaterialCount / efficiency : 0;
-    const notificationSent = predictedTime < 30;
-
-    return res.status(200).json({
-      lineId: line._id,
-      model: line.model,
-      currentMaterialCount: line.currentMaterialCount,
-      totalOutputs: line.totalOutputs,
-      targetOutputs: line.targetOutputs,
-      predictedTimeToDepletion: predictedTime.toFixed(2),
-      notificationSent,
-      efficiencyData: line.efficiencyHistory.slice(-30),
-    });
-  } catch (error) {
-    console.error('Error predicting material low:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -291,7 +260,6 @@ module.exports = {
   getLine,
   getAllLines,
   getLineEfficiency,
-  predictMaterialLow,
   deleteLine,
   startLine,
 };

@@ -7,7 +7,6 @@ const {
   getLine,
   getAllLines,
   getLineEfficiency,
-  predictMaterialLow,
   startLine,
   deleteLine
 } = require('../controllers/lineController');
@@ -49,9 +48,6 @@ router.post(
 
 // GET /api/lines/:lineId/efficiency - Calculate efficiency
 router.get('/:lineId/efficiency', verifyToken, getLineEfficiency);
-
-// GET /api/lines/:lineId/predict - Predict low material and trigger notification
-router.get('/:lineId/predict', predictMaterialLow);
 
 // PATCH /api/lines/:lineId/start - Start the production line
 router.patch('/:lineId/start', startLine);

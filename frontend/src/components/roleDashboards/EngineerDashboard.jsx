@@ -20,15 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "../ui/drawer"
 import LogoutButton from '../Logout';
 
 function EngineerDashboard() {
@@ -39,14 +30,12 @@ function EngineerDashboard() {
   const [filterText, setFilterText] = useState('');
   const [filteredScanLogs, setFilteredScanLogs] = useState([]);
   const [newLineModel, setNewLineModel] = useState('');
-  const [newLineMaterialCount, setNewLineMaterialCount] = useState('');
   const [newLineTarget, setNewLineTarget] = useState('');
-  const [newLineDepartment, setNewLineDepartment] = useState(null);
+  const [newLineDepartment, setNewLineDepartment] = useState('');
   const [newTargetEff, setnewTargetEff] = useState('');
   const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
-  const [selectedOperator, setSelectedOperator] = useState(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedOperator, setSelectedOperator] = useState('');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Real-time socket updates
@@ -153,7 +142,6 @@ function EngineerDashboard() {
     e.preventDefault();
     if (!newLineModel || !newLineTarget || !newLineDepartment || !newTargetEff || !selectedOperator=== '') {
       setError('Please enter all details.');
-      console.log(newLineModel, newLineTarget, newLineDepartment, newTargetEff, selectedOperator);
       return;
     }
     try {
@@ -170,7 +158,7 @@ function EngineerDashboard() {
       setNewLineDepartment('');
       setnewTargetEff('');
       setSelectedOperator('');
-      setIsDrawerOpen(false);
+      console.log(newLineModel, newLineTarget, newLineDepartment, newTargetEff, selectedOperator);
       // Refresh lines
       const linesRes = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -248,18 +236,10 @@ function EngineerDashboard() {
         </div>
         </div>
 
-      <div className="flex justify-center mt-4">
-      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} className="z-50">
-        <DrawerTrigger asChild>
-          <Button variant="outline">Add New Production Line</Button>
-        </DrawerTrigger>
-        <DrawerContent>
-        <div className="mx-auto w-full max-w-sm">
-          <DrawerHeader>
-            <DrawerTitle className="text-white">Add New Production Line</DrawerTitle>
-            <DrawerDescription className="text-white">Set your production line.</DrawerDescription>
-          </DrawerHeader>
-
+      <div className="mt-4 mx-auto max-w-600 p-4 border border-gray-300 rounded-md">
+        <h5 className= "mb-4 text-lg font-semibold text-center">
+          Add New Production Line
+        </h5>
       <form onSubmit={handleAddNewLine}>
         {/* Model Field */}
         <div className="mb-4">
@@ -281,9 +261,9 @@ function EngineerDashboard() {
             onValueChange={(val) => setSelectedOperator(val)}
           >
             <SelectTrigger className="w-full text-white" id="operator">
-              <SelectValue placeholder="--Select an operator--"/>
+              <SelectValue placeholder="--Select an operator--" className="z-150"/>
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
+            <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-100">  
               {operators.length > 0 ? (
                 operators.map((operator) => (
                   <SelectItem
@@ -334,7 +314,7 @@ function EngineerDashboard() {
             onValueChange={(val) => setNewLineDepartment(val)}
           >
             <SelectTrigger className="w-full text-white">
-              <SelectValue placeholder="Select the department"/>
+              <SelectValue placeholder="Select the department" className="z-50"/>
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
               {[
@@ -355,21 +335,16 @@ function EngineerDashboard() {
             </SelectContent>
           </Select>
         </div>
-          <DrawerFooter>
-              {/* Submit Button */}
-              <Button
+        {/* Submit Button */}
+        <button
                 type="submit"
                 className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                //onClick={handleAddNewLine}
+                onClick={handleAddNewLine}
               >
                 Add New Line
-              </Button>
-          </DrawerFooter>
+              </button>
         </form>
         </div>
-        </DrawerContent>
-      </Drawer>
-      </div>
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Scan Logs</h2>

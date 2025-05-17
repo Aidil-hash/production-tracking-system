@@ -19,7 +19,6 @@ const getAssignedLineForOperator = async (req, res) => {
     return res.status(200).json({
       lineId: assignedLine._id.toString(),
       model: assignedLine.model,
-      currentMaterialCount: assignedLine.currentMaterialCount,
       totalOutputs: assignedLine.totalOutputs,
       startTime: assignedLine.startTime,
     });

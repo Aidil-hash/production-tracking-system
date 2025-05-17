@@ -3,7 +3,6 @@
 const mongoose = require('mongoose');
 const productionLineSchema = new mongoose.Schema({
   model: { type: String, required: true },
-  currentMaterialCount: { type: Number, default: 0 },
   totalOutputs: { type: Number, default: 0 },
   targetOutputs: { type: Number, default: 0 },
   linestatus: { type: String },

@@ -51,7 +51,7 @@ function LeaderDashboard() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">Model</TableHead>
-                  <TableHead>Current Material Count</TableHead>
+                  <TableHead>Target Outputs</TableHead>
                   <TableHead>Total Outputs</TableHead>
                 </TableRow>
               </TableHeader>
@@ -59,7 +59,7 @@ function LeaderDashboard() {
                 {lines.map((line) => (
                 <TableRow key={line.id}>
                   <TableCell>{line.model}</TableCell>
-                  <TableCell>{line.currentMaterialCount}</TableCell>
+                  <TableCell>{line.targetOutputs}</TableCell>
                   <TableCell>{line.totalOutputs}</TableCell>
                 </TableRow>
                 ))}

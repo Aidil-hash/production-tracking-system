@@ -82,7 +82,7 @@ function LinesSection({ lines, onDeleteLine }) {
             <TableRow>
               <TableCell>ID</TableCell>
               <TableCell>Model</TableCell>
-              <TableCell>Current Material Count</TableCell>
+              <TableCell>Target Outputs</TableCell>
               <TableCell>Total Outputs</TableCell>
               <TableCell>Operator</TableCell>
               <TableCell align="center">Actions</TableCell>
@@ -95,7 +95,7 @@ function LinesSection({ lines, onDeleteLine }) {
                   <TableRow key={line.id}>
                     <TableCell>{line.id || 'N/A'}</TableCell>
                     <TableCell>{line.model || 'N/A'}</TableCell>
-                    <TableCell>{line.currentMaterialCount || 'N/A'}</TableCell>
+                    <TableCell>{line.targetOutputs || 'N/A'}</TableCell>
                     <TableCell>{line.totalOutputs || 'N/A'}</TableCell>
                     <TableCell>{line.operatorName || 'None'}</TableCell>
                     <TableCell align="center">
