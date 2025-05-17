@@ -10,20 +10,31 @@ const calculateCurrentEfficiency = (line) => {
   return line.totalOutputs / elapsedMinutes;
 };
 
+const calculateTargetEfficiency = (line) => {
+  // Calculate expected outputs per minute based on target
+  const shiftDurationMinutes = 8 * 60; // Assuming 8-hour shift
+  return line.targetOutputs / shiftDurationMinutes;
+};
+
 // Create a production line
 const createLine = async (req, res) => {
   try {
-    const { model, targetOutputs, department, targetEfficiency, operatorId } = req.body;
+    const { model, targetOutputs, department, operatorId } = req.body;
     if (!model || department == null) {
       return res.status(400).json({ message: 'Model and department are required' });
     }
+
+    const targetEff = calculateTargetEfficiency({
+      ...line.toObject(),
+    });
 
     const newLine = new Line({
       model,
       targetOutputs,
       department,
-      targetEfficiency,
+      targetEfficiency : targetEff,
       operatorId,
+      linestatus: 'STOPPED',
     });
     await newLine.save();
 
@@ -232,7 +243,8 @@ const startLine = async (req, res) => {
         linestatus: 'RUNNING',
         efficiencyHistory: [{
           timestamp: Date.now(),
-          efficiency: 0
+          efficiency: 0,
+          target: line.targetEfficiency,
         }]
       },
       { new: true }

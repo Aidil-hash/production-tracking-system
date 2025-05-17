@@ -32,7 +32,6 @@ function EngineerDashboard() {
   const [newLineModel, setNewLineModel] = useState('');
   const [newLineTarget, setNewLineTarget] = useState('');
   const [newLineDepartment, setNewLineDepartment] = useState('');
-  const [newTargetEff, setnewTargetEff] = useState('');
   const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState('');
@@ -140,14 +139,14 @@ function EngineerDashboard() {
 
   const handleAddNewLine = async (e) => {
     e.preventDefault();
-    if (!newLineModel || !newLineTarget || !newLineDepartment || !newTargetEff || !selectedOperator=== '') {
+    if (!newLineModel || !newLineTarget || !newLineDepartment || !selectedOperator=== '') {
       setError('Please enter all details.');
       return;
     }
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/api/lines`, 
-        { model: newLineModel, targetOutputs: newLineTarget, department: newLineDepartment, targetEfficiency: newTargetEff, operatorId: selectedOperator },
+        { model: newLineModel, targetOutputs: newLineTarget, department: newLineDepartment, operatorId: selectedOperator },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Optionally, refresh the lines list after adding a new line
@@ -156,9 +155,8 @@ function EngineerDashboard() {
       setNewLineModel('');
       setNewLineTarget('');
       setNewLineDepartment('');
-      setnewTargetEff('');
       setSelectedOperator('');
-      console.log(newLineModel, newLineTarget, newLineDepartment, newTargetEff, selectedOperator);
+      console.log(newLineModel, newLineTarget, newLineDepartment, selectedOperator);
       // Refresh lines
       const linesRes = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -279,19 +277,6 @@ function EngineerDashboard() {
               )}
             </SelectContent>
           </Select>
-        </div>
-
-        {/*Target Output Field */}
-        <div className="mb-4">
-          <Label htmlFor="targetEff">Target Efficiency</Label>
-          <Input
-            id="targetEff"
-            type="number"
-            value={newTargetEff}
-            onChange={(e) => setnewTargetEff(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md text-white"
-            placeholder="Enter target target efficiency"
-          />
         </div>
 
         {/*Target Output Field */}

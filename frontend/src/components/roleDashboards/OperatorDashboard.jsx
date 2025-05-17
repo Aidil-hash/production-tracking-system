@@ -120,7 +120,7 @@ function OperatorDashboard() {
                 <Typography variant="subtitle1" color="primary">
                   Started at: {new Date(assignedLine.startTime).toLocaleString()}
                 </Typography>
-                <Typography variant="subtitle2" color={assignedLine.linestatus === 'running' ? 'success.main' : 'error.main'}>
+                <Typography variant="subtitle2" color={assignedLine.linestatus === 'RUNNING' ? 'success.main' : 'error.main'}>
                   Status: {assignedLine.linestatus}
                 </Typography>
               </Box>

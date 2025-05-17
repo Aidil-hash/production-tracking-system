@@ -83,6 +83,7 @@ export default function LinePerformanceChart() {
       _id: line.id,
       name: line.model,
       department: line.department,
+      linestatus: line.linestatus,
       data: getFilteredData(line.efficiencyHistory).map((point: any) => ({
         time: new Date(point.timestamp).getTime(),
         performance: point.efficiency,
@@ -149,7 +150,17 @@ export default function LinePerformanceChart() {
                   ) : (
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm text-muted-foreground px-1">
-                        <div className="text-gray-800"><strong>Total Outputs:</strong> {line.data.length}</div>
+                        <div className="text-gray-800" ><strong>Total Outputs:</strong> {line.data.length}</div>
+                        <div className="text-gray-800">
+                          <strong>Line Status:</strong>{' '}
+                          <span className={`px-2 py-1 rounded-md border ${
+                            line.linestatus === 'RUNNING' 
+                              ? 'bg-green-500 text-green-900' 
+                              : 'bg-red-500 text-red-800'
+                          }`}>
+                            {line.linestatus}
+                          </span>
+                        </div>
                         <div className="text-gray-800">
                           <strong>Average Efficiency:</strong>{" "}
                           {(line.data.reduce((sum, d) => sum + d.performance, 0) / line.data.length).toFixed(2)} /min
@@ -177,8 +188,8 @@ export default function LinePerformanceChart() {
                           <RechartsArea
                             type="monotone"
                             dataKey="target"
-                            stroke="#2edb37"
-                            fill="#2edb37"
+                            stroke="#2EDB37"
+                            fill="#2EDB37"
                             fillOpacity={0.3}
                           />
                           <Tooltip
@@ -187,7 +198,8 @@ export default function LinePerformanceChart() {
                                 <div className="bg-white p-2 rounded-lg border">
                                   <div className="text-gray-800">
                                     Efficiency: {payload[0].value.toFixed(2)}/min<br />
-                                    {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}
+                                    {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}<br />
+                                    <strong>Target:</strong> {payload[0].payload.target}/min<br />
                                   </div>
                                 </div>
                               ) : null
