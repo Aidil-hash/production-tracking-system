@@ -40,6 +40,10 @@ function OperatorDashboard() {
       );
       setLineStatus(response.data.line);
       setMessage('Line started successfully');
+      const res = await axios.get(`${API_URL}/api/operators/assignedLine`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAssignedLine(res.data);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to start line');
@@ -65,6 +69,10 @@ function OperatorDashboard() {
       setError('');
       setSerialNumber('');
       setLineStatus(response.data.line);
+      const res2 = await axios.get(`${API_URL}/api/operators/assignedLine`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAssignedLine(res2.data);
     } catch (err) {
       setMessage('');
       setError(err.response?.data?.message || 'Scan failed');
@@ -107,24 +115,35 @@ function OperatorDashboard() {
             </Box>
           )}
 
-              {assignedLine.startTime ? (
-                <Typography sx={{ mt: 1 }}>
+            {assignedLine.startTime ? (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1" color="primary">
                   Started at: {new Date(assignedLine.startTime).toLocaleString()}
                 </Typography>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleStart}
-                  sx={{ mt: 2, minWidth: 100,
-                    backgroundColor: '#25994b', // Custom color
-                    '&:hover': {
-                      backgroundColor: '#208541', // Darker shade on hover
-                    },
-                   }}
-                >
-                  Start
-                </Button>
-              )}
+                <Typography variant="subtitle2" color={assignedLine.linestatus === 'running' ? 'success.main' : 'error.main'}>
+                  Status: {assignedLine.linestatus}
+                </Typography>
+              </Box>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleStart}
+                disabled={!assignedLine}
+                sx={{
+                  mt: 2,
+                  minWidth: 100,
+                  backgroundColor: '#25994b',
+                  '&:hover': {
+                    backgroundColor: '#208541',
+                  },
+                  '&:disabled': {
+                    backgroundColor: '#cccccc',
+                  }
+                }}
+              >
+                Start Line
+              </Button>
+            )}
 
           <Box
             component="form"

@@ -79,7 +79,7 @@ const scanSerial = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    if (line.targetOutputs) {
+    if (line.totalOutputs == line.targetOutputs) {
       return res.status(409).json({ message: "Target reached." });
     }
 
@@ -228,7 +228,7 @@ const startLine = async (req, res) => {
       lineId,
       { 
         startTime: Date.now(), 
-        linestatus: 'running',
+        linestatus: 'RUNNING',
         efficiencyHistory: [{
           timestamp: Date.now(),
           efficiency: 0

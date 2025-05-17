@@ -20,6 +20,8 @@ const getAssignedLineForOperator = async (req, res) => {
       lineId: assignedLine._id.toString(),
       model: assignedLine.model,
       totalOutputs: assignedLine.totalOutputs,
+      targetOutputs: assignedLine.targetOutputs,
+      linestatus: assignedLine.linestatus,
       startTime: assignedLine.startTime,
     });
   } catch (error) {
