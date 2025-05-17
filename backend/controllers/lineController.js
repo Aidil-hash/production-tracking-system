@@ -226,8 +226,8 @@ const startLine = async (req, res) => {
     // Update the production line to remove the assigned operator
     const updatedLine = await ProductionLine.findByIdAndUpdate(
       lineId,
-      { startTime : new Date() }, // or undefined, depending on your schema
-      {linestatus : 'running'},
+      { startTime : Date.now(), linestatus : 'running' },
+      { new: true }
     );
 
     return res.status(200).json({ message: 'Line started', updatedLine });
