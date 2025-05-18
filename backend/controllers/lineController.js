@@ -38,17 +38,17 @@ const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 
 
   // Calculate remaining outputs and time
   const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
-  const remainingMs = shiftEnd - now;
+  const remainingMs = shiftEnd.getTime() - now.getTime(); // Add getTime()
   const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
 
   // Calculate required rate (outputs per minute)
   const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
 
   // Calculate baseline rate (original target rate)
-  const totalShiftMinutes = Math.max((shiftEnd - effectiveStartTime) / (60 * 1000), 1);
+  const totalShiftMinutes = Math.max((shiftEnd.getTime() - effectiveStartTime.getTime()) / (60 * 1000), 1);
   const baselineRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
 
-  // Return the stricter rate (avoid slowdowns below baseline)
+  // Return the higher of baseline or required rate, unless no outputs remain
   return remainingOutputs <= 0 ? 0 : Math.max(requiredRate, baselineRate);
 };
 
@@ -148,21 +148,25 @@ const scanSerial = async (req, res) => {
 
     const nextTotalOutputs = line.totalOutputs + 1;
 
+    // Calculate current efficiency
     const projectedEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
       totalOutputs: nextTotalOutputs
     });
 
+    // Calculate target rate using the full function logic
     const newTarget = calculateTargetEfficiency({
       ...line.toObject(),
-      totalOutputs: nextTotalOutputs
-    });
+      totalOutputs: nextTotalOutputs,
+      startTime: line.startTime,
+      targetOutputs: line.targetOutputs
+    }, 8, 15, 19, 45); // Set shift hours to 9:30 AM - 7:45 PM
 
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
         $set: { 
-          totalOutputs: nextTotalOutputs, // Use $set instead of $inc
+          totalOutputs: nextTotalOutputs,
           startTime: line.startTime || new Date(),
           targetEfficiency: newTarget
         },
@@ -343,29 +347,33 @@ const updateTargetRates = async (io) => {
     });
 
     for (const line of activeLines) {
+      // Use the full target efficiency calculation
       const newTarget = calculateTargetEfficiency({
         ...line.toObject(),
         startTime: line.startTime,
         targetOutputs: line.targetOutputs,
         totalOutputs: line.totalOutputs
-      });
+      }, 8, 15, 19, 45); // Set shift hours to 9:30 AM - 7:45 PM
       
-      await Line.findByIdAndUpdate(line._id, {
-        $set: { targetEfficiency: newTarget },
-        $push: {
-          efficiencyHistory: {
-            timestamp: new Date(),
-            efficiency: calculateCurrentEfficiency(line),
-            target: newTarget
+      // Only update if the target has changed
+      if (newTarget !== line.targetEfficiency) {
+        await Line.findByIdAndUpdate(line._id, {
+          $set: { targetEfficiency: newTarget },
+          $push: {
+            efficiencyHistory: {
+              timestamp: new Date(),
+              efficiency: calculateCurrentEfficiency(line),
+              target: newTarget
+            }
           }
-        }
-      });
-
-      if (io) {
-        io.emit('targetUpdate', {
-          lineId: line._id,
-          targetEfficiency: newTarget
         });
+
+        if (io) {
+          io.emit('targetUpdate', {
+            lineId: line._id,
+            targetEfficiency: newTarget
+          });
+        }
       }
     }
   } catch (error) {

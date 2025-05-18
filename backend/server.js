@@ -62,6 +62,9 @@ const io = new Server(server, {
   pingInterval: 25000
 });
 
+// Store the Socket.IO instance in app locals for use in controllers
+app.set('io', io);
+
 io.on('connection', (socket) => {
   console.log('A client connected:', socket.id);
   
@@ -71,16 +74,6 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', (reason) => {
     console.log(`Client disconnected (${reason}):`, socket.id);
-  });
-});
-
-// Store the Socket.IO instance in app locals for use in controllers
-app.set('io', io);
-
-io.on('connection', (socket) => {
-  console.log('A client connected:', socket.id);
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
   });
 });
 
