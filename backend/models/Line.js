@@ -5,6 +5,7 @@ const productionLineSchema = new mongoose.Schema({
   model: { type: String, required: true },
   totalOutputs: { type: Number, default: 0 },
   targetOutputs: { type: Number, default: 0 },
+  rejectedOutputs: { type: Number, default: 0 },
   linestatus: { type: String },
   department: { type: String, required: true },
   operatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // assigned operator
@@ -15,6 +16,7 @@ const productionLineSchema = new mongoose.Schema({
     timestamp: { type: Date, required: true, default: Date.now },
     efficiency: { type: Number, required: true },
     target: { type: Number, required: true },
+    rejectedOutputs: { type: Number },
   }],
 });
 

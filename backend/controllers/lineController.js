@@ -177,15 +177,30 @@ const scanSerial = async (req, res) => {
     }
 
     const existingScan = await ScanLog.findOne({ serialNumber }).session(session);
+    
     if (existingScan) {
-      return res.status(409).json({ message: "Serial number already scanned." });
+      // If previous scan was PASS, reject any new scan
+      if (existingScan.serialStatus === 'PASS') {
+        return res.status(409).json({ 
+          message: "Serial number already passed inspection and cannot be scanned again." 
+        });
+      }
+      
+      // If previous scan was NG and new scan is not PASS, reject
+      if (existingScan.serialStatus === 'NG' && serialStatus !== 'PASS') {
+        return res.status(409).json({ 
+          message: "This NG serial number can only be rescanned as PASS." 
+        });
+      }
     }
 
     // Use Malaysia time for the scan
     const malaysiaNow = getMalaysiaTime();
     const formattedTime = formatMalaysiaTime(malaysiaNow);
 
-    const nextTotalOutputs = line.totalOutputs + 1;
+    const nextTotalOutputs = serialStatus === 'PASS' ? line.totalOutputs + 1 : line.totalOutputs;
+
+    const rejectedOutputs = serialStatus === 'NG' ? line.rejectedOutputs + 1 : line.rejectedOutputs;
 
     // Calculate efficiencies with local time
     const currentEfficiency = calculateCurrentEfficiency({
@@ -205,13 +220,15 @@ const scanSerial = async (req, res) => {
       {
         $set: { 
           totalOutputs: nextTotalOutputs,
+          rejectedOutputs: rejectedOutputs,
           targetEfficiency: targetEfficiency
         },
         $push: {
           efficiencyHistory: {
             timestamp: malaysiaNow,
             efficiency: currentEfficiency,
-            target: targetEfficiency
+            target: targetEfficiency,
+            rejectedOutputs: rejectedOutputs,
           }
         }
       },
@@ -242,6 +259,8 @@ const scanSerial = async (req, res) => {
         name: line.operatorId.name,
         department: updatedLine.department,
         totalOutputs: updatedLine.totalOutputs,
+        targetOutputs: updatedLine.targetOutputs,
+        rejectedOutputs: updatedLine.rejectedOutputs,
         efficiency: currentEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
@@ -252,7 +271,9 @@ const scanSerial = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: "Serial scanned successfully",
+      message: serialStatus === 'PASS' ? 
+        "Serial scanned successfully as PASS" : 
+        "Serial marked as NG",
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
       efficiency: currentEfficiency,
