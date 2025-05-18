@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { format, subHours } from "date-fns";
+import { format, subHours, addHours } from "date-fns";
 import axios from "axios";
 import { io } from "socket.io-client";
 import {
@@ -133,7 +133,7 @@ export default function LinePerformanceChart() {
       const cutoff = subHours(new Date(), hours).getTime();
       return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
     };
-  
+
     return linesData
       .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
       .map((line) => ({
@@ -144,14 +144,22 @@ export default function LinePerformanceChart() {
         totalOutputs: line.totalOutputs,
         targetOutputs: line.targetOutputs,
         data: getFilteredData(line.efficiencyHistory || [])
-          .map((point: any) => ({
-            time: new Date(point.timestamp).getTime(),
-            performance: Number(point.efficiency) || 0,
-            target: Number(point.target) || 0,
-          }))
+          .map((point: any) => {
+            // Parse timestamp and ensure it's treated as Malaysia time
+            const timestamp = new Date(point.timestamp);
+            // Add 8 hours to convert to Malaysia time
+            const malaysiaTime = addHours(timestamp, -8);
+            
+            return {
+              time: malaysiaTime.getTime(),
+              performance: Number(point.efficiency) || 0,
+              target: Number(point.target) || 0,
+            };
+          })
           .sort((a, b) => a.time - b.time),
       }));
   }, [linesData, selectedDepartment, timeFilter]);
+
     console.log("Chart Data:", chartData)
 
   return (
