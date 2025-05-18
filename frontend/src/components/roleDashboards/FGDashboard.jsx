@@ -30,55 +30,51 @@ function FGDashboard() {
   }, [validationResult]);
 
   // Update the handleScan function to prioritize PASS status
-    const handleScan = async (e) => {
+  const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber.trim()) {
-        setError('Please enter a serial number');
-        return;
+      setError('Please enter a serial number');
+      return;
     }
 
     setIsLoading(true);
     setError('');
     
     try {
-        const token = localStorage.getItem('token');
-        const response = await axios.post(
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
         `${API_URL}/api/lines/validate`,
         { serialNumber },
         { headers: { Authorization: `Bearer ${token}` } }
-        );
+      );
 
-        // Check for any PASS status in the scan history
-        const hasPassed = response.data.scanHistory?.some(scan => scan.serialStatus === 'PASS');
-
-        if (hasPassed) {
-        // If there's any PASS status, show PASS regardless of other statuses
+      // Map backend response to our display states
+      if (response.data.passedFirstStation) {
         setValidationResult({
-            status: 'PASS',
-            message: 'Serial number has passed inspection',
-            scanRecord: response.data.scanHistory.find(scan => scan.serialStatus === 'PASS')
+          status: 'PASS',
+          message: response.data.message,
+          scanRecord: response.data.scanRecord
         });
-        } else if (response.data.serialStatus === 'NG') {
-        // Only show NG if there's no PASS status
+      } else if (response.data.Status === 'NG' || response.data.serialStatus === 'NG') {
         setValidationResult({
-            status: 'NG',
-            message: response.data.message || 'Serial rejected at first station',
-            scanRecord: response.data.scanRecord
+          status: 'NG',
+          message: response.data.message || 'Serial rejected at first station',
+          scanRecord: response.data.scanRecord
         });
-        } else {
+      } else {
         // Not processed case
         setValidationResult({
-            status: 'NOT_PROCESSED',
-            message: response.data.message || 'Serial not processed at first station'
+          status: 'NOT_PROCESSED',
+          message: response.data.message || 'Serial not processed at first station'
         });
-        }
+      }
     } catch (err) {
-        setError(err.response?.data?.message || 'Validation failed');
-        setValidationResult(null);
+      setError(err.response?.data?.message || 'Validation failed');
+      setValidationResult(null);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-    };
+  };
 
   const getStatusColor = () => {
     switch(validationResult?.status) {
