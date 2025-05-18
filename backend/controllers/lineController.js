@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
 const User = require('../models/User');
+const { getMalaysiaTime, formatMalaysiaTime } = require('../utils/timeHelper');
 
 // Utility function
 const calculateCurrentEfficiency = (line) => {
@@ -11,7 +12,7 @@ const calculateCurrentEfficiency = (line) => {
 };
 
 const calculateTargetEfficiency = (line, _shiftStartHour = 8, _shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {
-  const now = new Date();
+  const now = getMalaysiaTime();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   // Debug: Log current time and shift end time
@@ -167,6 +168,10 @@ const scanSerial = async (req, res) => {
       return res.status(409).json({ message: "Serial number already scanned." });
     }
 
+    // Use Malaysia time for the scan
+    const malaysiaNow = getMalaysiaTime();
+    const formattedTime = formatMalaysiaTime(malaysiaNow);
+
     const nextTotalOutputs = line.totalOutputs + 1;
     const scanTime = new Date();
     const localScanTime = new Date(scanTime.getTime() - scanTime.getTimezoneOffset() * 60000);
@@ -209,8 +214,8 @@ const scanSerial = async (req, res) => {
       name: line.operatorId.name,
       serialNumber,
       efficiency: currentEfficiency,
-      scanTime: localScanTime, // Store local time
-      localScanTime: localScanTime.toString() // Human-readable format
+      scanTime: malaysiaNow, // Store local time
+      localScanTime: formattedTime, // Human-readable format
     });
 
     await newScanLog.save({ session });
@@ -228,8 +233,8 @@ const scanSerial = async (req, res) => {
         efficiency: currentEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
-        scannedAt: localScanTime.toISOString(),
-        localTime: localScanTime.toString()
+        scannedAt: malaysiaNow,
+        localTime: formattedTime,
       });
     }
 
@@ -238,7 +243,7 @@ const scanSerial = async (req, res) => {
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
       efficiency: currentEfficiency,
-      localTime: localScanTime.toString()
+      localTime: formattedTime,
     });
   } catch (error) {
     console.error("Scan error:", error);
@@ -322,50 +327,38 @@ const startLine = async (req, res) => {
       return res.status(400).json({ message: 'Line already started' });
     }
 
-    // Get current local time (adjusted for timezone)
-    const now = new Date();
-    const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    
-    // Calculate target efficiency with local time
+    // Use Malaysia time
+    const malaysiaNow = getMalaysiaTime();
+    const formattedTime = formatMalaysiaTime(malaysiaNow);
+
     const targetEfficiency = calculateTargetEfficiency({
       ...line.toObject(),
-      startTime: localNow
+      startTime: malaysiaNow
     });
 
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       { 
-        startTime: localNow, 
+        startTime: malaysiaNow,
         linestatus: 'RUNNING',
         targetEfficiency: targetEfficiency,
         $push: {
           efficiencyHistory: {
-            timestamp: localNow,
+            timestamp: malaysiaNow,
             efficiency: 0,
             target: targetEfficiency
           }
         }
       },
       { new: true }
-    ).populate('operatorId', 'name');
+    );
 
-    if (!updatedLine) {
-      return res.status(404).json({ message: 'Line update failed' });
-    }
-
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('lineStarted', {
-        lineId: updatedLine._id,
-        status: updatedLine.linestatus,
-        startTime: localNow.toISOString() // Send ISO string for consistency
-      });
-    }
-
+    console.log(`Line started at Malaysia time: ${formattedTime}`);
+    
     return res.status(200).json({ 
-      message: 'Line started successfully', 
-      line: updatedLine,
-      localStartTime: localNow.toString() // Include human-readable local time
+      message: 'Line started successfully',
+      startTime: malaysiaNow.toISOString(),
+      malaysiaTime: formattedTime
     });
   } catch (error) {
     console.error('Error starting line:', error);
