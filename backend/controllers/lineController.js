@@ -7,8 +7,21 @@ const { getMalaysiaTime, formatMalaysiaTime } = require('../utils/timeHelper');
 // Utility function
 const calculateCurrentEfficiency = (line) => {
   if (!line.startTime) return 0;
-  const elapsedMinutes = Math.max((new Date() - new Date(line.startTime)) / (60 * 1000), 1);
-  return (line.totalOutputs || 0) / elapsedMinutes; // outputs per minute
+  const now = getMalaysiaTime();
+  const start = line.startTime;
+  
+  // Get precise minutes with 2 decimal places
+  const elapsedMinutes = Math.max(((now - start) / 60000), 0.01); // Prevent division by zero
+  const efficiency = (line.totalOutputs || 0) / elapsedMinutes;
+
+  console.log(`Efficiency Debug: 
+    Outputs: ${line.totalOutputs || 0}
+    Start: ${start.toISOString()}
+    Now: ${now.toISOString()}
+    Elapsed: ${elapsedMinutes.toFixed(2)} mins
+    Efficiency: ${efficiency.toFixed(2)}/min`);
+    
+  return Number(efficiency.toFixed(2)); // outputs per minute
 };
 
 const calculateTargetEfficiency = (line, _shiftStartHour = 8, _shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {

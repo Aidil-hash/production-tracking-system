@@ -118,7 +118,7 @@ function OperatorDashboard() {
             {assignedLine.startTime ? (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle1" color="primary">
-                  Started at: {new Date(assignedLine.startTime).toLocaleString()}
+                  Started at: {new Date(assignedLine.startTime.replace('Z', '+08:00')).toLocaleString('en-MY')}
                 </Typography>
                 <Typography variant="subtitle2" color={assignedLine.linestatus === 'RUNNING' ? 'success.main' : 'error.main'}>
                   Status: {assignedLine.linestatus}
