@@ -168,11 +168,14 @@ const scanSerial = async (req, res) => {
     }
 
     const nextTotalOutputs = line.totalOutputs + 1;
+    const scanTime = new Date();
+    const localScanTime = new Date(scanTime.getTime() - scanTime.getTimezoneOffset() * 60000);
 
-    // Calculate efficiencies
+    // Calculate efficiencies with local time
     const currentEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
-      totalOutputs: nextTotalOutputs
+      totalOutputs: nextTotalOutputs,
+      startTime: line.startTime // Already in local time from startLine
     });
 
     const targetEfficiency = calculateTargetEfficiency({
@@ -180,7 +183,7 @@ const scanSerial = async (req, res) => {
       totalOutputs: nextTotalOutputs
     });
 
-    // Update the line
+    // Update the line with local time
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
@@ -190,7 +193,7 @@ const scanSerial = async (req, res) => {
         },
         $push: {
           efficiencyHistory: {
-            timestamp: new Date(),
+            timestamp: localScanTime,
             efficiency: currentEfficiency,
             target: targetEfficiency
           }
@@ -206,6 +209,8 @@ const scanSerial = async (req, res) => {
       name: line.operatorId.name,
       serialNumber,
       efficiency: currentEfficiency,
+      scanTime: localScanTime, // Store local time
+      localScanTime: localScanTime.toString() // Human-readable format
     });
 
     await newScanLog.save({ session });
@@ -223,7 +228,8 @@ const scanSerial = async (req, res) => {
         efficiency: currentEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
-        scannedAt: new Date().toISOString(),
+        scannedAt: localScanTime.toISOString(),
+        localTime: localScanTime.toString()
       });
     }
 
@@ -232,6 +238,7 @@ const scanSerial = async (req, res) => {
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
       efficiency: currentEfficiency,
+      localTime: localScanTime.toString()
     });
   } catch (error) {
     console.error("Scan error:", error);
@@ -315,21 +322,25 @@ const startLine = async (req, res) => {
       return res.status(400).json({ message: 'Line already started' });
     }
 
-    const startTime = new Date();
+    // Get current local time (adjusted for timezone)
+    const now = new Date();
+    const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    
+    // Calculate target efficiency with local time
     const targetEfficiency = calculateTargetEfficiency({
       ...line.toObject(),
-      startTime: startTime
+      startTime: localNow
     });
 
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       { 
-        startTime: startTime, 
+        startTime: localNow, 
         linestatus: 'RUNNING',
         targetEfficiency: targetEfficiency,
         $push: {
           efficiencyHistory: {
-            timestamp: startTime,
+            timestamp: localNow,
             efficiency: 0,
             target: targetEfficiency
           }
@@ -347,13 +358,14 @@ const startLine = async (req, res) => {
       io.emit('lineStarted', {
         lineId: updatedLine._id,
         status: updatedLine.linestatus,
-        startTime: updatedLine.startTime
+        startTime: localNow.toISOString() // Send ISO string for consistency
       });
     }
 
     return res.status(200).json({ 
       message: 'Line started successfully', 
-      line: updatedLine 
+      line: updatedLine,
+      localStartTime: localNow.toString() // Include human-readable local time
     });
   } catch (error) {
     console.error('Error starting line:', error);
