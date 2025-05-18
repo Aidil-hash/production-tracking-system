@@ -10,50 +10,43 @@ const calculateCurrentEfficiency = (line) => {
   return (line.totalOutputs || 0) / elapsedMinutes; // outputs per minute
 };
 
-const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {
+const calculateTargetEfficiency = (line, shiftEndHour = 19, shiftEndMinute = 45) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  // Define shift times
-  const shiftStart = new Date(today);
-  shiftStart.setHours(shiftStartHour, shiftStartMinute, 0, 0);
-  
+
+  // Define shift end time
   const shiftEnd = new Date(today);
   shiftEnd.setHours(shiftEndHour, shiftEndMinute, 0, 0);
-
-  // If current time is before shift start, return baseline rate
-  if (now < shiftStart) {
-    const totalShiftMinutes = (shiftEnd - shiftStart) / (60 * 1000);
-    return parseFloat((line.targetOutputs / totalShiftMinutes).toFixed(2));
-  }
 
   // If current time is past shift end, return 0
   if (now >= shiftEnd) {
     return 0;
   }
 
-  // If line hasn't started, calculate based on remaining shift time
+  // If line hasn't started, return 0 (no counting before start)
   if (!line.startTime) {
-    const remainingMinutes = (shiftEnd - now) / (60 * 1000);
-    return parseFloat((line.targetOutputs / remainingMinutes).toFixed(2));
+    return 0;
   }
 
-  // Calculate effective start time (max of line start or shift start)
   const lineStartTime = new Date(line.startTime);
-  const effectiveStartTime = lineStartTime < shiftStart ? shiftStart : lineStartTime;
+  
+  // If line started after shift end, return 0
+  if (lineStartTime >= shiftEnd) {
+    return 0;
+  }
 
-  // Calculate remaining time and outputs
+  // Calculate remaining outputs and time
   const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
   const remainingMinutes = Math.max((shiftEnd - now) / (60 * 1000), 1);
 
-  // Required rate to finish on time
+  // Calculate required rate (outputs per minute)
   const requiredRate = parseFloat((remainingOutputs / remainingMinutes).toFixed(2));
 
-  // Original target rate
-  const totalAvailableMinutes = (shiftEnd - effectiveStartTime) / (60 * 1000);
+  // Calculate baseline rate (based on time from line start to shift end)
+  const totalAvailableMinutes = (shiftEnd - lineStartTime) / (60 * 1000);
   const baselineRate = parseFloat((line.targetOutputs / totalAvailableMinutes).toFixed(2));
 
-  // Return the more demanding rate
+  // Return the higher of the two rates (or 0 if target already met)
   return remainingOutputs <= 0 ? 0 : Math.max(baselineRate, requiredRate);
 };
 
@@ -357,8 +350,6 @@ const updateTargetRates = async (io) => {
     }).session(session);
 
     const bulkOps = [];
-    const shiftStartHour = 8;
-    const shiftStartMinute = 15;
     const shiftEndHour = 19;
     const shiftEndMinute = 45;
 
