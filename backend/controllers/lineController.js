@@ -37,11 +37,21 @@ const calculateTargetEfficiency = (line) => {
   }
 
   // For running lines, calculate based on remaining time and outputs
-  const remainingOutputs = line.targetOutputs - line.totalOutputs;
+  const remainingOutputs = Math.max(line.targetOutputs - line.totalOutputs, 0);
   const remainingMs = shiftEnd.getTime() - now;
   const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
-  
-  return Math.max(remainingOutputs / remainingMinutes, 0);
+
+  // Calculate required rate to complete remaining outputs in remaining time
+  const requiredRate = remainingOutputs / remainingMinutes;
+
+  // Calculate original target rate based on total shift duration
+  const shiftStart = new Date(line.startTime);
+  shiftStart.setHours(9, 30, 0, 0);
+  const totalShiftMinutes = Math.max((shiftEnd.getTime() - shiftStart.getTime()) / (60 * 1000), 1);
+  const originalRate = line.targetOutputs / totalShiftMinutes;
+
+  // Return the maximum of required rate and original rate
+  return Math.max(requiredRate, originalRate);
 };
 
 // Create a production line
