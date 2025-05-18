@@ -34,7 +34,7 @@ const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 
 
   // Ensure start time is not before the official shift start
   const lineStartTime = new Date(line.startTime);
-  const effectiveStartTime = lineStartTime > shiftStart ? lineStartTime : shiftStart;
+  //const effectiveStartTime = lineStartTime > shiftStart ? lineStartTime : shiftStart;
 
   // Calculate remaining outputs and time
   const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
@@ -45,11 +45,11 @@ const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 
   const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
 
   // Calculate baseline rate (original target rate)
-  const totalShiftMinutes = Math.max((shiftEnd.getTime() - effectiveStartTime.getTime()) / (60 * 1000), 1);
-  const baselineRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
+  //const totalShiftMinutes = Math.max((shiftEnd.getTime() - effectiveStartTime.getTime()) / (60 * 1000), 1);
+  //const baselineRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
 
   // Return the higher of baseline or required rate, unless no outputs remain
-  return remainingOutputs <= 0 ? 0 : Math.max(requiredRate, baselineRate);
+  return remainingOutputs <= 0 ? 0 : Math.max(requiredRate);
 };
 
 // Create a production line
@@ -296,6 +296,14 @@ const startLine = async (req, res) => {
       return res.status(400).json({ message: 'Line already started' });
     }
 
+      // Use the full target efficiency calculation
+    const newTarget = calculateTargetEfficiency({
+      ...line.toObject(),
+      startTime: line.startTime,
+      targetOutputs: line.targetOutputs,
+      totalOutputs: line.totalOutputs
+    }, 8, 15, 19, 45); // Set shift hours to 9:30 AM - 7:45 PM
+
     // Update the line with start time and status
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
@@ -305,11 +313,7 @@ const startLine = async (req, res) => {
         efficiencyHistory: [{
           timestamp: Date.now(),
           efficiency: 0,
-          target: calculateTargetEfficiency({ // Add missing parameters
-            ...line.toObject(),
-            startTime: Date.now(),
-            totalOutputs: line.totalOutputs
-          })
+          target: newTarget
         }]
       },
       { new: true }
