@@ -11,6 +11,7 @@ function LogoutButton() {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('lineId'); // if used
+    localStorage.removeItem("userName"); // Add username storage
 
     // Redirect to the login page ("/")
     navigate('/');

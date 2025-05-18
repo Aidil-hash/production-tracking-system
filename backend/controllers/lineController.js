@@ -155,7 +155,7 @@ const scanSerial = async (req, res) => {
 
   try {
     const { lineId } = req.params;
-    const { serialNumber } = req.body;
+    const { serialNumber, serialStatus } = req.body; // Add serialStatus here
     const operatorId = req.user.id;
 
     if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
@@ -224,9 +224,10 @@ const scanSerial = async (req, res) => {
       operator: operatorId,
       name: line.operatorId.name,
       serialNumber,
+      serialStatus: serialStatus, // Add this field
       efficiency: currentEfficiency,
-      scanTime: malaysiaNow, // Store local time
-      localScanTime: formattedTime, // Human-readable format
+      scanTime: malaysiaNow,
+      localScanTime: formattedTime,
     });
 
     await newScanLog.save({ session });
@@ -244,6 +245,7 @@ const scanSerial = async (req, res) => {
         efficiency: currentEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
+        Status: serialStatus,
         scannedAt: malaysiaNow,
         localTime: formattedTime,
       });
@@ -262,6 +264,66 @@ const scanSerial = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   } finally {
     session.endSession();
+  }
+};
+
+const validateSerial = async (req, res) => {
+  try {
+    const { serialNumber } = req.body;
+    
+    if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
+      return res.status(400).json({ message: "Valid serial number is required." });
+    }
+
+    // Check if serial exists in ScanLog with PASS status
+    const existingScan = await ScanLog.findOne({ 
+      serialNumber,
+      serialStatus: 'PASS' 
+    });
+    
+    if (existingScan) {
+      return res.status(200).json({ 
+        message: "Serial number has PASSED first station",
+        passedFirstStation: true,
+        Status: existingScan.serialStatus,
+        scanRecord: {
+          model: existingScan.model,
+          scanTime: existingScan.scanTime,
+          operator: existingScan.name,
+          productionLine: existingScan.productionLine
+        }
+      });
+    }
+
+    // Check if serial exists but with FAIL status
+    const failedScan = await ScanLog.findOne({ 
+      serialNumber,
+      serialStatus: 'NG' 
+    });
+
+    if (failedScan) {
+      return res.status(200).json({ 
+        message: "Serial number was REJECTED at first station",
+        passedFirstStation: false,
+        Status: failedScan.serialStatus,
+        scanRecord: {
+          model: failedScan.model,
+          scanTime: failedScan.scanTime,
+          operator: failedScan.name,
+          productionLine: failedScan.productionLine
+        }
+      });
+    }
+
+    // If no record found
+    return res.status(200).json({ 
+      message: "Serial number has not been processed at first station",
+      passedFirstStation: false
+    });
+
+  } catch (error) {
+    console.error("Error validating serial:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -467,6 +529,7 @@ module.exports = {
   createLine,
   updateLine,
   scanSerial,
+  validateSerial,
   getLine,
   getAllLines,
   getLineEfficiency,

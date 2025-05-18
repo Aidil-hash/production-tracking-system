@@ -1,6 +1,7 @@
 // src/components/Dashboard.js
 import React from 'react';
 import OperatorDashboard from './roleDashboards/OperatorDashboard';
+import FGDashboard from './roleDashboards/FGDashboard';
 import LeaderDashboard from './roleDashboards/LeaderDashboard';
 import SupervisorDashboard from './roleDashboards/SupervisorDashboard';
 import EngineerDashboard from './roleDashboards/EngineerDashboard';
@@ -17,6 +18,8 @@ function Dashboard() {
   switch (role) {
     case 'operator':
       return <OperatorDashboard />;
+    case 'FG operator':
+      return <FGDashboard />;
     case 'leader':
       return <LeaderDashboard />;
     case 'supervisor':

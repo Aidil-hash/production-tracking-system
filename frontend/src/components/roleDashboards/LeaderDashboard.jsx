@@ -14,6 +14,7 @@ import LogoutButton from '../Logout';
 function LeaderDashboard() {
   const [error, setError] = useState('');
   const [lines, setLines] = useState([]);
+  const userName = localStorage.getItem('userName');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -39,7 +40,7 @@ function LeaderDashboard() {
     <Card className="p-4">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Leader Dashboard</h1>
+          <h1 className="text-xl font-bold">Welcome, {userName}</h1>
           <LogoutButton />
         </div>
       </CardHeader>

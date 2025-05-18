@@ -44,6 +44,7 @@ export default function Login() {
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.urole);
+      localStorage.setItem("userName", res.data.name); // Add username storage
       setError("");
       navigate("/dashboard");
     } catch (err) {

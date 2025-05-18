@@ -3,8 +3,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Button } from "../ui/button";
+import { Typography } from '@mui/material';
 import { Input } from "../ui/input";
 import { Label } from '../ui/label';
+import LineViewChart from '../ui/LineViewChart';
 import {
   Select,
   SelectTrigger,
@@ -36,15 +38,22 @@ function EngineerDashboard() {
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState('');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const userName = localStorage.getItem('userName');
 
   // Real-time socket updates
     useEffect(() => {
       const socket = io(API_URL, { transports: ["websocket"] });
   
-      socket.on("newScan", () => {
-        axios.get(`${API_URL}/api/engineer/allscanlogs`).then((res) => {
+      socket.on("newScan", async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await axios.get(`${API_URL}/api/engineer/allscanlogs`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
           setScanLogs(res.data);
-        });
+        } catch (err) {
+          console.error("Error fetching updated scan logs:", err);
+        }
       });
   
       return () => socket.disconnect();
@@ -168,19 +177,77 @@ function EngineerDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 3000); // Disappear after 3 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage('');
+      }, 3000); // Disappear after 3 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-center">Engineer Dashboard</h1>
-      {error && <p className="text-red-500 text-center">{error}</p>}
-      {/* Success Message */}
+      <h1 className="text-2xl font-bold text-center">Welcome, {userName}</h1>
+      {error && (
+        <Typography 
+          color="error" 
+          align="center" 
+          mb={2}
+          sx={{
+            animation: 'fadeIn 0.5s ease-in',
+            '@keyframes fadeIn': {
+              '0%': {
+                opacity: 0,
+                transform: 'translateY(-10px)'
+              },
+              '100%': {
+                opacity: 1,
+                transform: 'translateY(0)'
+              }
+            }
+          }}
+        >
+          {error}
+        </Typography>
+      )}
       {message && (
-        <p variant="body1" className="text-center mt-2 text-green-500">
+        <Typography 
+          color="success.main" 
+          align="center" 
+          mb={2}
+          sx={{
+            animation: 'fadeIn 0.5s ease-in',
+            '@keyframes fadeIn': {
+              '0%': {
+                opacity: 0,
+                transform: 'translateY(-10px)'
+              },
+              '100%': {
+                opacity: 1,
+                transform: 'translateY(0)'
+              }
+            }
+          }}
+        >
           {message}
-        </p>
+        </Typography>
       )}
       <LogoutButton />
 
-      <div className="max-w-md mx-auto">
+      <div className="w-full max-w-5xl mx-auto mt-8">
+        <LineViewChart/>
       </div>
 
       <div className="w-full max-w-5xl mx-auto overflow-x-auto">

@@ -10,10 +10,12 @@ import {
 } from "../ui/table"
 import { Card, CardHeader, CardContent } from "../ui/card"; // ShadCN Card
 import LogoutButton from '../Logout';
+import LineViewChart from '../ui/LineViewChart';
 
 function SupervisorDashboard() {
   const [error, setError] = useState('');
   const [lines, setLines] = useState([]);
+  const userName = localStorage.getItem('userName');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -39,10 +41,15 @@ function SupervisorDashboard() {
     <Card className="p-4">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Supervisor Dashboard</h1>
+          <h1 className="text-xl font-bold">Welcome, {userName}</h1>
           <LogoutButton />
         </div>
       </CardHeader>
+
+      <div className="w-full max-w-5xl mx-auto mt-8">
+        <LineViewChart/>
+      </div>
+
       <CardContent>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
           <div className="mb-6">

@@ -4,6 +4,7 @@ const {
   createLine,
   updateLine,
   scanSerial,
+  validateSerial,
   getLine,
   getAllLines,
   getLineEfficiency,
@@ -44,6 +45,13 @@ router.post(
   '/:lineId/scan',
   verifyToken,
   scanSerial
+);
+
+// POST /api/lines/validate - Validate serial number
+router.post(
+  '/validate',
+  verifyToken,
+  validateSerial
 );
 
 // GET /api/lines/:lineId/efficiency - Calculate efficiency
