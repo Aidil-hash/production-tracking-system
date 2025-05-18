@@ -209,7 +209,7 @@ const scanSerial = async (req, res) => {
         },
         $push: {
           efficiencyHistory: {
-            timestamp: formattedTime,
+            timestamp: malaysiaNow,
             efficiency: currentEfficiency,
             target: targetEfficiency
           }
@@ -401,7 +401,7 @@ const updateTargetRates = async (io) => {
       );
 
       // Only update if the target has changed significantly (> 0.01 difference)
-      if (Math.abs(newTarget - (line.targetEfficiency || 0)) > 0.01) {
+      if (Math.abs(newTarget - (line.targetEfficiency || 0)) > 0.001) {
         bulkOps.push({
           updateOne: {
             filter: { _id: line._id },
