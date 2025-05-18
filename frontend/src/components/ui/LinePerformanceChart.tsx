@@ -94,7 +94,8 @@ export default function LinePerformanceChart() {
                 {
                   timestamp: new Date(),
                   efficiency: line.efficiencyHistory[line.efficiencyHistory.length - 1]?.efficiency || 0,
-                  target: data.targetEfficiency
+                  target: data.targetEfficiency,
+                  rejectedOutputs: line.rejectedOutputs || 0,
                 }
               ]
             };
@@ -154,6 +155,7 @@ export default function LinePerformanceChart() {
               time: malaysiaTime.getTime(),
               performance: Number(point.efficiency) || 0,
               target: Number(point.target) || 0,
+              rejectedOutputs: Number(point.rejectedOutputs) || 0,
             };
           })
           .sort((a, b) => a.time - b.time),
@@ -280,6 +282,7 @@ export default function LinePerformanceChart() {
                                     Efficiency: {payload[0].value.toFixed(2)}/min<br />
                                     {format(new Date(payload[0].payload.time), "MMM dd, HH:mm:ss")}<br />
                                     <strong>Target:</strong> {payload[0].payload.target.toFixed(2)}/min<br />
+                                    <strong>Rejected Outputs:</strong> {payload[0].payload.rejectedOutputs.toFixed(2)}<br/>
                                   </div>
                                 </div>
                               ) : null
