@@ -20,7 +20,7 @@ const calculateCurrentEfficiency = (line) => {
     Now: ${now.toISOString()}
     Elapsed: ${elapsedMinutes.toFixed(2)} mins
     Efficiency: ${efficiency.toFixed(2)}/min`);
-    
+
   return Number(efficiency.toFixed(2)); // outputs per minute
 };
 
@@ -186,8 +186,6 @@ const scanSerial = async (req, res) => {
     const formattedTime = formatMalaysiaTime(malaysiaNow);
 
     const nextTotalOutputs = line.totalOutputs + 1;
-    const scanTime = new Date();
-    const localScanTime = new Date(scanTime.getTime() - scanTime.getTimezoneOffset() * 60000);
 
     // Calculate efficiencies with local time
     const currentEfficiency = calculateCurrentEfficiency({
@@ -384,7 +382,7 @@ const updateTargetRates = async (io) => {
   session.startTransaction();
   
   try {
-    const now = new Date();
+    const now = getMalaysiaTime();
     const activeLines = await Line.find({ 
       startTime: { $ne: null },
       linestatus: 'RUNNING'
