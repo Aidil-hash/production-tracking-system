@@ -10,49 +10,46 @@ const calculateCurrentEfficiency = (line) => {
   return line.totalOutputs / elapsedHours;
 };
 
-const calculateTargetEfficiency = (line) => {
-  // Get today's 7:45 PM
-  const today = new Date();
-  const shiftEnd = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-    19, // 7 PM in 24-hour format
-    45  // 45 minutes
-  );
-
-  // For new lines or lines that haven't started
-  if (!line.startTime) {
-    const shiftStart = new Date();
-    shiftStart.setHours(9, 30, 0, 0); // Set to 9:30 AM
-    const totalMinutes = Math.max((shiftEnd.getTime() - shiftStart.getTime()) / (60 * 1000), 1);
-    // Round to 2 decimal places for consistency
-    return Number((line.targetOutputs / totalMinutes).toFixed(2));
-  }
-
-  const now = Date.now();
+const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
-  // If current time is past 7:45 PM, return 0
-  if (now >= shiftEnd.getTime()) {
+  // Define shift start and end times
+  const shiftStart = new Date(today);
+  shiftStart.setHours(shiftStartHour, shiftStartMinute, 0, 0);
+  
+  const shiftEnd = new Date(today);
+  shiftEnd.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+
+  // If current time is past shift end, return 0
+  if (now >= shiftEnd) {
     return 0;
   }
 
-  // For running lines, calculate based on remaining time and outputs
-  const remainingOutputs = Math.max(line.targetOutputs - line.totalOutputs, 0);
-  const remainingMs = shiftEnd.getTime() - now;
+  // If line hasn't started, use full shift duration
+  if (!line.startTime) {
+    const totalMinutes = Math.max((shiftEnd - shiftStart) / (60 * 1000), 1);
+    return Number((line.targetOutputs / totalMinutes).toFixed(2));
+  }
+
+  // Ensure start time is not before the official shift start
+  const lineStartTime = new Date(line.startTime);
+  const effectiveStartTime = lineStartTime > shiftStart ? lineStartTime : shiftStart;
+
+  // Calculate remaining outputs and time
+  const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
+  const remainingMs = shiftEnd - now;
   const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
 
-  // Calculate required rate with consistent precision
+  // Calculate required rate (outputs per minute)
   const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
 
-  // Calculate original target rate based on total shift duration
-  const shiftStart = new Date(line.startTime);
-  shiftStart.setHours(9, 30, 0, 0);
-  const totalShiftMinutes = Math.max((shiftEnd.getTime() - shiftStart.getTime()) / (60 * 1000), 1);
-  const originalRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
+  // Calculate baseline rate (original target rate)
+  const totalShiftMinutes = Math.max((shiftEnd - effectiveStartTime) / (60 * 1000), 1);
+  const baselineRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
 
-  // Return the maximum of required rate and original rate, with consistent precision
-  return Math.max(requiredRate, originalRate);
+  // Return the stricter rate (avoid slowdowns below baseline)
+  return remainingOutputs <= 0 ? 0 : Math.max(requiredRate, baselineRate);
 };
 
 // Create a production line
