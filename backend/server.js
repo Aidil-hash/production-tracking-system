@@ -10,7 +10,7 @@ const app = express();
 
 // Set up CORS
 app.use(cors({
-  origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
+  origin: ['https://roland-frontend.onrender.com'],
   methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization',],
   credentials: true
@@ -54,7 +54,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: ['https://roland-frontend.onrender.com', 'http://localhost:3000'],
+    origin: ['https://roland-frontend.onrender.com'],
     methods: ['GET', 'POST'],
     credentials: true
   },
