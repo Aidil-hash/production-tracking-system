@@ -26,7 +26,8 @@ const calculateTargetEfficiency = (line) => {
     const shiftStart = new Date();
     shiftStart.setHours(9, 30, 0, 0); // Set to 9:30 AM
     const totalMinutes = Math.max((shiftEnd.getTime() - shiftStart.getTime()) / (60 * 1000), 1);
-    return line.targetOutputs / totalMinutes;
+    // Round to 2 decimal places for consistency
+    return Number((line.targetOutputs / totalMinutes).toFixed(2));
   }
 
   const now = Date.now();
@@ -41,16 +42,16 @@ const calculateTargetEfficiency = (line) => {
   const remainingMs = shiftEnd.getTime() - now;
   const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
 
-  // Calculate required rate to complete remaining outputs in remaining time
-  const requiredRate = remainingOutputs / remainingMinutes;
+  // Calculate required rate with consistent precision
+  const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
 
   // Calculate original target rate based on total shift duration
   const shiftStart = new Date(line.startTime);
   shiftStart.setHours(9, 30, 0, 0);
   const totalShiftMinutes = Math.max((shiftEnd.getTime() - shiftStart.getTime()) / (60 * 1000), 1);
-  const originalRate = line.targetOutputs / totalShiftMinutes;
+  const originalRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
 
-  // Return the maximum of required rate and original rate
+  // Return the maximum of required rate and original rate, with consistent precision
   return Math.max(requiredRate, originalRate);
 };
 
@@ -148,30 +149,31 @@ const scanSerial = async (req, res) => {
       return res.status(409).json({ message: "Serial number already scanned." });
     }
 
+    const nextTotalOutputs = line.totalOutputs + 1;
+
     const projectedEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
-      totalOutputs: line.totalOutputs + 1,
+      totalOutputs: nextTotalOutputs
+    });
+
+    const newTarget = calculateTargetEfficiency({
+      ...line.toObject(),
+      totalOutputs: nextTotalOutputs
     });
 
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
-        $inc: { totalOutputs: 1 },
         $set: { 
+          totalOutputs: nextTotalOutputs, // Use $set instead of $inc
           startTime: line.startTime || new Date(),
-          targetEfficiency: calculateTargetEfficiency({
-            ...line.toObject(),
-            totalOutputs: line.totalOutputs + 1
-          })
+          targetEfficiency: newTarget
         },
         $push: {
           efficiencyHistory: {
             timestamp: new Date(),
             efficiency: projectedEfficiency,
-            target: calculateTargetEfficiency({
-              ...line.toObject(),
-              totalOutputs: line.totalOutputs + 1
-            })
+            target: newTarget
           }
         }
       },
