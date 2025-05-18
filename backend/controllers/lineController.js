@@ -10,44 +10,67 @@ const calculateCurrentEfficiency = (line) => {
   return (line.totalOutputs || 0) / elapsedMinutes; // outputs per minute
 };
 
-const calculateTargetEfficiency = (line, shiftEndHour = 19, shiftEndMinute = 45) => {
+const calculateTargetEfficiency = (line, _shiftStartHour = 8, _shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Debug: Log current time and shift end time
+  console.log("----- DEBUG LOGS -----");
+  console.log("Current Time:", now.toISOString());
+  console.log("Line Data:", {
+    startTime: line.startTime,
+    targetOutputs: line.targetOutputs,
+    totalOutputs: line.totalOutputs || 0
+  });
 
   // Define shift end time
   const shiftEnd = new Date(today);
   shiftEnd.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+  console.log("Shift End Time:", shiftEnd.toISOString());
 
   // If current time is past shift end, return 0
   if (now >= shiftEnd) {
+    console.log("Current time is past shift end. Returning 0.");
     return 0;
   }
 
-  // If line hasn't started, return 0 (no counting before start)
+  // If line hasn't started, return 0
   if (!line.startTime) {
+    console.log("Line has no startTime. Returning 0.");
     return 0;
   }
 
   const lineStartTime = new Date(line.startTime);
-  
+  console.log("Line Start Time (Parsed):", lineStartTime.toISOString());
+
   // If line started after shift end, return 0
   if (lineStartTime >= shiftEnd) {
+    console.log("Line started after shift end. Returning 0.");
     return 0;
   }
 
   // Calculate remaining outputs and time
   const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
   const remainingMinutes = Math.max((shiftEnd - now) / (60 * 1000), 1);
+  console.log("Remaining Outputs:", remainingOutputs);
+  console.log("Remaining Minutes:", remainingMinutes);
 
-  // Calculate required rate (outputs per minute)
-  const requiredRate = parseFloat((remainingOutputs / remainingMinutes).toFixed(2));
+  // Calculate required rate
+  const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
+  console.log("Required Rate (outputs/min):", requiredRate);
 
-  // Calculate baseline rate (based on time from line start to shift end)
+  // Calculate baseline rate (total available time from line start to shift end)
   const totalAvailableMinutes = (shiftEnd - lineStartTime) / (60 * 1000);
-  const baselineRate = parseFloat((line.targetOutputs / totalAvailableMinutes).toFixed(2));
+  const baselineRate = Number((line.targetOutputs / totalAvailableMinutes).toFixed(2));
+  console.log("Total Available Minutes (from line start):", totalAvailableMinutes);
+  console.log("Baseline Rate (outputs/min):", baselineRate);
 
-  // Return the higher of the two rates (or 0 if target already met)
-  return remainingOutputs <= 0 ? 0 : Math.max(baselineRate, requiredRate);
+  // Final comparison
+  const finalRate = remainingOutputs <= 0 ? 0 : Math.max(baselineRate, requiredRate);
+  console.log("Final Target Efficiency:", finalRate);
+  console.log("----- END DEBUG LOGS -----\n");
+
+  return finalRate;
 };
 
 // Create a production line
@@ -350,8 +373,6 @@ const updateTargetRates = async (io) => {
     }).session(session);
 
     const bulkOps = [];
-    const shiftEndHour = 19;
-    const shiftEndMinute = 45;
 
     for (const line of activeLines) {
       const newTarget = calculateTargetEfficiency(
@@ -360,11 +381,7 @@ const updateTargetRates = async (io) => {
           startTime: line.startTime,
           targetOutputs: line.targetOutputs,
           totalOutputs: line.totalOutputs
-        },
-        shiftStartHour,
-        shiftStartMinute,
-        shiftEndHour,
-        shiftEndMinute
+        }
       );
 
       // Only update if the target has changed significantly (> 0.01 difference)
@@ -400,6 +417,7 @@ const updateTargetRates = async (io) => {
     }
 
     await session.commitTransaction();
+    console.log('Target rates updated:', bulkOps.length, 'lines');
   } catch (error) {
     console.error('Error updating target rates:', error);
     await session.abortTransaction();
