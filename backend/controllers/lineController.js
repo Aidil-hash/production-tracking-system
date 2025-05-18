@@ -209,7 +209,7 @@ const scanSerial = async (req, res) => {
         },
         $push: {
           efficiencyHistory: {
-            timestamp: localScanTime,
+            timestamp: formattedTime,
             efficiency: currentEfficiency,
             target: targetEfficiency
           }
