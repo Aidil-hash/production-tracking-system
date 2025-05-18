@@ -21,12 +21,12 @@ const calculateTargetEfficiency = (line) => {
     45  // 45 minutes
   );
 
-  // If line hasn't started yet
+  // For new lines or lines that haven't started
   if (!line.startTime) {
-    const now = new Date();
-    const remainingMs = shiftEnd.getTime() - now.getTime();
-    const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
-    return line.targetOutputs / remainingMinutes;
+    const shiftStart = new Date();
+    shiftStart.setHours(9, 30, 0, 0); // Set to 9:30 AM
+    const totalMinutes = Math.max((shiftEnd.getTime() - shiftStart.getTime()) / (60 * 1000), 1);
+    return line.targetOutputs / totalMinutes;
   }
 
   const now = Date.now();
@@ -36,12 +36,12 @@ const calculateTargetEfficiency = (line) => {
     return 0;
   }
 
-  // Calculate using actual start time to 7:45 PM
-  const startTime = new Date(line.startTime);
-  const totalShiftMs = shiftEnd.getTime() - startTime.getTime();
-  const totalMinutes = Math.max(totalShiftMs / (60 * 1000), 1);
+  // For running lines, calculate based on remaining time and outputs
+  const remainingOutputs = line.targetOutputs - line.totalOutputs;
+  const remainingMs = shiftEnd.getTime() - now;
+  const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
   
-  return line.targetOutputs / totalMinutes;
+  return Math.max(remainingOutputs / remainingMinutes, 0);
 };
 
 // Create a production line
@@ -53,7 +53,9 @@ const createLine = async (req, res) => {
     }
 
     const targetEff = calculateTargetEfficiency({
-      targetOutputs: targetOutputs
+      targetOutputs: targetOutputs,
+      startTime: null,  // Add this
+      totalOutputs: 0   // Add this
     });
 
     const newLine = new Line({
@@ -290,7 +292,11 @@ const startLine = async (req, res) => {
         efficiencyHistory: [{
           timestamp: Date.now(),
           efficiency: 0,
-          target: line.targetEfficiency,
+          target: calculateTargetEfficiency({ // Add missing parameters
+            ...line.toObject(),
+            startTime: Date.now(),
+            totalOutputs: line.totalOutputs
+          })
         }]
       },
       { new: true }
@@ -328,7 +334,12 @@ const updateTargetRates = async (io) => {
     });
 
     for (const line of activeLines) {
-      const newTarget = calculateTargetEfficiency(line);
+      const newTarget = calculateTargetEfficiency({
+        ...line.toObject(),
+        startTime: line.startTime,
+        targetOutputs: line.targetOutputs,
+        totalOutputs: line.totalOutputs
+      });
       
       await Line.findByIdAndUpdate(line._id, {
         $set: { targetEfficiency: newTarget },
