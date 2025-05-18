@@ -21,11 +21,11 @@ const calculateTargetEfficiency = (line) => {
     45  // 45 minutes
   );
 
+  // If line hasn't started yet
   if (!line.startTime) {
-    // If line hasn't started, calculate based on remaining time until 7:45 PM
     const now = new Date();
     const remainingMs = shiftEnd.getTime() - now.getTime();
-    const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1); // at least 1 minute
+    const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
     return line.targetOutputs / remainingMinutes;
   }
 
@@ -36,12 +36,12 @@ const calculateTargetEfficiency = (line) => {
     return 0;
   }
 
-  // Calculate remaining time until 7:45 PM
-  const remainingMs = shiftEnd.getTime() - now;
-  const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1); // at least 1 minute
-  const remainingOutputs = line.targetOutputs - line.totalOutputs;
-
-  return Math.max(remainingOutputs / remainingMinutes, 0);
+  // Calculate using actual start time to 7:45 PM
+  const startTime = new Date(line.startTime);
+  const totalShiftMs = shiftEnd.getTime() - startTime.getTime();
+  const totalMinutes = Math.max(totalShiftMs / (60 * 1000), 1);
+  
+  return line.targetOutputs / totalMinutes;
 };
 
 // Create a production line
