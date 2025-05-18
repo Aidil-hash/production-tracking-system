@@ -5,9 +5,9 @@ const User = require('../models/User');
 
 // Utility function
 const calculateCurrentEfficiency = (line) => {
-  const start = line.startTime || new Date();
-  const elapsedHours = Math.max((new Date() - start) / (1000 * 60), 1);
-  return line.totalOutputs / elapsedHours;
+  if (!line.startTime) return 0;
+  const elapsedMinutes = Math.max((new Date() - new Date(line.startTime)) / (60 * 1000), 1);
+  return (line.totalOutputs || 0) / elapsedMinutes; // outputs per minute
 };
 
 const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {
@@ -21,6 +21,12 @@ const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 
   const shiftEnd = new Date(today);
   shiftEnd.setHours(shiftEndHour, shiftEndMinute, 0, 0);
 
+  // If current time is before shift start, return baseline rate
+  if (now < shiftStart) {
+    const totalShiftMinutes = (shiftEnd - shiftStart) / (60 * 1000);
+    return Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
+  }
+
   // If current time is past shift end, return 0
   if (now >= shiftEnd) {
     return 0;
@@ -28,27 +34,28 @@ const calculateTargetEfficiency = (line, shiftStartHour = 8, shiftStartMinute = 
 
   // If line hasn't started, use full shift duration
   if (!line.startTime) {
-    return 0;
+    const totalShiftMinutes = (shiftEnd - shiftStart) / (60 * 1000);
+    return Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
   }
 
   // Ensure start time is not before the official shift start
   const lineStartTime = new Date(line.startTime);
-  const effectiveStartTime = lineStartTime;
+  const effectiveStartTime = lineStartTime < shiftStart ? shiftStart : lineStartTime;
 
   // Calculate remaining outputs and time
   const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
-  //const remainingMs = shiftEnd.getTime() - now.getTime(); // Add getTime()
-  //const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
+  const remainingMs = shiftEnd.getTime() - now.getTime();
+  const remainingMinutes = Math.max(remainingMs / (60 * 1000), 1);
 
   // Calculate required rate (outputs per minute)
-  //const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
+  const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
 
   // Calculate baseline rate (original target rate)
-  const totalShiftMinutes = Math.max((shiftEnd.getTime() - effectiveStartTime.getTime()) / (60 * 1000), 1);
+  const totalShiftMinutes = (shiftEnd - effectiveStartTime) / (60 * 1000);
   const baselineRate = Number((line.targetOutputs / totalShiftMinutes).toFixed(2));
 
   // Return the higher of baseline or required rate, unless no outputs remain
-  return remainingOutputs <= 0 ? 0 : Math.max( baselineRate);
+  return remainingOutputs <= 0 ? 0 : Math.max(baselineRate, requiredRate);
 };
 
 // Create a production line
@@ -112,7 +119,7 @@ const updateLine = async (req, res) => {
   }
 };
 
-// Serial scanning handler
+// Updated scanSerial function
 const scanSerial = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -136,7 +143,7 @@ const scanSerial = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    if (line.totalOutputs == line.targetOutputs) {
+    if (line.totalOutputs >= line.targetOutputs) {
       return res.status(409).json({ message: "Target reached." });
     }
 
@@ -147,33 +154,30 @@ const scanSerial = async (req, res) => {
 
     const nextTotalOutputs = line.totalOutputs + 1;
 
-    // Calculate current efficiency
-    const projectedEfficiency = calculateCurrentEfficiency({
+    // Calculate efficiencies
+    const currentEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
       totalOutputs: nextTotalOutputs
     });
 
-    // Calculate target rate using the full function logic
-    const newTarget = calculateTargetEfficiency({
+    const targetEfficiency = calculateTargetEfficiency({
       ...line.toObject(),
-      totalOutputs: nextTotalOutputs,
-      startTime: line.startTime,
-      targetOutputs: line.targetOutputs
-    }, 8, 15, 19, 45); // Set shift hours to 9:30 AM - 7:45 PM
+      totalOutputs: nextTotalOutputs
+    });
 
+    // Update the line
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
         $set: { 
           totalOutputs: nextTotalOutputs,
-          startTime: line.startTime || new Date(),
-          targetEfficiency: newTarget
+          targetEfficiency: targetEfficiency
         },
         $push: {
           efficiencyHistory: {
             timestamp: new Date(),
-            efficiency: projectedEfficiency,
-            target: newTarget
+            efficiency: currentEfficiency,
+            target: targetEfficiency
           }
         }
       },
@@ -186,7 +190,7 @@ const scanSerial = async (req, res) => {
       operator: operatorId,
       name: line.operatorId.name,
       serialNumber,
-      efficiency: projectedEfficiency,
+      efficiency: currentEfficiency,
     });
 
     await newScanLog.save({ session });
@@ -201,7 +205,7 @@ const scanSerial = async (req, res) => {
         name: line.operatorId.name,
         department: updatedLine.department,
         totalOutputs: updatedLine.totalOutputs,
-        efficiency: projectedEfficiency,
+        efficiency: currentEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
         serialNumber,
         scannedAt: new Date().toISOString(),
@@ -212,7 +216,7 @@ const scanSerial = async (req, res) => {
       message: "Serial scanned successfully",
       scanId: newScanLog._id,
       outputs: updatedLine.totalOutputs,
-      efficiency: projectedEfficiency,
+      efficiency: currentEfficiency,
     });
   } catch (error) {
     console.error("Scan error:", error);
@@ -285,6 +289,7 @@ const getLineEfficiency = async (req, res) => {
   }
 };
 
+// Updated startLine function
 const startLine = async (req, res) => {
   try {
     const { lineId } = req.params;
@@ -295,25 +300,25 @@ const startLine = async (req, res) => {
       return res.status(400).json({ message: 'Line already started' });
     }
 
-      // Use the full target efficiency calculation
-    const newTarget = calculateTargetEfficiency({
+    const startTime = new Date();
+    const targetEfficiency = calculateTargetEfficiency({
       ...line.toObject(),
-      startTime: line.startTime,
-      targetOutputs: line.targetOutputs,
-      totalOutputs: line.totalOutputs
-    }, 8, 15, 19, 45); // Set shift hours to 9:30 AM - 7:45 PM
+      startTime: startTime
+    });
 
-    // Update the line with start time and status
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       { 
-        startTime: Date.now(), 
+        startTime: startTime, 
         linestatus: 'RUNNING',
-        efficiencyHistory: [{
-          timestamp: Date.now(),
-          efficiency: 0,
-          target: newTarget
-        }]
+        targetEfficiency: targetEfficiency,
+        $push: {
+          efficiencyHistory: {
+            timestamp: startTime,
+            efficiency: 0,
+            target: targetEfficiency
+          }
+        }
       },
       { new: true }
     ).populate('operatorId', 'name');
@@ -322,7 +327,6 @@ const startLine = async (req, res) => {
       return res.status(404).json({ message: 'Line update failed' });
     }
 
-    // Emit socket event if socket.io is configured
     const io = req.app.get('io');
     if (io) {
       io.emit('lineStarted', {
@@ -343,44 +347,75 @@ const startLine = async (req, res) => {
 };
 
 const updateTargetRates = async (io) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
   try {
+    const now = new Date();
     const activeLines = await Line.find({ 
       startTime: { $ne: null },
       linestatus: 'RUNNING'
-    });
+    }).session(session);
+
+    const bulkOps = [];
+    const shiftStartHour = 8;
+    const shiftStartMinute = 15;
+    const shiftEndHour = 19;
+    const shiftEndMinute = 45;
 
     for (const line of activeLines) {
-      // Use the full target efficiency calculation
-      const newTarget = calculateTargetEfficiency({
-        ...line.toObject(),
-        startTime: line.startTime,
-        targetOutputs: line.targetOutputs,
-        totalOutputs: line.totalOutputs
-      }, 8, 15, 19, 45); // Set shift hours to 9:30 AM - 7:45 PM
-      
-      // Only update if the target has changed
-      if (newTarget !== line.targetEfficiency) {
-        await Line.findByIdAndUpdate(line._id, {
-          $set: { targetEfficiency: newTarget },
-          $push: {
-            efficiencyHistory: {
-              timestamp: new Date(),
-              efficiency: calculateCurrentEfficiency(line),
-              target: newTarget
+      const newTarget = calculateTargetEfficiency(
+        {
+          ...line.toObject(),
+          startTime: line.startTime,
+          targetOutputs: line.targetOutputs,
+          totalOutputs: line.totalOutputs
+        },
+        shiftStartHour,
+        shiftStartMinute,
+        shiftEndHour,
+        shiftEndMinute
+      );
+
+      // Only update if the target has changed significantly (> 0.01 difference)
+      if (Math.abs(newTarget - (line.targetEfficiency || 0)) > 0.01) {
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: line._id },
+            update: {
+              $set: { targetEfficiency: newTarget },
+              $push: {
+                efficiencyHistory: {
+                  timestamp: now,
+                  efficiency: calculateCurrentEfficiency(line),
+                  target: newTarget
+                }
+              }
             }
           }
         });
-
-        if (io) {
-          io.emit('targetUpdate', {
-            lineId: line._id,
-            targetEfficiency: newTarget
-          });
-        }
       }
     }
+
+    if (bulkOps.length > 0) {
+      await Line.bulkWrite(bulkOps, { session });
+      
+      if (io) {
+        const updates = bulkOps.map(op => ({
+          lineId: op.updateOne.filter._id,
+          targetEfficiency: op.updateOne.update.$set.targetEfficiency
+        }));
+        io.emit('targetUpdates', updates);
+      }
+    }
+
+    await session.commitTransaction();
   } catch (error) {
     console.error('Error updating target rates:', error);
+    await session.abortTransaction();
+    // Consider adding retry logic here for transient errors
+  } finally {
+    session.endSession();
   }
 };
 
