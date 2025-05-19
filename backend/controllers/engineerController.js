@@ -56,15 +56,7 @@ const getAllScans = async (req, res) => {
     const logs = await ScanLog.find({})
       .populate('productionLine', 'model')
       .populate('operator', 'name')
-      .sort({ scannedAt: -1 })
-      .lean();
-
-      // Add status field to response
-      const enhancedLogs = logs.map(log => ({
-        ...log,
-        Status: log.serialStatus, // Map your schema field to Status
-        scannedAt: log.scanTime   // Ensure field name matches frontend
-      }));
+      .sort({ scannedAt: -1 });
 
     // Return the raw logs or transform them
     return res.status(200).json(logs);
