@@ -470,7 +470,7 @@ function EngineerDashboard() {
                         ? 'bg-green-500/80 text-white' 
                         : 'bg-red-500/80 text-white'
                     }`}>
-                      {log.Status || 'N/A'}
+                      {log.serialStatus || 'N/A'}
                     </td>
                     <td className="px-4 py-2">{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
                   </tr>
