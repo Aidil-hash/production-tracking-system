@@ -37,10 +37,8 @@ function EngineerDashboard() {
   const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState('');
-  const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: 'asc',
-  });
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc'); // or 'desc'
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const userName = localStorage.getItem('userName');
 
@@ -138,44 +136,38 @@ function EngineerDashboard() {
     }
   }, [API_URL, selectedLine]);
 
-  // Add sorting handler
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
   useEffect(() => {
     let sortedLogs = [...scanLogs];
-    
-    // Apply filter
-    if (filterText) {
-      sortedLogs = sortedLogs.filter((log) => {
-        const lineModel = log.productionLine?.model?.toLowerCase() || '';
-        return lineModel.includes(filterText.toLowerCase());
-      });
-    }
   
-    // Apply sorting
-    if (sortConfig.key) {
+    if (sortField) {
       sortedLogs.sort((a, b) => {
-        const aValue = a[sortConfig.key] || '';
-        const bValue = b[sortConfig.key] || '';
-        
-        if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
+        const aValue = a[sortField] || '';
+        const bValue = b[sortField] || '';
+  
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
         return 0;
       });
     }
   
-    setFilteredScanLogs(sortedLogs);
-  }, [filterText, scanLogs, sortConfig]);
+    if (!filterText) {
+      setFilteredScanLogs(sortedLogs);
+    } else {
+      const filtered = sortedLogs.filter((log) => {
+        const lineModel = log.productionLine?.model?.toLowerCase() || '';
+        return lineModel.includes(filterText.toLowerCase());
+      });
+      setFilteredScanLogs(filtered);
+    }
+  }, [sortField, sortDirection, scanLogs, filterText]);
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'PASS': return '#4CAF50'; // Green
+      case 'NG': return '#F44336';   // Red
+      default: return '#9E9E9E';     // Grey
+    }
+  };
 
   const handleAddNewLine = async (e) => {
     e.preventDefault();
@@ -445,16 +437,14 @@ function EngineerDashboard() {
                   <th className="px-4 py-2">Model</th>
                   <th className="px-4 py-2">Operator</th>
                   <th className="px-4 py-2">Serial Number</th>
-                  <th 
-                    className="px-4 py-2 cursor-pointer hover:bg-zinc-700"
-                    onClick={() => handleSort('Status')}
+                  <th
+                    className="px-4 py-2 cursor-pointer"
+                    onClick={() => {
+                      setSortField('serialStatus');  // Change 'status' to the correct key from your logs
+                      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                    }}
                   >
-                    Status
-                    {sortConfig.key === 'Status' && (
-                      <span className="ml-2">
-                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
+                    Status {sortField === 'serialStatus' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
                   </th>
                   <th className="px-4 py-2">Scanned At</th>
                 </tr>
@@ -465,12 +455,8 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">{log.productionLine?.model || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.operator?.name || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.serialNumber || 'N/A'}</td>
-                    <td className={`px-4 py-2 text-center ${
-                      log.serialStatus === 'PASS' 
-                        ? 'bg-green-500/80 text-white' 
-                        : 'bg-red-500/80 text-white'
-                    }`}>
-                      {log.serialStatus || 'N/A'}
+                    <td className="px-4 py-2" style={{ color: getStatusColor(log.serialStatus) }}>
+                      {log.serialStatus || 'Unknown'}
                     </td>
                     <td className="px-4 py-2">{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
                   </tr>
