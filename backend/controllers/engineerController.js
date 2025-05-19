@@ -56,7 +56,15 @@ const getAllScans = async (req, res) => {
     const logs = await ScanLog.find({})
       .populate('productionLine', 'model')
       .populate('operator', 'name')
-      .sort({ scannedAt: -1 });
+      .sort({ scannedAt: -1 })
+      .lean();
+
+      // Add status field to response
+      const enhancedLogs = logs.map(log => ({
+        ...log,
+        Status: log.serialStatus, // Map your schema field to Status
+        scannedAt: log.scanTime   // Ensure field name matches frontend
+      }));
 
     // Return the raw logs or transform them
     return res.status(200).json(logs);
@@ -83,7 +91,7 @@ const detachOperatorFromLine = async (req, res) => {
     }
 
     // Update the production line to remove the assigned operator
-    const updatedLine = await ProductionLine.findByIdAndUpdate(
+    const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       { operatorId: null }, // or undefined, depending on your schema
       { new: true }
