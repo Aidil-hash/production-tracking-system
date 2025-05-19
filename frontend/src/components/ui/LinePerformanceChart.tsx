@@ -146,11 +146,7 @@ export default function LinePerformanceChart() {
         targetOutputs: line.targetOutputs,
         data: getFilteredData(line.efficiencyHistory || [])
           .map((point: any) => {
-            // Parse timestamp and ensure it's treated as Malaysia time
-            const timestamp = new Date(point.timestamp);
-            // Add 8 hours to convert to Malaysia time
-            const malaysiaTime = addHours(timestamp, -8);
-            
+            const malaysiaTime = addHours(new Date(point.timestamp), -8);
             return {
               time: malaysiaTime.getTime(),
               performance: Number(point.efficiency) || 0,
