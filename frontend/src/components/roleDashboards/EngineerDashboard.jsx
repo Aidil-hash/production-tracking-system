@@ -158,11 +158,14 @@ function EngineerDashboard() {
     setFilteredScanLogs(filtered);
   }, [scanLogs, sortField, sortDirection, filterText]);
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'PASS': return '#4CAF50'; // Green
-      case 'NG': return '#F44336';   // Red
-      default: return '#9E9E9E';     // Grey
+  const getStatusColorClass = (status) => {
+    switch (status) {
+      case 'PASS':
+        return 'bg-green-500 text-white font-semibold';
+      case 'NG':
+        return 'bg-red-500 text-white font-semibold';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -452,7 +455,7 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">{log.productionLine?.model || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.operator?.name || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.serialNumber || 'N/A'}</td>
-                    <td className="px-4 py-2" style={{ color: getStatusColor(log.serialStatus) }}>
+                    <td className={`px-4 py-2 rounded ${getStatusColorClass(log.serialStatus)}`}>
                       {log.serialStatus || 'Unknown'}
                     </td>
                     <td className="px-4 py-2">{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
