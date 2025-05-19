@@ -141,8 +141,8 @@ function EngineerDashboard() {
   
     if (sortField) {
       sortedLogs.sort((a, b) => {
-        const aValue = a[sortField] || '';
-        const bValue = b[sortField] || '';
+        const aValue = a[sortField]?.toUpperCase?.() || '';
+        const bValue = b[sortField]?.toUpperCase?.() || '';
   
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
@@ -150,16 +150,13 @@ function EngineerDashboard() {
       });
     }
   
-    if (!filterText) {
-      setFilteredScanLogs(sortedLogs);
-    } else {
-      const filtered = sortedLogs.filter((log) => {
-        const lineModel = log.productionLine?.model?.toLowerCase() || '';
-        return lineModel.includes(filterText.toLowerCase());
-      });
-      setFilteredScanLogs(filtered);
-    }
-  }, [sortField, sortDirection, scanLogs, filterText]);
+    const filtered = sortedLogs.filter((log) => {
+      const model = log.productionLine?.model?.toLowerCase() || '';
+      return model.includes(filterText.toLowerCase());
+    });
+  
+    setFilteredScanLogs(filtered);
+  }, [scanLogs, sortField, sortDirection, filterText]);
 
   const getStatusColor = (status) => {
     switch(status) {
