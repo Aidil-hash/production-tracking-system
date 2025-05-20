@@ -70,12 +70,12 @@ const calculateTargetEfficiency = (line, _shiftStartHour = 8, _shiftStartMinute 
   console.log("Remaining Minutes:", remainingMinutes);
 
   // Calculate required rate
-  const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(2));
+  const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(4));
   console.log("Required Rate (outputs/min):", requiredRate);
 
   // Calculate baseline rate (total available time from line start to shift end)
   const totalAvailableMinutes = (shiftEnd - lineStartTime) / (60 * 1000);
-  const baselineRate = Number((line.targetOutputs / totalAvailableMinutes).toFixed(2));
+  const baselineRate = Number((line.targetOutputs / totalAvailableMinutes).toFixed(4));
   console.log("Total Available Minutes (from line start):", totalAvailableMinutes);
   console.log("Baseline Rate (outputs/min):", baselineRate);
 
