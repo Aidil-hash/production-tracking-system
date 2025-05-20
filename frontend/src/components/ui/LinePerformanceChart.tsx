@@ -131,10 +131,15 @@ export default function LinePerformanceChart() {
     const getFilteredData = (history: any[]) => {
       if (timeFilter === "All") return history;
       const hours = parseInt(timeFilter.replace("h", ""));
-      const cutoff = subHours(new Date(), hours).getTime();
-      return history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+      const cutoff = subHours(new Date(), hours).getTime(); // Local time cutoff
+      return history.filter((point) => {
+        // Server timestamp is already Malaysia Time (UTC+8), but JS parses it as local time.
+        // Subtract 8 hours to align with the local time for filtering.
+        const adjustedTimestamp = subHours(new Date(point.timestamp), -8).getTime();
+        return adjustedTimestamp >= cutoff;
+      });
     };
-
+  
     return linesData
       .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
       .map((line) => ({
@@ -146,9 +151,11 @@ export default function LinePerformanceChart() {
         targetOutputs: line.targetOutputs,
         data: getFilteredData(line.efficiencyHistory || [])
           .map((point: any) => {
-            const malaysiaTime = addHours(new Date(point.timestamp), -8);
+            // Server timestamp is Malaysia Time (UTC+8), but JS parses it as local time.
+            // Subtract 8 hours to display correctly.
+            const malaysiaTime = subHours(new Date(point.timestamp), -8);
             return {
-              time: malaysiaTime.getTime(),
+              time: malaysiaTime.getTime(), // Display-adjusted time
               performance: Number(point.efficiency) || 0,
               target: Number(point.target) || 0,
               rejectedOutputs: Number(point.rejectedOutputs) || 0,
