@@ -135,7 +135,7 @@ export default function LinePerformanceChart() {
       return history.filter((point) => {
         // Server timestamp is already Malaysia Time (UTC+8), but JS parses it as local time.
         // Subtract 8 hours to align with the local time for filtering.
-        const adjustedTimestamp = subHours(new Date(point.timestamp), -8).getTime();
+        const adjustedTimestamp = subHours(new Date(point.timestamp), 8).getTime();
         return adjustedTimestamp >= cutoff;
       });
     };
@@ -153,7 +153,7 @@ export default function LinePerformanceChart() {
           .map((point: any) => {
             // Server timestamp is Malaysia Time (UTC+8), but JS parses it as local time.
             // Subtract 8 hours to display correctly.
-            const malaysiaTime = subHours(new Date(point.timestamp), -8);
+            const malaysiaTime = subHours(new Date(point.timestamp), 8);
             return {
               time: malaysiaTime.getTime(), // Display-adjusted time
               performance: Number(point.efficiency) || 0,
