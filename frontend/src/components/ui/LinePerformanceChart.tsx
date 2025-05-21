@@ -83,7 +83,7 @@ export default function LinePerformanceChart() {
     });
   
     // Handle target updates
-    socket.on("targetUpdate", (data) => {
+    socket.on("targetUpdates", (data) => {
       setLinesData(prevLines => 
         prevLines.map(line => {
           if (line.id === data.lineId) {
