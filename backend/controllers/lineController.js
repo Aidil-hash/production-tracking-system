@@ -447,6 +447,15 @@ const startLine = async (req, res) => {
       { new: true }
     );
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('startLine', {
+        startTime: malaysiaNow,
+        linestatus: 'RUNNING',
+        targetEfficiency: targetEfficiency
+      });
+    }
+
     console.log(`Line started at Malaysia time: ${formattedTime}`);
     
     return res.status(200).json({ 
@@ -494,7 +503,8 @@ const updateTargetRates = async (io) => {
                 efficiencyHistory: {
                   timestamp: now,
                   efficiency: calculateCurrentEfficiency(line),
-                  target: newTarget
+                  target: newTarget,
+                  rejectedOutputs: line.rejectedOutputs
                 }
               }
             }
