@@ -449,7 +449,7 @@ const startLine = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('startLine', {
+      io.emit('lineStarted', {
         startTime: malaysiaNow,
         linestatus: 'RUNNING',
         targetEfficiency: targetEfficiency
