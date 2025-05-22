@@ -481,18 +481,16 @@ const updateTargetRates = async (io) => {
     }).session(session);
 
     const bulkOps = [];
+    const updates = []; // Store updates for socket emission
 
     for (const line of activeLines) {
-      const newTarget = calculateTargetEfficiency(
-        {
-          ...line.toObject(),
-          startTime: line.startTime,
-          targetOutputs: line.targetOutputs,
-          totalOutputs: line.totalOutputs
-        }
-      );
+      const newTarget = calculateTargetEfficiency({
+        ...line.toObject(),
+        startTime: line.startTime,
+        targetOutputs: line.targetOutputs,
+        totalOutputs: line.totalOutputs
+      });
 
-      // Only update if the target has changed significantly (> 0.01 difference)
       if (Math.abs(newTarget - (line.targetEfficiency || 0)) > 0.001) {
         bulkOps.push({
           updateOne: {
@@ -510,19 +508,25 @@ const updateTargetRates = async (io) => {
             }
           }
         });
+        
+        // Prepare update for socket
+        updates.push({
+          lineId: line._id,
+          targetEfficiency: newTarget
+        });
       }
     }
 
     if (bulkOps.length > 0) {
       await Line.bulkWrite(bulkOps, { session });
 
-      const io = req.app.get('io');
+      // Use the io parameter passed to the function
       if (io) {
-        const updates = bulkOps.map(op => ({
-          lineId: op.updateOne.filter._id,
-          targetEfficiency: op.updateOne.update.$set.targetEfficiency
-        }));
-        io.emit('targetUpdates', updates);
+        try {
+          io.emit('targetUpdates', updates);
+        } catch (socketError) {
+          console.error('Socket emission error:', socketError);
+        }
       }
     }
 
@@ -532,11 +536,11 @@ const updateTargetRates = async (io) => {
     console.error('Error updating target rates:', error);
     await session.abortTransaction();
     // Consider adding retry logic here for transient errors
+    throw error; // Re-throw if you want calling code to handle it
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
-
 // Delete line
 const deleteLine = async (req, res) => {
   try {
