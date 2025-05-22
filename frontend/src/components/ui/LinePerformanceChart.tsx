@@ -83,27 +83,9 @@ export default function LinePerformanceChart() {
     });
   
     // Handle target updates - optimized version
-    socket.on("targetUpdates", (updates) => {
-      setLinesData(prev => {
-        return prev.map(line => {
-          const update = updates.find((u: any) => u.lineId.toString() === line._id.toString());
-          if (update) {
-            return {
-              ...line,
-              targetEfficiency: update.targetEfficiency,
-              efficiencyHistory: [
-                ...(line.efficiencyHistory || []),
-                {
-                  timestamp: new Date().toISOString(),
-                  efficiency: line.efficiencyHistory?.[line.efficiencyHistory.length - 1]?.efficiency || 0,
-                  target: update.targetEfficiency,
-                  rejectedOutputs: line.rejectedOutputs
-                }
-              ]
-            };
-          }
-          return line;
-        });
+    socket.on("targetUpdates", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
       });
     });
   
