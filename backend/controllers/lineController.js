@@ -515,7 +515,8 @@ const updateTargetRates = async (io) => {
 
     if (bulkOps.length > 0) {
       await Line.bulkWrite(bulkOps, { session });
-      
+
+      const io = req.app.get('io');
       if (io) {
         const updates = bulkOps.map(op => ({
           lineId: op.updateOne.filter._id,
