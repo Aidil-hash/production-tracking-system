@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Typography, Box, LinearProgress, List, ListItem, ListItemText, IconButton, Paper, Alert, CircularProgress } from '@mui/material';
+import { 
+  Button, Typography, Box, LinearProgress, List, ListItem, 
+  ListItemText, Paper, Alert 
+} from '@mui/material';
 import * as XLSX from 'xlsx';
 
-const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
+const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) => {
   const [folderHandle, setFolderHandle] = useState(null);
   const [processedFiles, setProcessedFiles] = useState([]);
   const [isWatching, setIsWatching] = useState(false);
@@ -11,7 +14,9 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [processedSerialNumbers, setProcessedSerialNumbers] = useState([]);
-  const knownFiles = useRef(new Set());
+  const [fullRescanMode, setFullRescanMode] = useState(false);
+  const fileCache = useRef(new Map());
+
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const requestFolderAccess = async () => {
@@ -20,19 +25,27 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
       const handle = await window.showDirectoryPicker();
       setFolderHandle(handle);
       setSuccess(`Watching folder: ${handle.name}`);
-      knownFiles.current = new Set(); // Reset known files when folder changes
+      fileCache.current = new Map();
     } catch (err) {
       setError('Folder access was denied or cancelled');
       console.error("Folder access error:", err);
     }
   };
 
+  const cleanSerialNumber = (serial) => {
+    return String(serial)
+      .trim()
+      .replace(/,$/, '') // Remove trailing comma
+      .replace(/^"+|"+$/g, '') // Remove surrounding quotes
+      .replace(/\s+/g, ''); // Remove all whitespace
+  };
+
   const processFile = async (fileHandle) => {
     try {
       const file = await fileHandle.getFile();
       
-      // Check if file is still being written (size changes)
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      // Check if file is still being written
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const size1 = file.size;
       await new Promise(resolve => setTimeout(resolve, 1000));
       const size2 = (await fileHandle.getFile()).size;
@@ -42,31 +55,48 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
       }
 
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      let jsonData;
+      
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        // Correct CSV processing using sheet_to_json
+        const csvString = new TextDecoder().decode(data);
+        const workbook = XLSX.read(csvString, { type: 'string' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        jsonData = XLSX.utils.sheet_to_json(worksheet);
+      } else {
+        // Standard Excel processing
+        const workbook = XLSX.read(data);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        jsonData = XLSX.utils.sheet_to_json(worksheet);
+      }
 
       const serials = [];
       const errors = [];
 
       jsonData.forEach((item, index) => {
         try {
-          const serialNumber = item.serialNumber || item['Serial Number'] || item.SERIAL;
-          const testStatus = (item.testStatus || item.Status || 'UNKNOWN').toUpperCase();
+          const rawSerial = item.serialNumber || item['Serial Number'] || item.SERIAL || item['serial'] || item['Serial'] || item['InputText'];
+          let rawStatus = item.testStatus || item.Status || item.status|| item['Result'] || 'UNKNOWN';
 
-          if (!serialNumber) {
+          if (!rawSerial) {
             throw new Error('Missing serial number');
           }
 
-          if (!['PASS', 'NG'].includes(testStatus)) {
-            throw new Error(`Invalid status: ${testStatus}`);
+          const serialNumber = cleanSerialNumber(rawSerial);
+          
+          // Convert any FAIL* to NG
+          let status = rawStatus.toUpperCase().startsWith('FAIL') ? 'NG' : rawStatus.toUpperCase();
+
+          if (!['PASS', 'NG'].includes(status)) {
+            throw new Error(`Invalid status: ${rawStatus}`);
           }
 
           serials.push({
-            serialNumber: String(serialNumber).trim(),
-            status: testStatus,
-            row: index + 2 // +2 because header is row 1 and sheets are 1-indexed
+            serialNumber,
+            status,
+            row: index + 2
           });
         } catch (err) {
           errors.push({
@@ -93,64 +123,51 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
     }
   };
 
-  const checkForNewFiles = async () => {
-    if (!folderHandle || !isWatching || isProcessing) return;
+  const scanAllFiles = async () => {
+    if (!folderHandle || isProcessing) return;
 
     try {
-      const newFiles = [];
+      setIsProcessing(true);
+      setProgress(0);
+      setError(null);
+
+      const allFiles = [];
       for await (const entry of folderHandle.values()) {
-        if (
-          entry.kind === 'file' &&
-          entry.name.match(/\.(xlsx|xls|csv)$/i) &&
-          !knownFiles.current.has(entry.name)
-        ) {
-          newFiles.push(entry);
+        if (entry.kind === 'file' && entry.name.match(/\.(xlsx|xls|csv)$/i)) {
+          allFiles.push(entry);
         }
       }
 
-      if (newFiles.length > 0) {
-        setIsProcessing(true);
-        setProgress(0);
+      const results = [];
+      const newSerials = [];
 
-        const results = [];
-        for (let i = 0; i < newFiles.length; i++) {
-          try {
-            const file = newFiles[i];
-            knownFiles.current.add(file.name); // Mark as known immediately
+      for (let i = 0; i < allFiles.length; i++) {
+        const result = await processFile(allFiles[i]);
+        results.push(result);
 
-            const result = await processFile(file);
-            results.push(result);
-
-            // Collect all serial numbers
-            if (result.success) {
-              setProcessedSerialNumbers(prev => [
-                ...prev,
-                ...result.serials.map(s => ({
-                  serialNumber: s.serialNumber,
-                  status: s.status,
-                  sourceFile: file.name
-                }))
-              ]);
-            }
-
-            setProgress(((i + 1) / newFiles.length) * 100);
-          } catch (fileErr) {
-            console.error(`Error processing file ${newFiles[i]?.name}:`, fileErr);
-            results.push({
-              fileName: newFiles[i]?.name || 'Unknown file',
-              success: false,
-              error: fileErr.message
-            });
-          }
+        if (result.success && result.serials) {
+          newSerials.push(...result.serials.map(s => ({
+            serialNumber: s.serialNumber,
+            status: s.status,
+            sourceFile: allFiles[i].name,
+          })));
         }
 
-        setProcessedFiles(prev => [...prev, ...results]);
-        setSuccess(`Processed ${newFiles.length} new file(s)`);
-        setIsProcessing(false);
+        setProgress(((i + 1) / allFiles.length) * 100);
+      }
+
+      setProcessedFiles(prev => [...prev, ...results.filter(r => !r.skipped)]);
+      setProcessedSerialNumbers(prev => [...prev, ...newSerials]);
+      setSuccess(`Rescanned ${allFiles.length} files`);
+      
+      if (fullRescanMode) {
+        setSuccess(`Full rescan completed: ${allFiles.length} files processed`);
+        setFullRescanMode(false);
       }
     } catch (err) {
-      setError(`Error checking folder: ${err.message}`);
-      console.error("Folder check error:", err);
+      setError(`Error scanning files: ${err.message}`);
+      console.error("Scan error:", err);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -158,12 +175,17 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
   useEffect(() => {
     if (!folderHandle || !isWatching) return;
 
-    const intervalId = setInterval(checkForNewFiles, 5000); // Check every 5 seconds
+    const intervalId = setInterval(() => {
+      scanAllFiles();
+    }, 30000); // Rescan every 30 seconds
+
+    // Initial scan
+    scanAllFiles();
 
     return () => {
       clearInterval(intervalId);
     };
-  }, [folderHandle, isWatching]);
+  }, [folderHandle, isWatching, fullRescanMode]);
 
   const handleSubmit = async () => {
     if (processedSerialNumbers.length === 0) {
@@ -204,16 +226,11 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
       setSuccess(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
       setProcessedSerialNumbers([]);
       
-      // Notify parent component with consistent array format
       if (onBatchProcessed) {
-        onBatchProcessed([{
+        onBatchProcessed({
           success: true,
-          count: batchPayload.serialNumbers.length,
-          data: batchPayload.serialNumbers.map(sn => ({ 
-            serialNumber: sn.serialNumber, 
-            success: true 
-          }))
-        }]);
+          count: batchPayload.serialNumbers.length
+        });
       }
     } catch (err) {
       setError(err.message || 'Batch submission failed');
@@ -223,6 +240,11 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
     }
   };
 
+  const triggerFullRescan = () => {
+    setFullRescanMode(true);
+    fileCache.current = new Map(); // Clear cache to force full rescan
+    setSuccess('Preparing full rescan...');
+  };
 
   const resetAll = () => {
     setFolderHandle(null);
@@ -231,7 +253,7 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
     setError(null);
     setSuccess(null);
     setProcessedSerialNumbers([]);
-    knownFiles.current = new Set();
+    fileCache.current = new Map();
   };
 
   return (
@@ -270,25 +292,38 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
       </Box>
 
       {folderHandle && (
-        <Button
-          variant="contained"
-          color={isWatching ? 'error' : 'primary'}
-          onClick={() => setIsWatching(!isWatching)}
-          disabled={isProcessing}
-          sx={{ mb: 3 }}
-          fullWidth
-        >
-          {isWatching ? 'Stop Watching' : 'Start Watching'}
-        </Button>
-      )}
+        <>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Button
+              variant="contained"
+              color={isWatching ? 'error' : 'primary'}
+              onClick={() => setIsWatching(!isWatching)}
+              disabled={isProcessing}
+              fullWidth
+            >
+              {isWatching ? 'Stop Watching' : 'Start Watching'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={triggerFullRescan}
+              disabled={isProcessing}
+              fullWidth
+            >
+              Force Full Rescan
+            </Button>
+          </Box>
 
-      {isProcessing && (
-        <Box sx={{ mb: 3 }}>
-          <LinearProgress variant="determinate" value={progress} />
-          <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-            Processing... {Math.round(progress)}%
-          </Typography>
-        </Box>
+          {isProcessing && (
+            <Box sx={{ mb: 3 }}>
+              <LinearProgress variant="determinate" value={progress} />
+              <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+                Processing... {Math.round(progress)}%
+                {fullRescanMode && ' (Full rescan in progress)'}
+              </Typography>
+            </Box>
+          )}
+        </>
       )}
 
       <Paper elevation={3} sx={{ p: 2, mb: 3, maxHeight: 200, overflow: 'auto' }}>
@@ -301,6 +336,7 @@ const ExcelFolderWatcher = ({ lineId, authToken, onBatchProcessed }) => {
               <ListItemText
                 primary={file.fileName}
                 secondary={
+                  file.skipped ? file.reason :
                   file.success ? 
                     `${file.serials?.length || 0} serials found` : 
                     `Error: ${file.error}`

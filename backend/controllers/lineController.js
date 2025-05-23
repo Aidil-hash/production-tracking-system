@@ -351,7 +351,7 @@ const scanSerial = async (req, res) => {
       localTime: formattedTime,
     });
   } catch (error) {
-    console.error(isBatch ? "Batch scan error:" : "Scan error:", error);
+    console.error(error);
     await session.abortTransaction();
     return res.status(500).json({ 
       message: isBatch ? "Batch processing failed" : "Scan failed",

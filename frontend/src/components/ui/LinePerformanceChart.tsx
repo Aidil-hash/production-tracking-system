@@ -67,6 +67,13 @@ export default function LinePerformanceChart() {
         setLinesData(res.data);
       });
     });
+
+    // Handle new lines
+    socket.on("newScanBatch", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
   
     // Handle new lines
     socket.on("newLine", () => {
