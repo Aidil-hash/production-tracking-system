@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Button, Typography, Box, LinearProgress, List, ListItem, 
-  ListItemText, Paper, Alert 
+  ListItemText, IconButton, Paper, Alert, CircularProgress 
 } from '@mui/material';
 import * as XLSX from 'xlsx';
 
@@ -14,10 +14,18 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [processedSerialNumbers, setProcessedSerialNumbers] = useState([]);
-  const [fullRescanMode, setFullRescanMode] = useState(false);
+  const [processedSerialsSet, setProcessedSerialsSet] = useState(new Set());
   const fileCache = useRef(new Map());
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+  const cleanSerialNumber = (serial) => {
+    return String(serial)
+      .trim()
+      .replace(/,$/, '') // Remove trailing comma
+      .replace(/^"+|"+$/g, '') // Remove surrounding quotes
+      .replace(/\s+/g, ''); // Remove all whitespace
+  };
 
   const requestFolderAccess = async () => {
     try {
@@ -26,18 +34,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       setFolderHandle(handle);
       setSuccess(`Watching folder: ${handle.name}`);
       fileCache.current = new Map();
+      setProcessedSerialsSet(new Set()); // Reset processed serials when folder changes
     } catch (err) {
       setError('Folder access was denied or cancelled');
       console.error("Folder access error:", err);
     }
-  };
-
-  const cleanSerialNumber = (serial) => {
-    return String(serial)
-      .trim()
-      .replace(/,$/, '') // Remove trailing comma
-      .replace(/^"+|"+$/g, '') // Remove surrounding quotes
-      .replace(/\s+/g, ''); // Remove all whitespace
   };
 
   const processFile = async (fileHandle) => {
@@ -54,18 +55,25 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         throw new Error('File is still being written');
       }
 
+      const fileKey = `${file.name}-${file.lastModified}-${size2}`;
+      if (fileCache.current.has(fileKey)) {
+        return { 
+          fileName: file.name,
+          skipped: true,
+          reason: 'File not modified since last scan'
+        };
+      }
+
       const data = await file.arrayBuffer();
       let jsonData;
       
       if (file.name.toLowerCase().endsWith('.csv')) {
-        // Correct CSV processing using sheet_to_json
         const csvString = new TextDecoder().decode(data);
         const workbook = XLSX.read(csvString, { type: 'string' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         jsonData = XLSX.utils.sheet_to_json(worksheet);
       } else {
-        // Standard Excel processing
         const workbook = XLSX.read(data);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -74,11 +82,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       const serials = [];
       const errors = [];
+      const currentProcessed = new Set(processedSerialsSet);
 
       jsonData.forEach((item, index) => {
         try {
-          const rawSerial = item.serialNumber || item['Serial Number'] || item.SERIAL || item['serial'] || item['Serial'] || item['InputText'];
-          let rawStatus = item.testStatus || item.Status || item.status|| item['Result'] || 'UNKNOWN';
+          const rawSerial = item.serialNumber || item['Serial Number'] || item.SERIAL || 
+                          item['serial'] || item['Serial'] || item['SN'];
+          let rawStatus = item.testStatus || item.Status || item.status || 'UNKNOWN';
 
           if (!rawSerial) {
             throw new Error('Missing serial number');
@@ -86,6 +96,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
           const serialNumber = cleanSerialNumber(rawSerial);
           
+          // Skip if already processed
+          if (currentProcessed.has(serialNumber)) {
+            throw new Error('Serial already processed');
+          }
+
           // Convert any FAIL* to NG
           let status = rawStatus.toUpperCase().startsWith('FAIL') ? 'NG' : rawStatus.toUpperCase();
 
@@ -96,8 +111,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           serials.push({
             serialNumber,
             status,
-            row: index + 2
+            row: index + 2,
+            sourceFile: file.name
           });
+
+          currentProcessed.add(serialNumber);
         } catch (err) {
           errors.push({
             row: index + 2,
@@ -106,6 +124,9 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           });
         }
       });
+
+      fileCache.current.set(fileKey, true);
+      setProcessedSerialsSet(currentProcessed);
 
       return {
         fileName: file.name,
@@ -146,11 +167,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         results.push(result);
 
         if (result.success && result.serials) {
-          newSerials.push(...result.serials.map(s => ({
-            serialNumber: s.serialNumber,
-            status: s.status,
-            sourceFile: allFiles[i].name,
-          })));
+          newSerials.push(...result.serials);
         }
 
         setProgress(((i + 1) / allFiles.length) * 100);
@@ -158,12 +175,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       setProcessedFiles(prev => [...prev, ...results.filter(r => !r.skipped)]);
       setProcessedSerialNumbers(prev => [...prev, ...newSerials]);
-      setSuccess(`Rescanned ${allFiles.length} files`);
-      
-      if (fullRescanMode) {
-        setSuccess(`Full rescan completed: ${allFiles.length} files processed`);
-        setFullRescanMode(false);
-      }
+      setSuccess(`Processed ${allFiles.length} files`);
     } catch (err) {
       setError(`Error scanning files: ${err.message}`);
       console.error("Scan error:", err);
@@ -185,7 +197,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     return () => {
       clearInterval(intervalId);
     };
-  }, [folderHandle, isWatching, fullRescanMode]);
+  }, [folderHandle, isWatching]);
 
   const handleSubmit = async () => {
     if (processedSerialNumbers.length === 0) {
@@ -224,8 +236,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       const responseData = await response.json();
       setSuccess(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
-      setProcessedSerialNumbers([]);
       
+      // Clear only the successfully submitted serials
+      setProcessedSerialNumbers([]);
+      setProcessedSerialsSet(new Set());
+
       if (onBatchProcessed) {
         onBatchProcessed({
           success: true,
@@ -240,12 +255,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     }
   };
 
-  const triggerFullRescan = () => {
-    setFullRescanMode(true);
-    fileCache.current = new Map(); // Clear cache to force full rescan
-    setSuccess('Preparing full rescan...');
-  };
-
   const resetAll = () => {
     setFolderHandle(null);
     setProcessedFiles([]);
@@ -253,6 +262,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     setError(null);
     setSuccess(null);
     setProcessedSerialNumbers([]);
+    setProcessedSerialsSet(new Set());
     fileCache.current = new Map();
   };
 
@@ -292,38 +302,25 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       </Box>
 
       {folderHandle && (
-        <>
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <Button
-              variant="contained"
-              color={isWatching ? 'error' : 'primary'}
-              onClick={() => setIsWatching(!isWatching)}
-              disabled={isProcessing}
-              fullWidth
-            >
-              {isWatching ? 'Stop Watching' : 'Start Watching'}
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={triggerFullRescan}
-              disabled={isProcessing}
-              fullWidth
-            >
-              Force Full Rescan
-            </Button>
-          </Box>
+        <Button
+          variant="contained"
+          color={isWatching ? 'error' : 'primary'}
+          onClick={() => setIsWatching(!isWatching)}
+          disabled={isProcessing}
+          sx={{ mb: 3 }}
+          fullWidth
+        >
+          {isWatching ? 'Stop Watching' : 'Start Watching'}
+        </Button>
+      )}
 
-          {isProcessing && (
-            <Box sx={{ mb: 3 }}>
-              <LinearProgress variant="determinate" value={progress} />
-              <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-                Processing... {Math.round(progress)}%
-                {fullRescanMode && ' (Full rescan in progress)'}
-              </Typography>
-            </Box>
-          )}
-        </>
+      {isProcessing && (
+        <Box sx={{ mb: 3 }}>
+          <LinearProgress variant="determinate" value={progress} />
+          <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+            Processing... {Math.round(progress)}%
+          </Typography>
+        </Box>
       )}
 
       <Paper elevation={3} sx={{ p: 2, mb: 3, maxHeight: 200, overflow: 'auto' }}>
