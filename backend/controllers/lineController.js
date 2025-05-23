@@ -155,11 +155,12 @@ const scanSerial = async (req, res) => {
 
   try {
     const { lineId } = req.params;
-    const { serialNumber, serialStatus } = req.body; // Add serialStatus here
+    const { serialNumbers } = req.body; // Now accepts an array of objects with serialNumber and status
     const operatorId = req.user.id;
 
-    if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
-      return res.status(400).json({ message: "Valid serial number is required." });
+    // Validate input
+    if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
+      return res.status(400).json({ message: "At least one serial number is required." });
     }
 
     const line = await Line.findById(lineId)
@@ -172,41 +173,122 @@ const scanSerial = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    if (line.totalOutputs >= line.targetOutputs) {
-      return res.status(409).json({ message: "Target reached." });
-    }
-
-    const existingScan = await ScanLog.findOne({ serialNumber }).session(session);
+    // Check if any serial number is invalid
+    const invalidSerials = serialNumbers.filter(
+      item => !item.serialNumber || typeof item.serialNumber !== 'string' || item.serialNumber.trim() === ''
+    );
     
-    if (existingScan) {
-      // If previous scan was PASS, reject any new scan
-      if (existingScan.serialStatus === 'PASS') {
-        return res.status(409).json({ 
-          message: "Serial number already passed inspection and cannot be scanned again." 
-        });
-      }
-      
-      // If previous scan was NG and new scan is not PASS, reject
-      if (existingScan.serialStatus === 'NG' && serialStatus !== 'PASS') {
-        return res.status(409).json({ 
-          message: "This NG serial number can only be rescanned as PASS." 
-        });
-      }
+    if (invalidSerials.length > 0) {
+      return res.status(400).json({ 
+        message: "Invalid serial numbers detected.",
+        invalidSerials: invalidSerials.map(s => s.serialNumber)
+      });
     }
 
-    // Use Malaysia time for the scan
+    // Malaysia time for all scans in this batch
     const malaysiaNow = getMalaysiaTime();
     const formattedTime = formatMalaysiaTime(malaysiaNow);
 
-    const nextTotalOutputs = serialStatus === 'PASS' ? line.totalOutputs + 1 : line.totalOutputs;
+    // Check for duplicate serials in the current batch
+    const serialSet = new Set();
+    const duplicateSerialsInBatch = [];
+    
+    serialNumbers.forEach(item => {
+      if (serialSet.has(item.serialNumber)) {
+        duplicateSerialsInBatch.push(item.serialNumber);
+      }
+      serialSet.add(item.serialNumber);
+    });
 
-    const rejectedOutputs = serialStatus === 'NG' ? line.rejectedOutputs + 1 : line.rejectedOutputs;
+    if (duplicateSerialsInBatch.length > 0) {
+      return res.status(400).json({
+        message: "Duplicate serial numbers in the same batch.",
+        duplicates: duplicateSerialsInBatch
+      });
+    }
 
-    // Calculate efficiencies with local time
+    // Check existing scans in database
+    const existingScans = await ScanLog.find({ 
+      serialNumber: { $in: serialNumbers.map(s => s.serialNumber) } 
+    }).session(session);
+
+    const existingSerialMap = new Map();
+    existingScans.forEach(scan => {
+      existingSerialMap.set(scan.serialNumber, scan);
+    });
+
+    // Process each serial number
+    let totalPassed = 0;
+    let totalRejected = 0;
+    const scanResults = [];
+    const failedScans = [];
+
+    for (const { serialNumber, serialStatus } of serialNumbers) {
+      // Skip if target already reached
+      if (line.totalOutputs + totalPassed >= line.targetOutputs) {
+        failedScans.push({
+          serialNumber,
+          reason: "Target output reached",
+          status: "SKIPPED"
+        });
+        continue;
+      }
+
+      const existingScan = existingSerialMap.get(serialNumber);
+      
+      if (existingScan) {
+        // If previous scan was PASS, reject any new scan
+        if (existingScan.serialStatus === 'PASS') {
+          failedScans.push({
+            serialNumber,
+            reason: "Already passed inspection",
+            status: "DUPLICATE_PASS"
+          });
+          continue;
+        }
+        
+        // If previous scan was NG and new scan is not PASS, reject
+        if (existingScan.serialStatus === 'NG' && serialStatus !== 'PASS') {
+          failedScans.push({
+            serialNumber,
+            reason: "NG serial can only be rescanned as PASS",
+            status: "INVALID_NG_RESCAN"
+          });
+          continue;
+        }
+      }
+
+      // Count passed/rejected
+      if (serialStatus === 'PASS') {
+        totalPassed++;
+      } else if (serialStatus === 'NG') {
+        totalRejected++;
+      }
+
+      // Create scan log
+      const newScanLog = new ScanLog({
+        productionLine: lineId,
+        model: line.model,
+        operator: operatorId,
+        name: line.operatorId.name,
+        serialNumber,
+        serialStatus,
+        scanTime: malaysiaNow,
+        localScanTime: formattedTime,
+      });
+
+      scanResults.push(newScanLog);
+    }
+
+    // Calculate new totals
+    const nextTotalOutputs = line.totalOutputs + totalPassed;
+    const nextRejectedOutputs = line.rejectedOutputs + totalRejected;
+
+    // Calculate efficiencies
     const currentEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
       totalOutputs: nextTotalOutputs,
-      startTime: line.startTime // Already in local time from startLine
+      startTime: line.startTime
     });
 
     const targetEfficiency = calculateTargetEfficiency({
@@ -214,13 +296,13 @@ const scanSerial = async (req, res) => {
       totalOutputs: nextTotalOutputs
     });
 
-    // Update the line with local time
+    // Update the line
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
       {
         $set: { 
           totalOutputs: nextTotalOutputs,
-          rejectedOutputs: rejectedOutputs,
+          rejectedOutputs: nextRejectedOutputs,
           targetEfficiency: targetEfficiency
         },
         $push: {
@@ -228,31 +310,21 @@ const scanSerial = async (req, res) => {
             timestamp: malaysiaNow,
             efficiency: currentEfficiency,
             target: targetEfficiency,
-            rejectedOutputs: rejectedOutputs,
+            rejectedOutputs: nextRejectedOutputs,
           }
         }
       },
       { new: true, session }
     );
 
-    const newScanLog = new ScanLog({
-      productionLine: lineId,
-      model: updatedLine.model,
-      operator: operatorId,
-      name: line.operatorId.name,
-      serialNumber,
-      serialStatus: serialStatus, // Add this field
-      efficiency: currentEfficiency,
-      scanTime: malaysiaNow,
-      localScanTime: formattedTime,
-    });
-
-    await newScanLog.save({ session });
+    // Save all scan logs
+    await Promise.all(scanResults.map(scan => scan.save({ session })));
     await session.commitTransaction();
 
+    // Emit socket event
     const io = req.app.get('io');
     if (io) {
-      io.emit('newScan', {
+      io.emit('newScanBatch', {
         productionLine: lineId,
         model: updatedLine.model,
         operator: operatorId,
@@ -263,24 +335,25 @@ const scanSerial = async (req, res) => {
         rejectedOutputs: updatedLine.rejectedOutputs,
         efficiency: currentEfficiency,
         efficiencyHistory: updatedLine.efficiencyHistory,
-        serialNumber,
-        Status: serialStatus,
-        scannedAt: malaysiaNow,
+        scanTime: malaysiaNow,
         localTime: formattedTime,
+        passedCount: totalPassed,
+        rejectedCount: totalRejected,
+        failedScans: failedScans
       });
     }
 
     return res.status(200).json({
-      message: serialStatus === 'PASS' ? 
-        "Serial scanned successfully as PASS" : 
-        "Serial marked as NG",
-      scanId: newScanLog._id,
+      message: "Batch scan completed",
+      passedCount: totalPassed,
+      rejectedCount: totalRejected,
+      failedScans: failedScans,
       outputs: updatedLine.totalOutputs,
       efficiency: currentEfficiency,
       localTime: formattedTime,
     });
   } catch (error) {
-    console.error("Scan error:", error);
+    console.error("Batch scan error:", error);
     await session.abortTransaction();
     return res.status(500).json({ message: "Server error", error: error.message });
   } finally {

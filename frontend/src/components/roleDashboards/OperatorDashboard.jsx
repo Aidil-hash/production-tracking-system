@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, TextField, Button} from '@mui/material';
+import { Box, Typography, TextField, Button } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
+import ExcelFolderWatcher from '../ui/ExcelFolderWatcher';  // Adjust path as needed
 
 function OperatorDashboard() {
   const [assignedLine, setAssignedLine] = useState(null);
@@ -12,12 +13,14 @@ function OperatorDashboard() {
   const [showSerialStatus, setShowSerialStatus] = useState(false);
   const userName = localStorage.getItem('userName');
 
+  // Set the API_URL from environment variables (for development and production environments)
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const token = localStorage.getItem('token');
+  const modelName = assignedLine?.model;
 
   useEffect(() => {
     const fetchLine = async () => {
       try {
-        const token = localStorage.getItem('token');
         const response = await axios.get(`${API_URL}/api/operators/assignedLine`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -27,12 +30,11 @@ function OperatorDashboard() {
       }
     };
     fetchLine();
-  }, [API_URL]);
+  }, [API_URL, token]);
 
   const handleStart = async () => {
     if (!assignedLine) return;
     try {
-      const token = localStorage.getItem('token');
       const response = await axios.patch(
         `${API_URL}/api/lines/${assignedLine.lineId}/start`,
         {},
@@ -58,16 +60,15 @@ function OperatorDashboard() {
       setError('Please enter a serial number');
       return;
     }
-    setShowSerialStatus(true); // Show the PASS/NG buttons
+    setShowSerialStatus(true);
     setError('');
   };
 
   const handleSerialStatus = async (serialStatus) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/lines/${assignedLine.lineId}/scan`,
-        { serialNumber, serialStatus }, // Include serialStatus in the request
+        { serialNumber, serialStatus },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -75,7 +76,7 @@ function OperatorDashboard() {
       setMessage('Scan successful!');
       setError('');
       setSerialNumber('');
-      setShowSerialStatus(false); // Hide the buttons after successful scan
+      setShowSerialStatus(false);
       setLineStatus(response.data.line);
       const res2 = await axios.get(`${API_URL}/api/operators/assignedLine`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -91,8 +92,7 @@ function OperatorDashboard() {
     if (error) {
       const timer = setTimeout(() => {
         setError('');
-      }, 3000); // Disappear after 3 seconds
-
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [error]);
@@ -101,11 +101,26 @@ function OperatorDashboard() {
     if (message) {
       const timer = setTimeout(() => {
         setMessage('');
-      }, 3000); // Disappear after 3 seconds
-
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [message]);
+
+  const handleBatchProcessed = (results) => {
+    // Optionally, after batch processing, refresh assigned line info
+    axios.get(`${API_URL}/api/operators/assignedLine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(res => setAssignedLine(res.data))
+      .catch(() => {/* ignore errors here */});
+
+    // You could also display summary message or handle errors here
+    const successCount = results.reduce((acc, file) => 
+      acc + (file.success ? file.data.filter(r => r.success).length : 0), 0);
+    const failCount = results.reduce((acc, file) =>
+      acc + (file.success ? file.data.filter(r => !r.success).length : 0), 0);
+
+    setMessage(`Batch processed: ${successCount} successful, ${failCount} failed.`);
+  };
 
   return (
     <Box sx={{ p: 4 }}>
@@ -114,46 +129,12 @@ function OperatorDashboard() {
       </Typography>
 
       {error && (
-        <Typography 
-          color="error" 
-          align="center" 
-          mb={2}
-          sx={{
-            animation: 'fadeIn 0.5s ease-in',
-            '@keyframes fadeIn': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(-10px)'
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)'
-              }
-            }
-          }}
-        >
+        <Typography color="error" align="center" mb={2} sx={{ animation: 'fadeIn 0.5s ease-in' }}>
           {error}
         </Typography>
       )}
       {message && (
-        <Typography 
-          color="success.main" 
-          align="center" 
-          mb={2}
-          sx={{
-            animation: 'fadeIn 0.5s ease-in',
-            '@keyframes fadeIn': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(-10px)'
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)'
-              }
-            }
-          }}
-        >
+        <Typography color="success.main" align="center" mb={2} sx={{ animation: 'fadeIn 0.5s ease-in' }}>
           {message}
         </Typography>
       )}
@@ -166,46 +147,47 @@ function OperatorDashboard() {
             Assigned Line Model: {assignedLine.model}
           </Typography>
 
-          {assignedLine && (
-            <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Line Status
-              </Typography>
-              <Typography>Model: {assignedLine.model}</Typography>
-              <Typography>Target Outputs: {assignedLine.targetOutputs}</Typography>
-              <Typography>Total Outputs: {assignedLine.totalOutputs}</Typography>
-            </Box>
-          )}
+          <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Line Status
+            </Typography>
+            <Typography>Model: {assignedLine.model}</Typography>
+            <Typography>Target Outputs: {assignedLine.targetOutputs}</Typography>
+            <Typography>Total Outputs: {assignedLine.totalOutputs}</Typography>
+          </Box>
 
-            {assignedLine.startTime ? (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle1" color="primary">
-                  Started at: {new Date(assignedLine.startTime.replace('Z', '+08:00')).toLocaleString('en-MY')}
-                </Typography>
-                <Typography variant="subtitle2" color={assignedLine.linestatus === 'RUNNING' ? 'success.main' : 'error.main'}>
-                  Status: {assignedLine.linestatus}
-                </Typography>
-              </Box>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={handleStart}
-                disabled={!assignedLine}
-                sx={{
-                  mt: 2,
-                  minWidth: 100,
-                  backgroundColor: '#25994b',
-                  '&:hover': {
-                    backgroundColor: '#208541',
-                  },
-                  '&:disabled': {
-                    backgroundColor: '#cccccc',
-                  }
-                }}
+          {assignedLine.startTime ? (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" color="primary">
+                Started at: {new Date(assignedLine.startTime.replace('Z', '+08:00')).toLocaleString('en-MY')}
+              </Typography>
+              <Typography
+                variant="subtitle2"
+                color={assignedLine.linestatus === 'RUNNING' ? 'success.main' : 'error.main'}
               >
-                Start Line
-              </Button>
-            )}
+                Status: {assignedLine.linestatus}
+              </Typography>
+            </Box>
+          ) : (
+            <Button
+              variant="contained"
+              onClick={handleStart}
+              disabled={!assignedLine}
+              sx={{
+                mt: 2,
+                minWidth: 100,
+                backgroundColor: '#25994b',
+                '&:hover': {
+                  backgroundColor: '#208541',
+                },
+                '&:disabled': {
+                  backgroundColor: '#cccccc',
+                },
+              }}
+            >
+              Start Line
+            </Button>
+          )}
 
           <Box
             component="form"
@@ -235,7 +217,7 @@ function OperatorDashboard() {
                 Enter
               </Button>
             </Box>
-            
+
             {showSerialStatus && (
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2 }}>
                 <Button
@@ -266,6 +248,16 @@ function OperatorDashboard() {
                 </Button>
               </Box>
             )}
+          </Box>
+
+          {/* Embed ExcelFolderWatcher here */}
+          <Box sx={{ mt: 5 }}>
+            <ExcelFolderWatcher
+              modelName={modelName}
+              lineId={assignedLine.lineId}
+              authToken={token}
+              onBatchProcessed={handleBatchProcessed}
+            />
           </Box>
         </Box>
       )}
