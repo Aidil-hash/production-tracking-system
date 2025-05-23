@@ -161,6 +161,8 @@ const scanSerial = async (req, res) => {
     // Determine if this is a batch or single scan
     const isBatch = Array.isArray(serialNumbers);
     const scansToProcess = isBatch ? serialNumbers : [{ serialNumber, serialStatus }];
+    const malaysiaNow = getMalaysiaTime();
+    const formattedTime = formatMalaysiaTime(malaysiaNow);
 
     if (!isBatch && (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '')) {
       return res.status(400).json({ message: "Valid serial number is required." });
