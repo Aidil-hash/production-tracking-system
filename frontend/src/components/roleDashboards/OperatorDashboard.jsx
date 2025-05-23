@@ -16,7 +16,6 @@ function OperatorDashboard() {
   // Set the API_URL from environment variables (for development and production environments)
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const token = localStorage.getItem('token');
-  const modelName = assignedLine?.model;
 
   useEffect(() => {
     const fetchLine = async () => {
@@ -107,19 +106,37 @@ function OperatorDashboard() {
   }, [message]);
 
   const handleBatchProcessed = (results) => {
-    // Optionally, after batch processing, refresh assigned line info
-    axios.get(`${API_URL}/api/operators/assignedLine`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(res => setAssignedLine(res.data))
-      .catch(() => {/* ignore errors here */});
+    // Ensure results is always an array
+    const resultArray = Array.isArray(results) ? results : [results];
+    
+    try {
+      // Calculate success/fail counts
+      const successCount = resultArray.reduce((acc, result) => {
+        if (result.success && Array.isArray(result.data)) {
+          return acc + result.data.filter(r => r.success).length;
+        }
+        return acc;
+      }, 0);
 
-    // You could also display summary message or handle errors here
-    const successCount = results.reduce((acc, file) => 
-      acc + (file.success ? file.data.filter(r => r.success).length : 0), 0);
-    const failCount = results.reduce((acc, file) =>
-      acc + (file.success ? file.data.filter(r => !r.success).length : 0), 0);
+      const failCount = resultArray.reduce((acc, result) => {
+        if (result.success && Array.isArray(result.data)) {
+          return acc + result.data.filter(r => !r.success).length;
+        }
+        return acc + (result.success ? 0 : 1);
+      }, 0);
 
-    setMessage(`Batch processed: ${successCount} successful, ${failCount} failed.`);
+      setMessage(`Batch processed: ${successCount} successful, ${failCount} failed.`);
+
+      // Refresh line data
+      axios.get(`${API_URL}/api/operators/assignedLine`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(res => setAssignedLine(res.data))
+        .catch(() => setError('Failed to refresh line status'));
+
+    } catch (err) {
+      setError('Error processing batch results');
+      console.error('Batch processing error:', err);
+    }
   };
 
   return (
@@ -253,7 +270,6 @@ function OperatorDashboard() {
           {/* Embed ExcelFolderWatcher here */}
           <Box sx={{ mt: 5 }}>
             <ExcelFolderWatcher
-              modelName={modelName}
               lineId={assignedLine.lineId}
               authToken={token}
               onBatchProcessed={handleBatchProcessed}

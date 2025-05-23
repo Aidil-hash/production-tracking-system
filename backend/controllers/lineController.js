@@ -155,12 +155,15 @@ const scanSerial = async (req, res) => {
 
   try {
     const { lineId } = req.params;
-    const { serialNumbers } = req.body; // Now accepts an array of objects with serialNumber and status
+    const { serialNumber, serialStatus, serialNumbers } = req.body; // Support both formats
     const operatorId = req.user.id;
 
-    // Validate input
-    if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
-      return res.status(400).json({ message: "At least one serial number is required." });
+    // Determine if this is a batch or single scan
+    const isBatch = Array.isArray(serialNumbers);
+    const scansToProcess = isBatch ? serialNumbers : [{ serialNumber, serialStatus }];
+
+    if (!isBatch && (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '')) {
+      return res.status(400).json({ message: "Valid serial number is required." });
     }
 
     const line = await Line.findById(lineId)
@@ -173,43 +176,9 @@ const scanSerial = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this production line." });
     }
 
-    // Check if any serial number is invalid
-    const invalidSerials = serialNumbers.filter(
-      item => !item.serialNumber || typeof item.serialNumber !== 'string' || item.serialNumber.trim() === ''
-    );
-    
-    if (invalidSerials.length > 0) {
-      return res.status(400).json({ 
-        message: "Invalid serial numbers detected.",
-        invalidSerials: invalidSerials.map(s => s.serialNumber)
-      });
-    }
-
-    // Malaysia time for all scans in this batch
-    const malaysiaNow = getMalaysiaTime();
-    const formattedTime = formatMalaysiaTime(malaysiaNow);
-
-    // Check for duplicate serials in the current batch
-    const serialSet = new Set();
-    const duplicateSerialsInBatch = [];
-    
-    serialNumbers.forEach(item => {
-      if (serialSet.has(item.serialNumber)) {
-        duplicateSerialsInBatch.push(item.serialNumber);
-      }
-      serialSet.add(item.serialNumber);
-    });
-
-    if (duplicateSerialsInBatch.length > 0) {
-      return res.status(400).json({
-        message: "Duplicate serial numbers in the same batch.",
-        duplicates: duplicateSerialsInBatch
-      });
-    }
-
-    // Check existing scans in database
+    // Check for existing scans in database
     const existingScans = await ScanLog.find({ 
-      serialNumber: { $in: serialNumbers.map(s => s.serialNumber) } 
+      serialNumber: { $in: scansToProcess.map(s => s.serialNumber) } 
     }).session(session);
 
     const existingSerialMap = new Map();
@@ -217,13 +186,23 @@ const scanSerial = async (req, res) => {
       existingSerialMap.set(scan.serialNumber, scan);
     });
 
-    // Process each serial number
+    // Process all scans
     let totalPassed = 0;
     let totalRejected = 0;
     const scanResults = [];
     const failedScans = [];
 
-    for (const { serialNumber, serialStatus } of serialNumbers) {
+    for (const { serialNumber, serialStatus } of scansToProcess) {
+      // Validate each serial
+      if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
+        failedScans.push({
+          serialNumber: serialNumber || 'N/A',
+          reason: "Invalid serial number format",
+          status: "INVALID"
+        });
+        continue;
+      }
+
       // Skip if target already reached
       if (line.totalOutputs + totalPassed >= line.targetOutputs) {
         failedScans.push({
@@ -263,6 +242,13 @@ const scanSerial = async (req, res) => {
         totalPassed++;
       } else if (serialStatus === 'NG') {
         totalRejected++;
+      } else {
+        failedScans.push({
+          serialNumber,
+          reason: "Invalid status (must be PASS or NG)",
+          status: "INVALID_STATUS"
+        });
+        continue;
       }
 
       // Create scan log
@@ -324,7 +310,8 @@ const scanSerial = async (req, res) => {
     // Emit socket event
     const io = req.app.get('io');
     if (io) {
-      io.emit('newScanBatch', {
+      const eventName = isBatch ? 'newScanBatch' : 'newScan';
+      io.emit(eventName, {
         productionLine: lineId,
         model: updatedLine.model,
         operator: operatorId,
@@ -337,25 +324,39 @@ const scanSerial = async (req, res) => {
         efficiencyHistory: updatedLine.efficiencyHistory,
         scanTime: malaysiaNow,
         localTime: formattedTime,
-        passedCount: totalPassed,
-        rejectedCount: totalRejected,
-        failedScans: failedScans
+        ...(isBatch ? {
+          passedCount: totalPassed,
+          rejectedCount: totalRejected,
+          failedScans: failedScans
+        } : {
+          serialNumber,
+          Status: serialStatus
+        })
       });
     }
 
     return res.status(200).json({
-      message: "Batch scan completed",
-      passedCount: totalPassed,
-      rejectedCount: totalRejected,
-      failedScans: failedScans,
+      message: isBatch ? 
+        `Batch processed: ${totalPassed} passed, ${totalRejected} rejected` : 
+        (serialStatus === 'PASS' ? "Serial scanned successfully as PASS" : "Serial marked as NG"),
+      ...(isBatch ? {
+        passedCount: totalPassed,
+        rejectedCount: totalRejected,
+        failedScans: failedScans
+      } : {
+        scanId: scanResults[0]?._id,
+      }),
       outputs: updatedLine.totalOutputs,
       efficiency: currentEfficiency,
       localTime: formattedTime,
     });
   } catch (error) {
-    console.error("Batch scan error:", error);
+    console.error(isBatch ? "Batch scan error:" : "Scan error:", error);
     await session.abortTransaction();
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ 
+      message: isBatch ? "Batch processing failed" : "Scan failed",
+      error: error.message 
+    });
   } finally {
     session.endSession();
   }
