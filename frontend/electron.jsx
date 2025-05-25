@@ -1,17 +1,25 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
-function createWindow () {
-  const win = new BrowserWindow({
-    width: 1920,
-    height: 1080,
+let mainWindow;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
     webPreferences: {
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'dist/preload.js')
+    },
+    icon: path.join(__dirname, 'dist/roland-logo.png')
   });
 
-  win.loadURL('http://localhost:3000'); // during dev
-  // win.loadFile(path.join(__dirname, 'build/index.html')); // for production
+  mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
+
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
 app.whenReady().then(createWindow);

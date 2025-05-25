@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Button, Typography, Box, LinearProgress, List, ListItem, 
-  ListItemText, IconButton, Paper, Alert, CircularProgress 
+  ListItemText, Paper, Alert
 } from '@mui/material';
 import * as XLSX from 'xlsx';
 
@@ -13,39 +13,57 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [processedSerialNumbers, setProcessedSerialNumbers] = useState([]);
-  const [processedSerialsSet, setProcessedSerialsSet] = useState(new Set());
+  const [unprocessedSerials, setUnprocessedSerials] = useState([]);
   const fileCache = useRef(new Map());
+  const currentDateRef = useRef('');
+  const processedSerialsCache = useRef(new Set());
+  const scanInterval = useRef(null);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  const cleanSerialNumber = (serial) => {
-    return String(serial)
-      .trim()
-      .replace(/,$/, '') // Remove trailing comma
-      .replace(/^"+|"+$/g, '') // Remove surrounding quotes
-      .replace(/\s+/g, ''); // Remove all whitespace
+  const updateTodaysDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    currentDateRef.current = `${year}${month}${day}`;
+    return currentDateRef.current;
   };
 
   const requestFolderAccess = async () => {
     try {
       setError(null);
+      updateTodaysDate();
       const handle = await window.showDirectoryPicker();
       setFolderHandle(handle);
       setSuccess(`Watching folder: ${handle.name}`);
       fileCache.current = new Map();
-      setProcessedSerialsSet(new Set()); // Reset processed serials when folder changes
+      processedSerialsCache.current = new Set();
+      setProcessedFiles([]);
+      setUnprocessedSerials([]);
     } catch (err) {
       setError('Folder access was denied or cancelled');
       console.error("Folder access error:", err);
     }
   };
 
+  const isTodaysFile = (filename) => {
+    const datePattern = new RegExp(`_${currentDateRef.current}_`);
+    return datePattern.test(filename);
+  };
+
   const processFile = async (fileHandle) => {
     try {
       const file = await fileHandle.getFile();
       
-      // Check if file is still being written
+      if (!isTodaysFile(file.name)) {
+        return {
+          fileName: file.name,
+          skipped: true,
+          reason: 'Not today\'s file'
+        };
+      }
+
       await new Promise(resolve => setTimeout(resolve, 1000));
       const size1 = file.size;
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -60,62 +78,77 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         return { 
           fileName: file.name,
           skipped: true,
-          reason: 'File not modified since last scan'
+          reason: 'File already processed'
         };
       }
 
       const data = await file.arrayBuffer();
-      let jsonData;
+      let jsonData = [];
       
       if (file.name.toLowerCase().endsWith('.csv')) {
-        const csvString = new TextDecoder().decode(data);
-        const workbook = XLSX.read(csvString, { type: 'string' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        jsonData = XLSX.utils.sheet_to_json(worksheet);
+        // Custom CSV parsing for this specific format
+        const text = new TextDecoder().decode(data);
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        
+        if (lines.length > 0) {
+          const headers = lines[0].split(',');
+          
+          jsonData = lines.slice(1).map(line => {
+            // Handle quoted fields that might contain commas
+            const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            const obj = {};
+            headers.forEach((header, i) => {
+              obj[header.trim()] = values[i] ? values[i].trim().replace(/^"|"$/g, '') : '';
+            });
+            return obj;
+          });
+        }
       } else {
+        // Process Excel file
         const workbook = XLSX.read(data);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         jsonData = XLSX.utils.sheet_to_json(worksheet);
       }
 
-      const serials = [];
+      const newSerials = [];
       const errors = [];
-      const currentProcessed = new Set(processedSerialsSet);
 
       jsonData.forEach((item, index) => {
         try {
-          const rawSerial = item.serialNumber || item['Serial Number'] || item.SERIAL || 
-                          item['serial'] || item['Serial'] || item['SN'];
-          let rawStatus = item.testStatus || item.Status || item.status || 'UNKNOWN';
-
-          if (!rawSerial) {
-            throw new Error('Missing serial number');
-          }
-
-          const serialNumber = cleanSerialNumber(rawSerial);
+          // Get raw serial from InputText column (specific to this CSV format)
+          let rawSerial = item.InputText || '';
           
-          // Skip if already processed
-          if (currentProcessed.has(serialNumber)) {
-            throw new Error('Serial already processed');
+          // Clean the serial number - remove quotes and trailing comma
+          const serialNumber = rawSerial
+            .replace(/^"+|"+$/g, '')  // Remove surrounding quotes
+            .replace(/,$/, '')        // Remove trailing comma
+            .trim();
+
+          if (!serialNumber) {
+            throw new Error('Missing serial number in InputText column');
           }
 
-          // Convert any FAIL* to NG
-          let status = rawStatus.toUpperCase().startsWith('FAIL') ? 'NG' : rawStatus.toUpperCase();
-
-          if (!['PASS', 'NG'].includes(status)) {
-            throw new Error(`Invalid status: ${rawStatus}`);
+          // Get test status from Result column
+          let testStatus = (item.Result || '').toUpperCase();
+          
+          // Convert "FAIL:xx" to "NG" and "PASS" to "PASS"
+          if (testStatus.includes('FAIL')) {
+            testStatus = 'NG';
+          } else if (testStatus.includes('PASS')) {
+            testStatus = 'PASS';
+          } else {
+            throw new Error(`Invalid test status: ${testStatus}`);
           }
 
-          serials.push({
-            serialNumber,
-            status,
-            row: index + 2,
-            sourceFile: file.name
-          });
-
-          currentProcessed.add(serialNumber);
+          if (!processedSerialsCache.current.has(serialNumber)) {
+            newSerials.push({
+              serialNumber,
+              status: testStatus,
+              sourceFile: file.name,
+              row: index + 2
+            });
+          }
         } catch (err) {
           errors.push({
             row: index + 2,
@@ -126,12 +159,10 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       });
 
       fileCache.current.set(fileKey, true);
-      setProcessedSerialsSet(currentProcessed);
-
       return {
         fileName: file.name,
         success: true,
-        serials,
+        serials: newSerials,
         errors
       };
     } catch (err) {
@@ -152,30 +183,55 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       setProgress(0);
       setError(null);
 
+      const newDate = updateTodaysDate();
+      if (newDate !== currentDateRef.current) {
+        fileCache.current = new Map();
+        processedSerialsCache.current = new Set();
+        setProcessedFiles([]);
+        setUnprocessedSerials([]);
+      }
+
       const allFiles = [];
       for await (const entry of folderHandle.values()) {
-        if (entry.kind === 'file' && entry.name.match(/\.(xlsx|xls|csv)$/i)) {
+        if (
+          entry.kind === 'file' && 
+          entry.name.match(/\.(xlsx|xls|csv)$/i) &&
+          isTodaysFile(entry.name)
+        ) {
           allFiles.push(entry);
         }
       }
 
       const results = [];
-      const newSerials = [];
+      const newUnprocessedSerials = [];
 
       for (let i = 0; i < allFiles.length; i++) {
         const result = await processFile(allFiles[i]);
         results.push(result);
 
         if (result.success && result.serials) {
-          newSerials.push(...result.serials);
+          newUnprocessedSerials.push(...result.serials);
         }
 
         setProgress(((i + 1) / allFiles.length) * 100);
       }
 
-      setProcessedFiles(prev => [...prev, ...results.filter(r => !r.skipped)]);
-      setProcessedSerialNumbers(prev => [...prev, ...newSerials]);
-      setSuccess(`Processed ${allFiles.length} files`);
+      setProcessedFiles(prev => [
+        ...prev.filter(f => isTodaysFile(f.fileName)),
+        ...results.filter(r => !r.skipped)
+      ]);
+      
+      if (newUnprocessedSerials.length > 0) {
+        setUnprocessedSerials(prev => [...prev, ...newUnprocessedSerials]);
+        setSuccess(`Found ${newUnprocessedSerials.length} new serials`);
+        // Stop scanning when new serials are found
+        if (scanInterval.current) {
+          clearInterval(scanInterval.current);
+          scanInterval.current = null;
+        }
+      } else {
+        setSuccess('No new serials found');
+      }
     } catch (err) {
       setError(`Error scanning files: ${err.message}`);
       console.error("Scan error:", err);
@@ -185,23 +241,23 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   };
 
   useEffect(() => {
-    if (!folderHandle || !isWatching) return;
+    if (!folderHandle || !isWatching || unprocessedSerials.length > 0) return;
 
-    const intervalId = setInterval(() => {
-      scanAllFiles();
-    }, 30000); // Rescan every 30 seconds
-
-    // Initial scan
-    scanAllFiles();
+    // Start scanning only when there's no unprocessed serials
+    scanInterval.current = setInterval(scanAllFiles, 10000);
+    scanAllFiles(); // Initial scan
 
     return () => {
-      clearInterval(intervalId);
+      if (scanInterval.current) {
+        clearInterval(scanInterval.current);
+        scanInterval.current = null;
+      }
     };
-  }, [folderHandle, isWatching]);
+  }, [folderHandle, isWatching, unprocessedSerials.length]);
 
   const handleSubmit = async () => {
-    if (processedSerialNumbers.length === 0) {
-      setError('No serial numbers to submit.');
+    if (unprocessedSerials.length === 0) {
+      setError('No unprocessed serial numbers to submit.');
       return;
     }
 
@@ -211,7 +267,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       setSuccess(null);
 
       const batchPayload = {
-        serialNumbers: processedSerialNumbers.map(sn => ({
+        serialNumbers: unprocessedSerials.map(sn => ({
           serialNumber: sn.serialNumber,
           serialStatus: sn.status
         }))
@@ -237,10 +293,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       const responseData = await response.json();
       setSuccess(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
       
-      // Clear only the successfully submitted serials
-      setProcessedSerialNumbers([]);
-      setProcessedSerialsSet(new Set());
-
+      unprocessedSerials.forEach(sn => {
+        processedSerialsCache.current.add(sn.serialNumber);
+      });
+      setUnprocessedSerials([]);
+      
       if (onBatchProcessed) {
         onBatchProcessed({
           success: true,
@@ -261,15 +318,22 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     setIsWatching(false);
     setError(null);
     setSuccess(null);
-    setProcessedSerialNumbers([]);
-    setProcessedSerialsSet(new Set());
+    setUnprocessedSerials([]);
     fileCache.current = new Map();
+    processedSerialsCache.current = new Set();
+    if (scanInterval.current) {
+      clearInterval(scanInterval.current);
+      scanInterval.current = null;
+    }
   };
 
   return (
     <Box sx={{ p: 3, border: '1px solid #ccc', borderRadius: 2, maxWidth: 800, margin: '0 auto' }}>
       <Typography variant="h6" gutterBottom>
-        Excel Batch Upload
+        Excel Batch Upload (Smart Scan)
+      </Typography>
+      <Typography variant="subtitle2" className='text.white' gutterBottom>
+        {`Scanning for files with date: ${currentDateRef.current}`}
       </Typography>
 
       {error && (
@@ -292,7 +356,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         ) : (
           <>
             <Typography sx={{ flexGrow: 1, alignSelf: 'center' }}>
-              Watching: <strong>{folderHandle.name}</strong>
+              {isWatching ? `Watching: ${folderHandle.name}` : `Selected: ${folderHandle.name}`}
             </Typography>
             <Button variant="outlined" color="error" onClick={resetAll}>
               Reset
@@ -307,8 +371,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           color={isWatching ? 'error' : 'primary'}
           onClick={() => setIsWatching(!isWatching)}
           disabled={isProcessing}
-          sx={{ mb: 3 }}
           fullWidth
+          sx={{ mb: 3 }}
         >
           {isWatching ? 'Stop Watching' : 'Start Watching'}
         </Button>
@@ -338,7 +402,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
                     `${file.serials?.length || 0} serials found` : 
                     `Error: ${file.error}`
                 }
-                sx={{ color: file.success ? 'inherit' : 'error.main' }}
               />
             </ListItem>
           ))}
@@ -347,10 +410,10 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       <Paper elevation={3} sx={{ p: 2, mb: 3, maxHeight: 300, overflow: 'auto' }}>
         <Typography variant="subtitle1" gutterBottom>
-          Ready to Submit ({processedSerialNumbers.length} serials)
+          Ready to Submit ({unprocessedSerials.length} serials)
         </Typography>
         <List dense>
-          {processedSerialNumbers.slice(0, 10).map((sn, index) => (
+          {unprocessedSerials.slice(0, 10).map((sn, index) => (
             <ListItem key={index} divider>
               <ListItemText
                 primary={sn.serialNumber}
@@ -358,10 +421,10 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
               />
             </ListItem>
           ))}
-          {processedSerialNumbers.length > 10 && (
+          {unprocessedSerials.length > 10 && (
             <ListItem>
               <ListItemText
-                primary={`...and ${processedSerialNumbers.length - 10} more`}
+                primary={`...and ${unprocessedSerials.length - 10} more`}
               />
             </ListItem>
           )}
@@ -372,11 +435,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         variant="contained"
         color="success"
         onClick={handleSubmit}
-        disabled={processedSerialNumbers.length === 0 || isProcessing}
+        disabled={unprocessedSerials.length === 0 || isProcessing}
         fullWidth
         size="large"
       >
-        {isProcessing ? 'Submitting...' : 'Submit Serial Numbers'}
+        {isProcessing ? 'Submitting...' : 'Submit Unprocessed Serials'}
       </Button>
     </Box>
   );

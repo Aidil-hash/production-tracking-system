@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, TextField, Button } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
 import ExcelFolderWatcher from '../ui/ExcelFolderWatcher';  // Adjust path as needed
 
 function OperatorDashboard() {
   const [assignedLine, setAssignedLine] = useState(null);
-  const [serialNumber, setSerialNumber] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lineStatus, setLineStatus] = useState(null);
-  const [showSerialStatus, setShowSerialStatus] = useState(false);
   const userName = localStorage.getItem('userName');
 
   // Set the API_URL from environment variables (for development and production environments)
@@ -50,40 +48,6 @@ function OperatorDashboard() {
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to start line');
-    }
-  };
-
-  const handleScan = async (e) => {
-    e.preventDefault();
-    if (!serialNumber) {
-      setError('Please enter a serial number');
-      return;
-    }
-    setShowSerialStatus(true);
-    setError('');
-  };
-
-  const handleSerialStatus = async (serialStatus) => {
-    try {
-      const response = await axios.post(
-        `${API_URL}/api/lines/${assignedLine.lineId}/scan`,
-        { serialNumber, serialStatus },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setMessage('Scan successful!');
-      setError('');
-      setSerialNumber('');
-      setShowSerialStatus(false);
-      setLineStatus(response.data.line);
-      const res2 = await axios.get(`${API_URL}/api/operators/assignedLine`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAssignedLine(res2.data);
-    } catch (err) {
-      setMessage('');
-      setError(err.response?.data?.message || 'Scan failed');
     }
   };
 
@@ -141,9 +105,6 @@ function OperatorDashboard() {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        Welcome, {userName}
-      </Typography>
 
       {error && (
         <Typography color="error" align="center" mb={2} sx={{ animation: 'fadeIn 0.5s ease-in' }}>
@@ -161,7 +122,7 @@ function OperatorDashboard() {
       {assignedLine && (
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
-            Assigned Line Model: {assignedLine.model}
+            Assigned Line Operator: {userName}
           </Typography>
 
           <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: 2 }}>
@@ -205,67 +166,6 @@ function OperatorDashboard() {
               Start Line
             </Button>
           )}
-
-          <Box
-            component="form"
-            onSubmit={handleScan}
-            sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}
-          >
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                label="Serial Number"
-                variant="outlined"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                fullWidth
-                sx={{ backgroundColor: '#fff', borderRadius: 2 }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                sx={{
-                  minWidth: 100,
-                  backgroundColor: '#1976d2',
-                  '&:hover': {
-                    backgroundColor: '#115293',
-                  },
-                }}
-              >
-                Enter
-              </Button>
-            </Box>
-
-            {showSerialStatus && (
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2 }}>
-                <Button
-                  variant="contained"
-                  onClick={() => handleSerialStatus('PASS')}
-                  sx={{
-                    minWidth: 100,
-                    backgroundColor: '#25994b',
-                    '&:hover': {
-                      backgroundColor: '#208541',
-                    },
-                  }}
-                >
-                  PASS
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => handleSerialStatus('NG')}
-                  sx={{
-                    minWidth: 100,
-                    backgroundColor: '#dc3545',
-                    '&:hover': {
-                      backgroundColor: '#c82333',
-                    },
-                  }}
-                >
-                  NG
-                </Button>
-              </Box>
-            )}
-          </Box>
 
           {/* Embed ExcelFolderWatcher here */}
           <Box sx={{ mt: 5 }}>
