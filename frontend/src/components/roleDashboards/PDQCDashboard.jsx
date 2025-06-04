@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Button, TextField, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper, MenuItem
+  TableCell, TableContainer, TableHead, TableRow, Paper
 } from '@mui/material';
-import Select from '@mui/material/Select';
 import axios from 'axios';
 import LogoutButton from '../Logout';
 
@@ -13,7 +12,7 @@ function SerialDrivenDashboard() {
   const [error, setError] = useState('');
   const [pendingSerials, setPendingSerials] = useState([]);
   const [manualSerial, setManualSerial] = useState('');
-  const [secondStatus, setSecondStatus] = useState('PASS');
+  const [awaitingSecondStatus, setAwaitingSecondStatus] = useState(false);
   const userName = localStorage.getItem('userName');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const token = localStorage.getItem('token');
@@ -43,24 +42,28 @@ function SerialDrivenDashboard() {
     }
   };
 
-  const handleManualSecondVerify = async () => {
+  const handleManualSecondVerify = () => {
     if (!manualSerial) return;
     setMessage('');
     setError('');
     setLineInfo(null);
     setPendingSerials([]);
+    setAwaitingSecondStatus(true);
+  };
 
+  const handleFinalSecondVerify = async (status) => {
     const line = await fetchLineFromSerial(manualSerial);
     if (!line) return;
 
     try {
       const response = await axios.post(
         `${API_URL}/api/lines/${line.lineId}/scan`,
-        { serialNumber: manualSerial, serialStatus: secondStatus },
+        { serialNumber: manualSerial, serialStatus: status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage(response.data.message || 'Second verification successful');
       setManualSerial('');
+      setAwaitingSecondStatus(false);
       fetchPendingSerials(line.lineId);
     } catch (err) {
       setError(err.response?.data?.message || 'Second verification failed');
@@ -100,13 +103,16 @@ function SerialDrivenDashboard() {
 
       <LogoutButton />
 
-      {/* Serial input with status selector */}
+      {/* Serial input with conditional action buttons */}
       <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4 }}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
           <TextField
             label="Serial for Second Verification"
             value={manualSerial}
-            onChange={e => setManualSerial(e.target.value)}
+            onChange={e => {
+              setManualSerial(e.target.value);
+              setAwaitingSecondStatus(false);
+            }}
             variant="outlined"
             fullWidth
             sx={{
@@ -119,33 +125,38 @@ function SerialDrivenDashboard() {
               '& input': { color: '#ffffff' }
             }}
           />
-          <Select
-            value={secondStatus}
-            onChange={e => setSecondStatus(e.target.value)}
-            sx={{
-              minWidth: 120,
-              color: "#fff",
-              backgroundColor: "#1e293b",
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: "#ffffff" },
-              '& .MuiSvgIcon-root': { color: "#fff" }
-            }}
-          >
-            <MenuItem value="PASS">PASS</MenuItem>
-            <MenuItem value="NG">NG</MenuItem>
-          </Select>
-          <Button
-            variant="contained"
-            onClick={handleManualSecondVerify}
-            disabled={!manualSerial}
-            sx={{
-              backgroundColor: '#1976d2',
-              color: '#fff',
-              '&:hover': { backgroundColor: '#1565c0' },
-              '&:disabled': { backgroundColor: '#90caf9', color: '#fff' }
-            }}
-          >
-            Second Verify ({secondStatus})
-          </Button>
+          {!awaitingSecondStatus ? (
+            <Button
+              variant="contained"
+              onClick={handleManualSecondVerify}
+              disabled={!manualSerial}
+              sx={{
+                backgroundColor: '#1976d2',
+                color: '#fff',
+                '&:hover': { backgroundColor: '#1565c0' },
+                '&:disabled': { backgroundColor: '#90caf9', color: '#fff' }
+              }}
+            >
+              Second Verify
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="contained"
+                onClick={() => handleFinalSecondVerify("PASS")}
+                sx={{ backgroundColor: 'green', color: '#fff' }}
+              >
+                PASS
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => handleFinalSecondVerify("NG")}
+                sx={{ backgroundColor: 'red', color: '#fff' }}
+              >
+                NG
+              </Button>
+            </>
+          )}
         </Box>
       </Box>
 

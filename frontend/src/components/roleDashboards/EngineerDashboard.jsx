@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { io } from 'socket.io-client';
 import { Button } from "../ui/button";
 import { Typography } from '@mui/material';
@@ -113,6 +114,50 @@ function EngineerDashboard() {
     }
   }, [API_URL, selectedLine]);
 
+  const handleExportCSV = () => {
+    if (filteredScanLogs.length === 0) return;
+
+    const headers = ['Model', 'Operator', 'Serial Number', 'First Status', 'Second Status', 'Verified By', 'Scanned At'];
+    const rows = filteredScanLogs.map(log => [
+      `"${log.model || log.productionLine?.model || ''}"`,
+      `"${log.operator?.name || ''}"`,
+      `"${log.serialNumber || ''}"`,
+      `"${log.serialStatus || ''}"`,
+      `"${log.secondSerialStatus || ''}"`,
+      `"${log.secondVerifierName || ''}"`,
+      `"${log.scannedAt ? new Date(log.scannedAt).toLocaleString() : ''}"`
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `scan_logs_${selectedLine}.csv`);
+    link.click();
+  };
+
+  const handleExportExcel = () => {
+    if (filteredScanLogs.length === 0) return;
+
+    const data = filteredScanLogs.map(log => ({
+      Model: log.model || log.productionLine?.model || '',
+      Operator: log.operator?.name || '',
+      SerialNumber: log.serialNumber || '',
+      FirstStatus: log.serialStatus || '',
+      SecondStatus: log.secondSerialStatus || '',
+      VerifiedBy: log.secondVerifierName || '',
+      ScannedAt: log.scannedAt ? new Date(log.scannedAt).toLocaleString() : ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Scan Logs');
+
+    XLSX.writeFile(workbook, `scan_logs_${selectedLine}.xlsx`);
+  };
+
   // Sort & filter scan logs
   useEffect(() => {
     let sortedLogs = [...scanLogs];
@@ -141,7 +186,7 @@ function EngineerDashboard() {
       case 'NG':
         return 'bg-red-500 text-white font-semibold';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-yellow-500 text-white font-semibold';
     }
   };
 
@@ -384,6 +429,20 @@ function EngineerDashboard() {
             onChange={e => setFilterText(e.target.value)}
             disabled={!selectedLine}
           />
+          <Button
+            onClick={handleExportCSV}
+            disabled={!selectedLine || filteredScanLogs.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Export CSV
+          </Button>
+          <Button
+            onClick={handleExportExcel}
+            disabled={!selectedLine || filteredScanLogs.length === 0}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            Export Excel
+          </Button>
         </div>
 
         {!selectedLine && (
@@ -405,8 +464,10 @@ function EngineerDashboard() {
                       setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
                     }}
                   >
-                    Status {sortField === 'serialStatus' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                    First Status {sortField === 'serialStatus' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
                   </th>
+                  <th className="px-4 py-2">Second Status</th>
+                  <th className="px-4 py-2">Verified By</th>
                   <th className="px-4 py-2">Scanned At</th>
                 </tr>
               </thead>
@@ -417,7 +478,13 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">{log.operator?.name || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.serialNumber || 'N/A'}</td>
                     <td className={`px-4 py-2 rounded ${getStatusColorClass(log.serialStatus)}`}>
-                      {log.serialStatus || 'Unknown'}
+                      {log.serialStatus || 'Pending'}
+                    </td>
+                    <td className={`px-4 py-2 rounded ${getStatusColorClass(log.secondSerialStatus)}`}>
+                      {log.secondSerialStatus || 'Pending'}
+                    </td>
+                    <td className="px-4 py-2">
+                      {log.verifiedBy ? log.secondVerifierName || 'Unknown' : 'N/A'}
                     </td>
                     <td className="px-4 py-2">{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
                   </tr>

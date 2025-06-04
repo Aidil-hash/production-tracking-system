@@ -14,7 +14,8 @@ const scanLogSchema = new mongoose.Schema({
   verificationStage: { type: Number, default: 1 }, // 1: first pass, 2: fully verified
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // second verifier
   finalScanTime: { type: Date, default: null }, // time of second verification
-  // (OPTIONAL) secondVerifierName: { type: String, default: null }, // Add if you want to store the name directly
+  secondSerialStatus: { type: String, default: null }, // status after second verification
+  secondVerifierName: { type: String, default: null }, // Add if you want to store the name directly
 });
 
 // Pre-save middleware to populate lineModel and operatorName
