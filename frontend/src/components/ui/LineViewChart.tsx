@@ -142,7 +142,7 @@ export default function LineViewChart() {
           : { efficiency: 0, target: 0 };
 
         return {
-          name: line.model,
+          name: line.name,
           currentEfficiency: Number(latestEfficiency.efficiency || 0).toFixed(2),
           targetEfficiency: Number(latestEfficiency.target || 0).toFixed(2)
         };

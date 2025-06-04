@@ -1,24 +1,136 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table"
-import { Card, CardHeader, CardContent } from "../ui/card"; // ShadCN Card
-import LogoutButton from '../Logout';
+import LogoutButton from '../Logout'; // Adjust path as needed
+import { io } from 'socket.io-client';
 
-function LeaderDashboard() {
-  const [error, setError] = useState('');
+const initialSlots = [
+  "8.00 - 9.00", "9.00 - 10.00", "10.15 - 11.00", "11.00 - 11.30", "12.10 - 1.00",
+  "1.00 - 2.00", "2.00 - 3.00", "3.15 - 4.00", "4.00 - 5.00", "5.00 - 5.30",
+  "5.45 - 6.45", "6.45 - 7.45"
+];
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+export default function LeaderDashboard() {
   const [lines, setLines] = useState([]);
+  const [selectedLineId, setSelectedLineId] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [rows, setRows] = useState(
+    initialSlots.map(time => ({ time, target: '', actual: '' }))
+  );
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const userName = localStorage.getItem('userName');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  // Keep current selected lineId/date in refs for use in socket handler
+  const selectedLineIdRef = useRef(selectedLineId);
+  const dateRef = useRef(date);
 
-  // Fetch list of all production lines
+  useEffect(() => {
+    selectedLineIdRef.current = selectedLineId;
+  }, [selectedLineId]);
+  useEffect(() => {
+    dateRef.current = date;
+  }, [date]);
+
+  // Socket.io: only connect once per component mount
+  useEffect(() => {
+    const socket = io(API_URL, { transports: ['websocket'] });
+
+    // Handler to refresh dashboard when new scan event comes
+    const handleScanEvent = async () => {
+      const currentLineId = selectedLineIdRef.current;
+      const currentDate = dateRef.current;
+      if (!currentLineId || !currentDate) return;
+      try {
+        const token = localStorage.getItem('token');
+        // Fetch targets
+        let targets = initialSlots.map(time => ({ time, target: '', actual: '' }));
+        try {
+          const targetsRes = await axios.get(`${API_URL}/api/leader/get-hourly-targets`, {
+            params: { lineId: currentLineId, date: currentDate },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (targetsRes.data && Array.isArray(targetsRes.data.slots)) {
+            targets = initialSlots.map(slot => {
+              const found = targetsRes.data.slots.find(s => s.time === slot);
+              return found ? found : { time: slot, target: '', actual: '' };
+            });
+          }
+        } catch {}
+        // Fetch actuals
+        try {
+          const actualsRes = await axios.get(`${API_URL}/api/leader/get-actuals`, {
+            params: { lineId: currentLineId, date: currentDate },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (Array.isArray(actualsRes.data)) {
+            targets = targets.map(row => {
+              const found = actualsRes.data.find(slot => slot.time === row.time);
+              return found ? { ...row, actual: found.actual } : row;
+            });
+          }
+        } catch {}
+        setRows(targets);
+      } catch (err) {
+        setRows(initialSlots.map(time => ({ time, target: '', actual: '' })));
+      }
+    };
+
+    socket.on('newScan', handleScanEvent);
+    socket.on('newScanBatch', handleScanEvent);
+
+    // Clean up on unmount
+    return () => socket.disconnect();
+    // eslint-disable-next-line
+  }, []);
+
+  // Normal data fetching (on selectedLineId/date changes)
+  useEffect(() => {
+    const fetchAll = async () => {
+      if (!selectedLineId || !date) return;
+      try {
+        setMessage('');
+        setError('');
+        const token = localStorage.getItem('token');
+
+        // Fetch targets
+        let targets = initialSlots.map(time => ({ time, target: '', actual: '' }));
+        try {
+          const targetsRes = await axios.get(`${API_URL}/api/leader/get-hourly-targets`, {
+            params: { lineId: selectedLineId, date },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (targetsRes.data && Array.isArray(targetsRes.data.slots)) {
+            targets = initialSlots.map(slot => {
+              const found = targetsRes.data.slots.find(s => s.time === slot);
+              return found ? found : { time: slot, target: '', actual: '' };
+            });
+          }
+        } catch (err) {}
+
+        // Fetch actuals
+        try {
+          const actualsRes = await axios.get(`${API_URL}/api/leader/get-actuals`, {
+            params: { lineId: selectedLineId, date },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (Array.isArray(actualsRes.data)) {
+            targets = targets.map(row => {
+              const found = actualsRes.data.find(slot => slot.time === row.time);
+              return found ? { ...row, actual: found.actual } : row;
+            });
+          }
+        } catch (err) {}
+        setRows(targets);
+      } catch (err) {
+        setRows(initialSlots.map(time => ({ time, target: '', actual: '' })));
+      }
+    };
+    fetchAll();
+    // eslint-disable-next-line
+  }, [selectedLineId, date]);
+
   useEffect(() => {
     const fetchLines = async () => {
       try {
@@ -28,48 +140,144 @@ function LeaderDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setLines(res.data);
+        if (res.data.length) setSelectedLineId(res.data[0]._id || res.data[0].id);
       } catch (err) {
-        console.error('Failed to fetch production lines:', err);
+        setError('Failed to fetch production lines');
       }
     };
-
     fetchLines();
-  }, [API_URL]);
+  }, []);
+
+  const handleInput = (idx, field, value) => {
+    setRows(rows =>
+      rows.map((row, i) =>
+        i === idx ? { ...row, [field]: value } : row
+      )
+    );
+  };
+
+  const handleSave = async () => {
+    try {
+      setError('');
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/api/leader/set-hourly-targets`,
+        {
+          lineId: selectedLineId,
+          date,
+          slots: rows,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setMessage(response.data.message + ` Total Day Target: ${response.data.totalTarget}`);
+    } catch (error) {
+      setError('Error saving hourly targets');
+    }
+  };
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   return (
-    <Card className="p-4">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Welcome, {userName}</h1>
-          <LogoutButton />
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Welcome, {userName}</h1>
+      </div>
+      {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+      {message && <div className="text-green-600">{message}</div>}
+      <div className="mb-6 flex flex-wrap gap-4 items-end">
+        <div>
+          <label className="block text-sm font-semibold mb-1">Select Production Line:</label>
+          <select
+            value={selectedLineId}
+            onChange={e => setSelectedLineId(e.target.value)}
+            className="p-2 border rounded w-56 text-white bg-gray-800"
+          >
+            {lines.map(line => (
+              <option key={line._id || line.id} value={line._id || line.id}>
+                {line.name} ({line.department})
+              </option>
+            ))}
+          </select>
         </div>
-      </CardHeader>
-      <CardContent>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">Production Line Details</h2>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">Model</TableHead>
-                  <TableHead>Target Outputs</TableHead>
-                  <TableHead>Total Outputs</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>{line.model}</TableCell>
-                  <TableCell>{line.targetOutputs}</TableCell>
-                  <TableCell>{line.totalOutputs}</TableCell>
-                </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-      </CardContent>
-    </Card>
+        <div>
+          <label className="block text-sm font-semibold mb-1 ">Date:</label>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="p-2 border rounded text-white bg-gray-800"
+          />
+        </div>
+        <button
+          onClick={handleSave}
+          className="bg-blue-600 text-white px-4 py-2 rounded h-10"
+        >
+          Save Targets
+        </button>
+        <LogoutButton />
+      </div>
+      <div className="mb-4">
+        <table className="table-auto w-full border mb-4 text-white bg-gray-800">
+          <thead>
+            <tr>
+              <th>TIME</th>
+              <th>TARGET</th>
+              <th>ACCUM TARGET</th>
+              <th>ACTUAL</th>
+              <th>ACCUM ACTUAL</th>
+              <th>+/ -</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => {
+              const accumTarget = rows.slice(0, idx + 1).reduce((sum, r) => sum + Number(r.target || 0), 0);
+              const accumActual = rows.slice(0, idx + 1).reduce((sum, r) => sum + Number(r.actual || 0), 0);
+              return (
+                <tr key={row.time}>
+                  <td className="border px-2 py-1 text-white bg-gray-800">{row.time}</td>
+                  <td className="border px-2 py-1 text-white bg-gray-800">
+                    <input
+                      type="number"
+                      value={row.target}
+                      onChange={e => handleInput(idx, 'target', e.target.value)}
+                      className="border p-1 w-20 text-white bg-gray-800"
+                      min="0"
+                    />
+                  </td>
+                  <td className="border px-2 py-1 text-white bg-gray-800">{accumTarget}</td>
+                  <td className="border px-2 py-1 text-white bg-gray-800">
+                    {row.actual !== '' ? row.actual : 0}
+                  </td>
+                  <td className="border px-2 py-1 text-white bg-gray-800">{accumActual}</td>
+                  <td className="border px-2 py-1 text-center text-white bg-gray-800">
+                    {row.target !== '' && row.actual !== ''
+                      ? Number(row.actual) - Number(row.target)
+                      : ''}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
-
-export default LeaderDashboard;

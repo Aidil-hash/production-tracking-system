@@ -4,13 +4,13 @@ const ProductionLine = require('../models/Line');
 const getAssignedLineForOperator = async (req, res) => {
   try {
     // Ensure the requester is an operator
-    if (req.user.role !== 'operator') {
+    if (req.user.role !== 'operator' && req.user.role !== 'FG operator' && req.user.role !== 'PDQC operator') {
       return res.status(403).json({ message: 'Access denied. Only operators can access assigned line.' });
     }
 
     // Query for a production line assigned to this operator.
     // Adjust this query if an operator can have multiple lines.
-    const assignedLine = await ProductionLine.findOne({ operatorId: req.user.id });
+    const assignedLine = await ProductionLine.findOne({ operatorIds: req.user.id });
 
     if (!assignedLine) {
       return res.status(404).json({ message: 'No assigned production line found.' });
@@ -18,7 +18,7 @@ const getAssignedLineForOperator = async (req, res) => {
 
     return res.status(200).json({
       lineId: assignedLine._id.toString(),
-      model: assignedLine.model,
+      name: assignedLine.name,
       totalOutputs: assignedLine.totalOutputs,
       targetOutputs: assignedLine.targetOutputs,
       linestatus: assignedLine.linestatus,

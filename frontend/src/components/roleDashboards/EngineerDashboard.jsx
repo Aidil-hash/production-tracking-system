@@ -1,4 +1,3 @@
-// Updated: EngineerDashboard.jsx (ShadCN + Tailwind version)
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -7,6 +6,7 @@ import { Typography } from '@mui/material';
 import { Input } from "../ui/input";
 import { Label } from '../ui/label';
 import LineViewChart from '../ui/LineViewChart';
+import MultiSelectDropdown from '../ui/MultiSelectDropdown';
 import {
   Select,
   SelectTrigger,
@@ -21,7 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table"
+} from "../ui/table";
 import LogoutButton from '../Logout';
 
 function EngineerDashboard() {
@@ -31,74 +31,148 @@ function EngineerDashboard() {
   const [lines, setLines] = useState([]);
   const [filterText, setFilterText] = useState('');
   const [filteredScanLogs, setFilteredScanLogs] = useState([]);
-  const [newLineModel, setNewLineModel] = useState('');
-  const [newLineTarget, setNewLineTarget] = useState('');
+  const [newLineName, setNewLineName] = useState('');
   const [newLineDepartment, setNewLineDepartment] = useState('');
   const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
-  const [selectedOperator, setSelectedOperator] = useState('');
+  const [selectedOperators, setSelectedOperators] = useState([]);
   const [sortField, setSortField] = useState(null);
-  const [sortDirection, setSortDirection] = useState('asc'); // or 'desc'
+  const [sortDirection, setSortDirection] = useState('asc');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const userName = localStorage.getItem('userName');
 
   // Real-time socket updates
-    useEffect(() => {
-      const socket = io(API_URL, { transports: ["websocket"] });
-  
-      socket.on("newScan", async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const res = await axios.get(`${API_URL}/api/engineer/allscanlogs`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setScanLogs(res.data);
-        } catch (err) {
-          console.error("Error fetching updated scan logs:", err);
-        }
-      });
-  
-      return () => socket.disconnect();
-    }, [API_URL]);
-
-    
-  // Fetch the list of operators
   useEffect(() => {
-    const fetchOperators = async () => {
+    const socket = io(API_URL, { transports: ["websocket"] });
+
+    socket.on("newScan", async () => {
+      try {
+        if (!selectedLine) return;
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setScanLogs(res.data);
+      } catch (err) {
+        console.error("Error fetching updated scan logs:", err);
+      }
+    });
+
+    return () => socket.disconnect();
+  }, [API_URL, selectedLine]);
+
+  // Fetch the list of operators and lines
+  useEffect(() => {
+    const fetchOperatorsAndFilter = async () => {
       try {
         setError('');
         const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const operatorData = res.data.filter((user) => user.role === 'operator');
-        setOperators(operatorData);
-        console.log('Fetched operators:', operatorData); // Debugging log
+
+        const [usersRes, linesRes] = await Promise.all([
+          axios.get(`${API_URL}/api/users`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${API_URL}/api/lines`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        const allOperators = usersRes.data.filter((u) => u.role === 'operator');
+        const assignedOperatorIds = linesRes.data.flatMap((line) => line.operatorIds || []);
+        const unassignedOperators = allOperators.filter(
+          (op) => !assignedOperatorIds.includes(op._id)
+        );
+
+        setOperators(unassignedOperators);
+        setLines(linesRes.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch operators');
+        setError(err.response?.data?.message || 'Failed to fetch operators or lines');
       }
     };
 
-    fetchOperators();
+    fetchOperatorsAndFilter();
   }, [API_URL]);
 
+  // Fetch scan logs for selected line
   useEffect(() => {
-    const fetchLines = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/lines`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setLines(res.data);
-        if (res.data.length > 0) setSelectedLine(res.data[0].id);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch lines');
-      }
-    };
-    fetchLines();
-  }, [API_URL]);
+    if (selectedLine) {
+      const fetchScanLogs = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setScanLogs(res.data);
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to fetch scan logs');
+        }
+      };
+      fetchScanLogs();
+    } else {
+      setScanLogs([]);
+    }
+  }, [API_URL, selectedLine]);
 
-  // Handle detaching operator from a production line
+  // Sort & filter scan logs
+  useEffect(() => {
+    let sortedLogs = [...scanLogs];
+    if (sortField) {
+      sortedLogs.sort((a, b) => {
+        const aValue = a[sortField]?.toUpperCase?.() || '';
+        const bValue = b[sortField]?.toUpperCase?.() || '';
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    const filtered = sortedLogs.filter((log) => {
+      const model = log.model?.toLowerCase() || log.productionLine?.model?.toLowerCase() || '';
+      return model.includes(filterText.toLowerCase());
+    });
+
+    setFilteredScanLogs(filtered);
+  }, [scanLogs, sortField, sortDirection, filterText]);
+
+  const getStatusColorClass = (status) => {
+    switch (status) {
+      case 'PASS':
+        return 'bg-green-500 text-white font-semibold';
+      case 'NG':
+        return 'bg-red-500 text-white font-semibold';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleAddNewLine = async (e) => {
+    e.preventDefault();
+    if (!newLineName || !newLineDepartment || selectedOperators.length === 0) {
+      setError('Please enter all details.');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/api/lines`,
+        { name: newLineName, department: newLineDepartment, operatorIds: selectedOperators },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage('New production line added successfully!');
+      setError('');
+      setNewLineName('');
+      setNewLineDepartment('');
+      setSelectedOperators([]);
+      // Refresh lines list
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add new line');
+      setMessage('');
+    }
+  };
+
   const handleDetachOperator = async (lineId) => {
     try {
       setError('');
@@ -120,92 +194,10 @@ function EngineerDashboard() {
   };
 
   useEffect(() => {
-    if (selectedLine) {
-      const fetchScanLogs = async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const res = await axios.get(`${API_URL}/api/engineer/allscanlogs`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setScanLogs(res.data);
-        } catch (err) {
-          setError(err.response?.data?.message || 'Failed to fetch scan logs');
-        }
-      };
-      fetchScanLogs();
-    }
-  }, [API_URL, selectedLine]);
-
-  useEffect(() => {
-    let sortedLogs = [...scanLogs];
-  
-    if (sortField) {
-      sortedLogs.sort((a, b) => {
-        const aValue = a[sortField]?.toUpperCase?.() || '';
-        const bValue = b[sortField]?.toUpperCase?.() || '';
-  
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-  
-    const filtered = sortedLogs.filter((log) => {
-      const model = log.productionLine?.model?.toLowerCase() || '';
-      return model.includes(filterText.toLowerCase());
-    });
-  
-    setFilteredScanLogs(filtered);
-  }, [scanLogs, sortField, sortDirection, filterText]);
-
-  const getStatusColorClass = (status) => {
-    switch (status) {
-      case 'PASS':
-        return 'bg-green-500 text-white font-semibold';
-      case 'NG':
-        return 'bg-red-500 text-white font-semibold';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const handleAddNewLine = async (e) => {
-    e.preventDefault();
-    if (!newLineModel || !newLineTarget || !newLineDepartment || !selectedOperator=== '') {
-      setError('Please enter all details.');
-      return;
-    }
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/api/lines`, 
-        { model: newLineModel, targetOutputs: newLineTarget, department: newLineDepartment, operatorId: selectedOperator },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Optionally, refresh the lines list after adding a new line
-      setMessage('New production line added successfully!');
-      setError('');
-      setNewLineModel('');
-      setNewLineTarget('');
-      setNewLineDepartment('');
-      setSelectedOperator('');
-      console.log(newLineModel, newLineTarget, newLineDepartment, selectedOperator);
-      // Refresh lines
-      const linesRes = await axios.get(`${API_URL}/api/lines`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setLines(linesRes.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add new line');
-      setMessage('');
-    }
-  };
-
-  useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
         setError('');
-      }, 3000); // Disappear after 3 seconds
-
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [error]);
@@ -214,8 +206,7 @@ function EngineerDashboard() {
     if (message) {
       const timer = setTimeout(() => {
         setMessage('');
-      }, 3000); // Disappear after 3 seconds
-
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [message]);
@@ -231,14 +222,8 @@ function EngineerDashboard() {
           sx={{
             animation: 'fadeIn 0.5s ease-in',
             '@keyframes fadeIn': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(-10px)'
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)'
-              }
+              '0%': { opacity: 0, transform: 'translateY(-10px)' },
+              '100%': { opacity: 1, transform: 'translateY(0)' }
             }
           }}
         >
@@ -253,14 +238,8 @@ function EngineerDashboard() {
           sx={{
             animation: 'fadeIn 0.5s ease-in',
             '@keyframes fadeIn': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(-10px)'
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)'
-              }
+              '0%': { opacity: 0, transform: 'translateY(-10px)' },
+              '100%': { opacity: 1, transform: 'translateY(0)' }
             }
           }}
         >
@@ -274,16 +253,14 @@ function EngineerDashboard() {
       </div>
 
       <div className="w-full max-w-5xl mx-auto overflow-x-auto">
-        {/* Wrap the heading in a div with text-center */}
         <div className="mb-4 text-center">
           <h2 className="text-lg font-semibold text-white">Production Lines</h2>
         </div>
-        {/* Wrap the table in a full-width container */}
         <div className="w-full">
           <Table className="text-sm">
             <TableHeader>
               <TableRow className="border-b border-white/20">
-                <TableHead className="w-[150px] text-white">Model</TableHead>
+                <TableHead className="w-[150px] text-white">Line</TableHead>
                 <TableHead className="text-white">Operator</TableHead>
                 <TableHead className="w-[160px] text-right">Actions</TableHead>
               </TableRow>
@@ -294,7 +271,7 @@ function EngineerDashboard() {
                   key={line.id}
                   className="border-b border-zinc-800 hover:bg-zinc-800 transition duration-500 ease-in-out"
                 >
-                  <TableCell className="py-1 px-2">{line.model}</TableCell>
+                  <TableCell className="py-1 px-2">{line.name}</TableCell>
                   <TableCell className="py-1 px-2">
                     {line.operatorName || 'No operator'}
                   </TableCell>
@@ -322,114 +299,98 @@ function EngineerDashboard() {
             </TableBody>
           </Table>
         </div>
-        </div>
+      </div>
 
       <div className="mt-4 mx-auto max-w-600 p-4 border border-gray-300 rounded-md">
-        <h5 className= "mb-4 text-lg font-semibold text-center">
+        <h5 className="mb-4 text-lg font-semibold text-center">
           Add New Production Line
         </h5>
-      <form onSubmit={handleAddNewLine}>
-        {/* Model Field */}
-        <div className="mb-4">
-          <Label htmlFor="model">Model</Label>
-          <Input
-            id="model"
-            value={newLineModel}
-            onChange={(e) => setNewLineModel(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md text-white"
-            placeholder="Enter model"
-          />
-        </div>
-
-        <div className="mb-4">
-          <Label htmlFor="operator">Select Operator</Label>
-          <Select
-            key={operators.length} // Force redraw if list updates
-            value={selectedOperator}
-            onValueChange={(val) => setSelectedOperator(val)}
-          >
-            <SelectTrigger className="w-full text-white" id="operator">
-              <SelectValue placeholder="--Select an operator--" className="z-150"/>
-            </SelectTrigger>
-            <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-100">  
-              {operators.length > 0 ? (
-                operators.map((operator) => (
+        <form onSubmit={handleAddNewLine}>
+          <div className="mb-4">
+            <Label htmlFor="lineName">Line Name/Number</Label>
+            <Input
+              id="lineName"
+              value={newLineName}
+              onChange={e => setNewLineName(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded-md text-white"
+              placeholder="Enter line name/number"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <Label htmlFor="operator">Select Operator(s)</Label>
+            <MultiSelectDropdown
+              options={operators}
+              selected={selectedOperators}
+              onChange={setSelectedOperators}
+              placeholder="-- Select operators --"
+              className="w-full border border-gray-300 p-2 rounded-md text-white"
+            />
+          </div>
+          <div className="mb-4">
+            <Label htmlFor="department">Department</Label>
+            <Select
+              value={newLineDepartment}
+              onValueChange={val => setNewLineDepartment(val)}
+            >
+              <SelectTrigger className="w-full text-white">
+                <SelectValue placeholder="Select the department" className="z-50"/>
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
+                {["E2 Drum", "E3 Compact", "E3 Non-Compact", "E4 Piano", "E4 Keyboard"].map(dept => (
                   <SelectItem
-                    key={operator._id}
-                    value={operator._id}
-                    className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer"
+                    key={dept}
+                    value={dept}
+                    className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
                   >
-                    {operator.name}
+                    {dept}
                   </SelectItem>
-                ))
-              ) : (
-                <div className="px-4 py-2 text-sm text-gray-400">No operators available</div>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/*Target Output Field */}
-        <div className="mb-4">
-          <Label htmlFor="linetargetOutputs">Target Output</Label>
-          <Input
-            id="linetargetOutputs"
-            type="number"
-            value={newLineTarget}
-            onChange={(e) => setNewLineTarget(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md text-white"
-            placeholder="Enter target output"
-          />
-        </div>
-
-        <div className="mb-4">
-          <Label htmlFor="newdepartment">Department</Label>
-          <Select
-            value={newLineDepartment}
-            onValueChange={(val) => setNewLineDepartment(val)}
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <button
+            type="submit"
+            className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
           >
-            <SelectTrigger className="w-full text-white">
-              <SelectValue placeholder="Select the department" className="z-50"/>
+            Add New Line
+          </button>
+        </form>
+      </div>
+
+      {/* --- Scan Logs Section --- */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Scan Logs</h2>
+
+        <div className="flex items-center gap-2 mb-2">
+          <Select
+            value={selectedLine}
+            onValueChange={val => setSelectedLine(val)}
+          >
+            <SelectTrigger className="w-72 text-white">
+              <SelectValue placeholder="Select Line" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
-              {[
-                "E2 Drum",
-                "E3 Compact",
-                "E3 Non-Compact",
-                "E4 Piano",
-                "E4 Keyboard"
-              ].map((dept) => (
-                <SelectItem
-                  key={dept}
-                  value={dept}
-                  className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
-                >
-                  {dept}
+              {lines.map(line => (
+                <SelectItem key={line.id} value={line.id}>
+                  {line.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
-        {/* Submit Button */}
-        <button
-                type="submit"
-                className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                onClick={handleAddNewLine}
-              >
-                Add New Line
-              </button>
-        </form>
+          <Input
+            placeholder="Filter by model"
+            value={filterText}
+            onChange={e => setFilterText(e.target.value)}
+            disabled={!selectedLine}
+          />
         </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Scan Logs</h2>
-        <Input
-          placeholder="Filter by model"
-          value={filterText}
-          onChange={(e) => setFilterText(e.target.value)}
-        />
+        {!selectedLine && (
+          <p className="text-center text-zinc-400">Please select a line to see scan logs.</p>
+        )}
 
-        {filteredScanLogs.length > 0 ? (
+        {selectedLine && filteredScanLogs.length > 0 ? (
           <div className="overflow-x-auto rounded-md border border-zinc-800">
             <table className="w-full text-sm text-left">
               <thead className="bg-zinc-800 text-white">
@@ -440,8 +401,8 @@ function EngineerDashboard() {
                   <th
                     className="px-4 py-2 cursor-pointer"
                     onClick={() => {
-                      setSortField('serialStatus');  // Change 'status' to the correct key from your logs
-                      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                      setSortField('serialStatus');
+                      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
                     }}
                   >
                     Status {sortField === 'serialStatus' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
@@ -452,7 +413,7 @@ function EngineerDashboard() {
               <tbody>
                 {filteredScanLogs.map((log, index) => (
                   <tr key={index} className="border-t border-zinc-800">
-                    <td className="px-4 py-2">{log.productionLine?.model || 'Unknown'}</td>
+                    <td className="px-4 py-2">{log.model || log.productionLine?.model || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.operator?.name || 'Unknown'}</td>
                     <td className="px-4 py-2">{log.serialNumber || 'N/A'}</td>
                     <td className={`px-4 py-2 rounded ${getStatusColorClass(log.serialStatus)}`}>
@@ -464,9 +425,9 @@ function EngineerDashboard() {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className="text-center">No scan logs available.</p>
-        )}
+        ) : selectedLine ? (
+          <p className="text-center">No scan logs available for this line.</p>
+        ) : null}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 import React from 'react';
 import OperatorDashboard from './roleDashboards/OperatorDashboard';
 import FGDashboard from './roleDashboards/FGDashboard';
+import PDQCDashboard from './roleDashboards/PDQCDashboard';
 import LeaderDashboard from './roleDashboards/LeaderDashboard';
 import SupervisorDashboard from './roleDashboards/SupervisorDashboard';
 import EngineerDashboard from './roleDashboards/EngineerDashboard';
@@ -20,6 +21,8 @@ function Dashboard() {
       return <OperatorDashboard />;
     case 'FG operator':
       return <FGDashboard />;
+    case 'PDQC operator':
+      return <PDQCDashboard />;
     case 'leader':
       return <LeaderDashboard />;
     case 'supervisor':

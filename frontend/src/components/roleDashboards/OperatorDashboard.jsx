@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
-import ExcelFolderWatcher from '../ui/ExcelFolderWatcher';  // Adjust path as needed
+import ExcelFolderWatcher from '../ui/ExcelFolderWatcher';
 
 function OperatorDashboard() {
   const [assignedLine, setAssignedLine] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lineStatus, setLineStatus] = useState(null);
+  const [modelsRun, setModelsRun] = useState([]);
+  const [todayTarget, setTodayTarget] = useState(null);
   const userName = localStorage.getItem('userName');
 
-  // Set the API_URL from environment variables (for development and production environments)
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const token = localStorage.getItem('token');
 
@@ -28,6 +29,49 @@ function OperatorDashboard() {
     };
     fetchLine();
   }, [API_URL, token]);
+
+  // Fetch models run on this line
+  useEffect(() => {
+    if (!assignedLine) return;
+    axios.get(`${API_URL}/api/lines/${assignedLine.lineId}/models-run`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setModelsRun(res.data));
+  }, [assignedLine, API_URL, token]);
+
+  // Fetch today's target
+  useEffect(() => {
+    if (!assignedLine) return;
+    const today = new Date().toISOString().slice(0, 10);
+    axios.get(`${API_URL}/api/leader/get-hourly-targets`, {
+      params: { lineId: assignedLine.lineId, date: today },
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => {
+      if (res.data && Array.isArray(res.data.slots)) {
+        const total = res.data.slots.reduce((sum, slot) => sum + Number(slot.target || 0), 0);
+        setTodayTarget(total);
+      }
+    })
+    .catch(() => setTodayTarget(null));
+  }, [assignedLine, API_URL, token]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   const handleStart = async () => {
     if (!assignedLine) return;
@@ -51,30 +95,10 @@ function OperatorDashboard() {
     }
   };
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
   const handleBatchProcessed = (results) => {
     // Ensure results is always an array
     const resultArray = Array.isArray(results) ? results : [results];
-    
     try {
-      // Calculate success/fail counts
       const successCount = resultArray.reduce((acc, result) => {
         if (result.success && Array.isArray(result.data)) {
           return acc + result.data.filter(r => r.success).length;
@@ -105,7 +129,6 @@ function OperatorDashboard() {
 
   return (
     <Box sx={{ p: 4 }}>
-
       {error && (
         <Typography color="error" align="center" mb={2} sx={{ animation: 'fadeIn 0.5s ease-in' }}>
           {error}
@@ -119,6 +142,19 @@ function OperatorDashboard() {
 
       <LogoutButton />
 
+      {modelsRun.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle1">Models run on this line:</Typography>
+          <ul>
+            {[...new Map(modelsRun.map(run => [run.code, run])).values()].map(run => (
+              <li key={run.code}>
+                {run.modelName} (since {new Date(run.firstSeen).toISOString().slice(11, 19)})
+              </li>
+            ))}
+          </ul>
+        </Box>
+      )}
+
       {assignedLine && (
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>
           <Typography variant="h6" gutterBottom>
@@ -129,8 +165,10 @@ function OperatorDashboard() {
             <Typography variant="h6" gutterBottom>
               Line Status
             </Typography>
-            <Typography>Model: {assignedLine.model}</Typography>
-            <Typography>Target Outputs: {assignedLine.targetOutputs}</Typography>
+            <Typography>Assigned Line: {assignedLine.name}</Typography>
+            <Typography>
+              Today's Target Output: {todayTarget !== null ? todayTarget : '-'}
+            </Typography>
             <Typography>Total Outputs: {assignedLine.totalOutputs}</Typography>
           </Box>
 

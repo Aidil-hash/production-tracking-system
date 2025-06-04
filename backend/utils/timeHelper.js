@@ -18,4 +18,10 @@ const formatMalaysiaTime = (date) => {
   });
 };
 
-module.exports = { getMalaysiaTime, formatMalaysiaTime };
+function getMalaysiaShiftEnd(hour, minute) {
+  const date = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" }); // YYYY-MM-DD
+  const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
+  return new Date(`${date}T${time}+00:00`);
+}
+
+module.exports = { getMalaysiaTime, formatMalaysiaTime, getMalaysiaShiftEnd };

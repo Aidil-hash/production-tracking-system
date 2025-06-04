@@ -135,7 +135,7 @@ export default function LinePerformanceChart() {
       .filter((line) => selectedDepartment === "All" || line.department === selectedDepartment)
       .map((line) => ({
         _id: line.id,
-        name: line.model,
+        name: line.name,
         department: line.department,
         linestatus: line.linestatus,
         totalOutputs: line.totalOutputs,

@@ -66,6 +66,18 @@ const getAllScans = async (req, res) => {
   }
 };
 
+const getScanLogsByLine = async (req, res) => {
+  try {
+    const { lineId } = req.params;
+    const logs = await ScanLog.find({ productionLine: lineId })
+      .populate('operator', 'name')
+      .sort({ scannedAt: -1 });
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
   // NEW FUNCTION: Detach operator from a line
 const detachOperatorFromLine = async (req, res) => {
   try {
@@ -106,5 +118,6 @@ const detachOperatorFromLine = async (req, res) => {
 module.exports = { 
   getScanLogs,
   getAllScans,
+  getScanLogsByLine,
   detachOperatorFromLine
  };

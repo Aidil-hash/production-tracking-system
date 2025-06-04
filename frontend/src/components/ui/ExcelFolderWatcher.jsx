@@ -222,9 +222,15 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       ]);
       
       if (newUnprocessedSerials.length > 0) {
-        setUnprocessedSerials(prev => [...prev, ...newUnprocessedSerials]);
+        const updatedSerials = [...unprocessedSerials, ...newUnprocessedSerials];
+        setUnprocessedSerials(updatedSerials);
         setSuccess(`Found ${newUnprocessedSerials.length} new serials`);
-        // Stop scanning when new serials are found
+
+        // Auto-submit after updating state
+        setTimeout(() => {
+          handleSubmit();
+        }, 1000);
+
         if (scanInterval.current) {
           clearInterval(scanInterval.current);
           scanInterval.current = null;

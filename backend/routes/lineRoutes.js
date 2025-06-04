@@ -5,10 +5,13 @@ const {
   updateLine,
   scanSerial,
   validateSerial,
+  getLineFromSerial,
   getLine,
   getAllLines,
   getLineEfficiency,
   startLine,
+  getModelsRun,
+  getPendingSecondVerification,
   deleteLine
 } = require('../controllers/lineController');
 
@@ -54,11 +57,24 @@ router.post(
   validateSerial
 );
 
+// GET /api/lines/serial/:serialNumber - Get line from serial number
+router.get(
+  '/serial/:serialNumber',
+  verifyToken,
+  getLineFromSerial
+);
+
 // GET /api/lines/:lineId/efficiency - Calculate efficiency
 router.get('/:lineId/efficiency', verifyToken, getLineEfficiency);
 
 // PATCH /api/lines/:lineId/start - Start the production line
 router.patch('/:lineId/start', startLine);
+
+// GET /api/lines/:lineId/pending-verification - Get pending second verification
+router.get('/:lineId/pending-verification', verifyToken, getPendingSecondVerification);
+
+// GET /api/lines/:lineId/models-run - Get models run
+router.get('/:lineId/models-run', verifyToken, getModelsRun);
 
 // DELETE /api/lines/:id
 router.delete('/:id', verifyToken, deleteLine);

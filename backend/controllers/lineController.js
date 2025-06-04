@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
+const Output = require('../models/Output'); // Add at top if not present
 const User = require('../models/User');
-const { getMalaysiaTime, formatMalaysiaTime } = require('../utils/timeHelper');
+const ModelCode = require('../models/ModelCode'); // <-- Make sure this is required at the top!
+const { getMalaysiaTime, formatMalaysiaTime, getMalaysiaShiftEnd } = require('../utils/timeHelper');
 
 // Utility function
 const calculateCurrentEfficiency = (line) => {
@@ -14,99 +16,61 @@ const calculateCurrentEfficiency = (line) => {
   const elapsedMinutes = Math.max(((now - start) / 60000), 0.01); // Prevent division by zero
   const efficiency = (line.totalOutputs || 0) / elapsedMinutes;
 
-  console.log(`Efficiency Debug: 
-    Outputs: ${line.totalOutputs || 0}
-    Start: ${start.toISOString()}
-    Now: ${now.toISOString()}
-    Elapsed: ${elapsedMinutes.toFixed(2)} mins
-    Efficiency: ${efficiency.toFixed(2)}/min`);
-
   return Number(efficiency.toFixed(2)); // outputs per minute
 };
 
 const calculateTargetEfficiency = (line, _shiftStartHour = 8, _shiftStartMinute = 15, shiftEndHour = 19, shiftEndMinute = 45) => {
-  const now = getMalaysiaTime();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // Debug: Log current time and shift end time
-  console.log("----- DEBUG LOGS -----");
-  console.log("Current Time:", now.toISOString());
-  console.log("Line Data:", {
-    startTime: line.startTime,
-    targetOutputs: line.targetOutputs,
-    totalOutputs: line.totalOutputs || 0
-  });
+  const now = new Date(
+    new Date().toISOString().replace('Z', '-08:00') // Force MYT timezone
+  );
 
   // Define shift end time
-  const shiftEnd = new Date(today);
-  shiftEnd.setHours(shiftEndHour, shiftEndMinute, 0, 0);
-  console.log("Shift End Time:", shiftEnd.toISOString());
+  const shiftEnd = getMalaysiaShiftEnd(shiftEndHour, shiftEndMinute);
 
   // If current time is past shift end, return 0
   if (now >= shiftEnd) {
-    console.log("Current time is past shift end. Returning 0.");
     return 0;
   }
 
   // If line hasn't started, return 0
   if (!line.startTime) {
-    console.log("Line has no startTime. Returning 0.");
     return 0;
   }
 
   const lineStartTime = new Date(line.startTime);
-  console.log("Line Start Time (Parsed):", lineStartTime.toISOString());
 
   // If line started after shift end, return 0
   if (lineStartTime >= shiftEnd) {
-    console.log("Line started after shift end. Returning 0.");
     return 0;
   }
 
   // Calculate remaining outputs and time
   const remainingOutputs = Math.max(line.targetOutputs - (line.totalOutputs || 0), 0);
   const remainingMinutes = Math.max((shiftEnd - now) / (60 * 1000), 1);
-  console.log("Remaining Outputs:", remainingOutputs);
-  console.log("Remaining Minutes:", remainingMinutes);
 
   // Calculate required rate
   const requiredRate = Number((remainingOutputs / remainingMinutes).toFixed(4));
-  console.log("Required Rate (outputs/min):", requiredRate);
 
   // Calculate baseline rate (total available time from line start to shift end)
   const totalAvailableMinutes = (shiftEnd - lineStartTime) / (60 * 1000);
   const baselineRate = Number((line.targetOutputs / totalAvailableMinutes).toFixed(4));
-  console.log("Total Available Minutes (from line start):", totalAvailableMinutes);
-  console.log("Baseline Rate (outputs/min):", baselineRate);
 
   // Final comparison
   const finalRate = remainingOutputs <= 0 ? 0 : Math.max(baselineRate, requiredRate);
-  console.log("Final Target Efficiency:", finalRate);
-  console.log("----- END DEBUG LOGS -----\n");
-
   return finalRate;
 };
 
 // Create a production line
 const createLine = async (req, res) => {
   try {
-    const { model, targetOutputs, department, operatorId } = req.body;
-    if (!model || department == null) {
-      return res.status(400).json({ message: 'Model and department are required' });
+    const { name, department, operatorIds } = req.body;
+    if (!name || !department || !operatorIds || !operatorIds.length) {
+      return res.status(400).json({ message: 'Line name, department, and operators are required.' });
     }
-
-    const targetEff = calculateTargetEfficiency({
-      targetOutputs: targetOutputs,
-      startTime: null,  // Add this
-      totalOutputs: 0   // Add this
-    });
-
     const newLine = new Line({
-      model,
-      targetOutputs,
+      name,
       department,
-      targetEfficiency: targetEff,
-      operatorId,
+      operatorIds,
       linestatus: 'STOPPED'
     });
     await newLine.save();
@@ -114,18 +78,18 @@ const createLine = async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('newLine', {
-        model: newLine.model,
-        operator: operatorId,
+        name: newLine.name,
+        operatorIds: newLine.operatorIds,
         department: newLine.department,
       });
     }
-
     return res.status(201).json({ message: 'Production line created', line: newLine });
   } catch (error) {
     console.error('Error creating line:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 // Update a line's status
 const updateLine = async (req, res) => {
@@ -155,10 +119,9 @@ const scanSerial = async (req, res) => {
 
   try {
     const { lineId } = req.params;
-    const { serialNumber, serialStatus, serialNumbers } = req.body; // Support both formats
+    const { serialNumber, serialStatus, serialNumbers } = req.body;
     const operatorId = req.user.id;
 
-    // Determine if this is a batch or single scan
     const isBatch = Array.isArray(serialNumbers);
     const scansToProcess = isBatch ? serialNumbers : [{ serialNumber, serialStatus }];
     const malaysiaNow = getMalaysiaTime();
@@ -168,19 +131,16 @@ const scanSerial = async (req, res) => {
       return res.status(400).json({ message: "Valid serial number is required." });
     }
 
-    const line = await Line.findById(lineId)
-      .populate('operatorId', 'name')
-      .session(session);
-
+    const line = await Line.findById(lineId).session(session);
     if (!line) return res.status(404).json({ message: "Production line not found." });
 
-    if (!line.operatorId || line.operatorId._id.toString() !== operatorId) {
-      return res.status(403).json({ message: "Not authorized for this production line." });
-    }
+    // Fetch the user for role-based authorization
+    const user = await User.findById(operatorId);
+    if (!user) return res.status(401).json({ message: "User not found" });
 
-    // Check for existing scans in database
-    const existingScans = await ScanLog.find({ 
-      serialNumber: { $in: scansToProcess.map(s => s.serialNumber) } 
+    // Find existing scan logs for these serials
+    const existingScans = await ScanLog.find({
+      serialNumber: { $in: scansToProcess.map(s => s.serialNumber) }
     }).session(session);
 
     const existingSerialMap = new Map();
@@ -188,14 +148,12 @@ const scanSerial = async (req, res) => {
       existingSerialMap.set(scan.serialNumber, scan);
     });
 
-    // Process all scans
     let totalPassed = 0;
     let totalRejected = 0;
     const scanResults = [];
     const failedScans = [];
 
     for (const { serialNumber, serialStatus } of scansToProcess) {
-      // Validate each serial
       if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
         failedScans.push({
           serialNumber: serialNumber || 'N/A',
@@ -205,74 +163,154 @@ const scanSerial = async (req, res) => {
         continue;
       }
 
-      // Skip if target already reached
-      if (line.totalOutputs + totalPassed >= line.targetOutputs) {
-        failedScans.push({
-          serialNumber,
-          reason: "Target output reached",
-          status: "SKIPPED"
-        });
-        continue;
+      // Model detection (first 6 chars)
+      let detectedModel = undefined;
+      let code = undefined;
+      if (serialNumber && serialNumber.length >= 6) {
+        code = serialNumber.slice(0, 6);
+        const modelCodeDoc = await ModelCode.findOne({ code });
+        if (modelCodeDoc) detectedModel = modelCodeDoc.modelName;
+      }
+
+      // Track modelRuns on the line (no duplicates)
+      if (detectedModel && code) {
+        await Line.updateOne(
+          { _id: line._id, "modelRuns.code": code },
+          { $set: { "modelRuns.$.lastSeen": malaysiaNow } }
+        ).session(session);
+        // Only push if not already present
+        const updatedLine = await Line.findById(line._id, null, { session });
+        const existsAfter = (updatedLine.modelRuns || []).some(run => run.code === code);
+        if (!existsAfter) {
+          await Line.updateOne(
+            { _id: line._id },
+            { $push: { modelRuns: { code, modelName: detectedModel, firstSeen: malaysiaNow, lastSeen: malaysiaNow } } }
+          ).session(session);
+        }
       }
 
       const existingScan = existingSerialMap.get(serialNumber);
-      
-      if (existingScan) {
-        // If previous scan was PASS, reject any new scan
-        if (existingScan.serialStatus === 'PASS') {
-          failedScans.push({
-            serialNumber,
-            reason: "Already passed inspection",
-            status: "DUPLICATE_PASS"
-          });
-          continue;
-        }
-        
-        // If previous scan was NG and new scan is not PASS, reject
-        if (existingScan.serialStatus === 'NG' && serialStatus !== 'PASS') {
-          failedScans.push({
-            serialNumber,
-            reason: "NG serial can only be rescanned as PASS",
-            status: "INVALID_NG_RESCAN"
-          });
-          continue;
-        }
-      }
 
-      // Count passed/rejected
-      if (serialStatus === 'PASS') {
-        totalPassed++;
-      } else if (serialStatus === 'NG') {
-        totalRejected++;
-      } else {
-        failedScans.push({
-          serialNumber,
-          reason: "Invalid status (must be PASS or NG)",
-          status: "INVALID_STATUS"
-        });
+      // AUTHORIZATION CHECKS for each stage
+      if (!existingScan) {
+        // FIRST STATION (stage 1): Only assigned operator can scan
+        if (!line.operatorIds.map(String).includes(operatorId) || user.role !== 'operator') {
+          failedScans.push({
+            serialNumber,
+            reason: "Only assigned line operators can perform first scan.",
+            status: "NOT_OPERATOR"
+          });
+          continue;
+        }
+        // FIRST SCAN LOGIC
+        if (serialStatus === 'PASS' || serialStatus === 'NG') {
+          scanResults.push(new ScanLog({
+            productionLine: lineId,
+            model: detectedModel,
+            operator: operatorId,
+            name: user.name,
+            serialNumber,
+            serialStatus,
+            scannedAt: malaysiaNow,
+            verificationStage: 1,
+            verifiedBy: null,
+            finalScanTime: null,
+          }));
+          if (serialStatus === 'NG') totalRejected++;
+        } else {
+          failedScans.push({
+            serialNumber,
+            reason: "Invalid status (must be PASS or NG)",
+            status: "INVALID_STATUS"
+          });
+        }
         continue;
       }
 
-      // Create scan log
-      const newScanLog = new ScanLog({
-        productionLine: lineId,
-        model: line.model,
-        operator: operatorId,
-        name: line.operatorId.name,
-        serialNumber,
-        serialStatus,
-        scanTime: malaysiaNow,
-        localScanTime: formattedTime,
-      });
+      // SECOND STATION (stage 2): Only PDQC operator can scan
+      if (existingScan.verificationStage === 1 && existingScan.serialStatus === 'PASS') {
+        if (user.role !== 'PDQC operator' && user.role !== 'pdqc') {
+          failedScans.push({
+            serialNumber,
+            reason: "Only PDQC operators can perform second station verification.",
+            status: "NOT_PDQC"
+          });
+          continue;
+        }
+        if (existingScan.operator.toString() === operatorId) {
+          failedScans.push({
+            serialNumber,
+            reason: "Second verification must be by different operator",
+            status: "SAME_OPERATOR"
+          });
+          continue;
+        }
+        if (serialStatus === 'PASS') {
+          await ScanLog.updateOne(
+            { _id: existingScan._id },
+            {
+              $set: {
+                verificationStage: 2,
+                verifiedBy: operatorId,
+                finalScanTime: malaysiaNow
+              }
+            }
+          ).session(session);
+          totalPassed++;
+          await Output.create([{
+            lineId,
+            timestamp: malaysiaNow,
+            count: 1,
+          }], { session });
+          continue;
+        } else if (serialStatus === 'NG') {
+          await ScanLog.updateOne(
+            { _id: existingScan._id },
+            {
+              $set: {
+                verificationStage: 2,
+                verifiedBy: operatorId,
+                finalScanTime: malaysiaNow,
+                serialStatus: 'NG'
+              }
+            }
+          ).session(session);
+          totalRejected++;
+          continue;
+        } else {
+          failedScans.push({
+            serialNumber,
+            reason: "Invalid status for second verification (must be PASS or NG)",
+            status: "INVALID_SECOND_STATUS"
+          });
+          continue;
+        }
+      }
 
-      scanResults.push(newScanLog);
+      // Already rejected at first stage
+      if (existingScan.verificationStage === 1 && existingScan.serialStatus === 'NG') {
+        failedScans.push({
+          serialNumber,
+          reason: "Serial rejected at first verification",
+          status: "REJECTED_STAGE1"
+        });
+        continue;
+      }
+      // Already fully finished
+      if (existingScan.verificationStage === 2) {
+        failedScans.push({
+          serialNumber,
+          reason: "Already fully verified as finished goods",
+          status: "FINISHED"
+        });
+        continue;
+      }
     }
 
-    // Calculate new totals
+    // Update totals and efficiency (totalOutputs = finished goods)
     const nextTotalOutputs = line.totalOutputs + totalPassed;
     const nextRejectedOutputs = line.rejectedOutputs + totalRejected;
 
-    // Calculate efficiencies
     const currentEfficiency = calculateCurrentEfficiency({
       ...line.toObject(),
       totalOutputs: nextTotalOutputs,
@@ -284,8 +322,7 @@ const scanSerial = async (req, res) => {
       totalOutputs: nextTotalOutputs
     });
 
-    // Update the line
-    const updatedLine = await Line.findByIdAndUpdate(
+    await Line.findByIdAndUpdate(
       lineId,
       {
         $set: { 
@@ -305,42 +342,19 @@ const scanSerial = async (req, res) => {
       { new: true, session }
     );
 
-    // Save all scan logs
     await Promise.all(scanResults.map(scan => scan.save({ session })));
     await session.commitTransaction();
 
-    // Emit socket event
     const io = req.app.get('io');
     if (io) {
       const eventName = isBatch ? 'newScanBatch' : 'newScan';
-      io.emit(eventName, {
-        productionLine: lineId,
-        model: updatedLine.model,
-        operator: operatorId,
-        name: line.operatorId.name,
-        department: updatedLine.department,
-        totalOutputs: updatedLine.totalOutputs,
-        targetOutputs: updatedLine.targetOutputs,
-        rejectedOutputs: updatedLine.rejectedOutputs,
-        efficiency: currentEfficiency,
-        efficiencyHistory: updatedLine.efficiencyHistory,
-        scanTime: malaysiaNow,
-        localTime: formattedTime,
-        ...(isBatch ? {
-          passedCount: totalPassed,
-          rejectedCount: totalRejected,
-          failedScans: failedScans
-        } : {
-          serialNumber,
-          Status: serialStatus
-        })
-      });
+      io.emit(eventName, { lineId });
     }
 
     return res.status(200).json({
-      message: isBatch ? 
-        `Batch processed: ${totalPassed} passed, ${totalRejected} rejected` : 
-        (serialStatus === 'PASS' ? "Serial scanned successfully as PASS" : "Serial marked as NG"),
+      message: isBatch ?
+        `Batch processed: ${totalPassed} fully verified as finished goods, ${totalRejected} rejected, ${failedScans.length} failed` :
+        (serialStatus === 'PASS' ? "Serial scanned successfully" : "Serial marked as NG"),
       ...(isBatch ? {
         passedCount: totalPassed,
         rejectedCount: totalRejected,
@@ -348,16 +362,15 @@ const scanSerial = async (req, res) => {
       } : {
         scanId: scanResults[0]?._id,
       }),
-      outputs: updatedLine.totalOutputs,
-      efficiency: currentEfficiency,
-      localTime: formattedTime,
+      outputs: nextTotalOutputs,
+      efficiency: currentEfficiency
     });
   } catch (error) {
     console.error(error);
     await session.abortTransaction();
-    return res.status(500).json({ 
-      message: isBatch ? "Batch processing failed" : "Scan failed",
-      error: error.message 
+    return res.status(500).json({
+      message: "Scan failed",
+      error: error.message
     });
   } finally {
     session.endSession();
@@ -424,6 +437,38 @@ const validateSerial = async (req, res) => {
   }
 };
 
+const getLineFromSerial = async (req, res) => {
+  try {
+    const { serialNumber } = req.params;
+    if (!serialNumber || typeof serialNumber !== 'string') {
+      return res.status(400).json({ message: 'Valid serial number is required' });
+    }
+
+    const scan = await ScanLog.findOne({ serialNumber, verificationStage: 1, serialStatus: 'PASS' });
+
+    if (!scan) {
+      return res.status(404).json({ message: 'No valid scan record found for this serial' });
+    }
+
+    const line = await Line.findById(scan.productionLine);
+    if (!line) {
+      return res.status(404).json({ message: 'Line not found for this serial' });
+    }
+
+    return res.status(200).json({
+      lineId: line._id,
+      name: line.name,
+      targetOutputs: line.targetOutputs,
+      totalOutputs: line.totalOutputs,
+      department: line.department,
+    });
+  } catch (error) {
+    console.error('Error fetching line from serial:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
 // Get one line
 const getLine = async (req, res) => {
   try {
@@ -440,13 +485,14 @@ const getLine = async (req, res) => {
 // Get all lines (optimized)
 const getAllLines = async (req, res) => {
   try {
-    const lines = await Line.find().populate('operatorId', 'name');
+    const lines = await Line.find().populate('operatorIds', 'name');
 
     const formatted = lines.map((l) => ({
       id: l._id.toString(),
-      model: l.model,
+      name: l.name,
       department: l.department,
-      operatorName: l.operatorId?.name || 'No operator',
+      operatorName: l.operatorIds?.map(o => o.name).join(', ') || 'No operator',
+      operatorIds: l.operatorIds?.map(o => o._id.toString()) || [],
       totalOutputs: l.totalOutputs,
       targetOutputs: l.targetOutputs,
       startTime: l.startTime,
@@ -617,6 +663,54 @@ const updateTargetRates = async (io) => {
     await session.endSession();
   }
 };
+
+// controllers/lineController.js
+const getPendingSecondVerification = async (req, res) => {
+  try {
+    const { lineId } = req.params;
+
+    const pending = await ScanLog.aggregate([
+      {
+        $match: {
+          productionLine: new mongoose.Types.ObjectId(lineId),
+          verificationStage: 1,
+          serialStatus: 'PASS'
+        }
+      },
+      { $sort: { scannedAt: -1 } },
+      {
+        $group: {
+          _id: "$serialNumber",
+          doc: { $first: "$$ROOT" }
+        }
+      },
+      {
+        $replaceRoot: { newRoot: "$doc" }
+      },
+      {
+        $project: {
+          serialNumber: 1,
+          model: 1,
+          name: 1,
+          scannedAt: 1
+        }
+      }
+    ]);
+
+    res.status(200).json(pending);
+  } catch (error) {
+    console.error('Error fetching pending second verification:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getModelsRun = async (req, res) => {
+  const { lineId } = req.params;
+  const line = await Line.findById(lineId);
+  if (!line) return res.status(404).json({ message: 'Line not found' });
+  res.json(line.modelRuns || []);
+};
+
 // Delete line
 const deleteLine = async (req, res) => {
   try {
@@ -642,10 +736,13 @@ module.exports = {
   updateLine,
   scanSerial,
   validateSerial,
+  getLineFromSerial,
   getLine,
   getAllLines,
   getLineEfficiency,
   deleteLine,
   updateTargetRates,
+  getModelsRun,
+  getPendingSecondVerification,
   startLine,
 };

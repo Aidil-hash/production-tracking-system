@@ -102,6 +102,12 @@ export default function Register() {
                 FG Operator
               </SelectItem>
               <SelectItem
+                value="PDQC operator"
+                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
+              >
+                PDQC Operator
+              </SelectItem>
+              <SelectItem
                 value="leader"
                 className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
               >
