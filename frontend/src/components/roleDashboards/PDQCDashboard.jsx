@@ -13,6 +13,7 @@ function SerialDrivenDashboard() {
   const [pendingSerials, setPendingSerials] = useState([]);
   const [manualSerial, setManualSerial] = useState('');
   const [awaitingSecondStatus, setAwaitingSecondStatus] = useState(false);
+  const [serialRejected, setSerialRejected] = useState(false);
   const userName = localStorage.getItem('userName');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const token = localStorage.getItem('token');
@@ -42,13 +43,28 @@ function SerialDrivenDashboard() {
     }
   };
 
-  const handleManualSecondVerify = () => {
+  const handleManualSecondVerify = async () => {
     if (!manualSerial) return;
     setMessage('');
     setError('');
     setLineInfo(null);
     setPendingSerials([]);
-    setAwaitingSecondStatus(true);
+    setSerialRejected(false);
+    
+    try {
+      const res = await axios.post(`${API_URL}/api/lines/validate`, {
+        serialNumber: manualSerial
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.Status === 'NG') {
+        setSerialRejected(true);
+      }
+      setAwaitingSecondStatus(true);
+    } catch (err) {
+      setError('Failed to validate serial');
+    }
   };
 
   const handleFinalSecondVerify = async (status) => {
@@ -116,42 +132,51 @@ function SerialDrivenDashboard() {
             variant="outlined"
             fullWidth
             sx={{
-              '& label': { color: '#ffffff' },
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': { borderColor: '#ffffff' },
-                '&:hover fieldset': { borderColor: '#1565c0' },
-                '&.Mui-focused fieldset': { borderColor: '#0d47a1' }
-              },
-              '& input': { color: '#ffffff' }
-            }}
+                '& label': { color: '#ffffff' },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#ffffff' },
+                  '&:hover fieldset': { borderColor: '#1565c0' },
+                  '&.Mui-focused fieldset': { borderColor: '#0d47a1' }
+                },
+                '& input': { color: '#ffffff' }
+              }}
           />
           {!awaitingSecondStatus ? (
             <Button
               variant="contained"
               onClick={handleManualSecondVerify}
               disabled={!manualSerial}
-              sx={{
-                backgroundColor: '#1976d2',
-                color: '#fff',
-                '&:hover': { backgroundColor: '#1565c0' },
-                '&:disabled': { backgroundColor: '#90caf9', color: '#fff' }
-              }}
+              sx={{ backgroundColor: '#1976d2', color: '#fff' }}
             >
               Second Verify
+            </Button>
+          ) : serialRejected ? (
+            <Button
+              disabled
+              sx={{
+                backgroundColor: '#fdd835', // yellow
+                color: '#000',              // black text
+                fontWeight: 'bold',
+                paddingX: 2,
+                paddingY: 1
+              }}
+            >
+              This serial is NG at the first station
             </Button>
           ) : (
             <>
               <Button
                 variant="contained"
                 onClick={() => handleFinalSecondVerify("PASS")}
-                sx={{ backgroundColor: 'green', color: '#fff' }}
+                sx={{ backgroundColor: 'green', color: 'white', '&:hover': { backgroundColor: 'darkgreen' } }}
               >
                 PASS
               </Button>
+
               <Button
                 variant="contained"
                 onClick={() => handleFinalSecondVerify("NG")}
-                sx={{ backgroundColor: 'red', color: '#fff' }}
+                sx={{ backgroundColor: 'red', color: 'white', '&:hover': { backgroundColor: '#b71c1c' } }}
               >
                 NG
               </Button>
