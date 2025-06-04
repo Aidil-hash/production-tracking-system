@@ -58,7 +58,7 @@ function SerialDrivenDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (res.data.Status === 'NG') {
+      if (res.data.firstStatus === 'NG') {
         setSerialRejected(true);
       }
       setAwaitingSecondStatus(true);

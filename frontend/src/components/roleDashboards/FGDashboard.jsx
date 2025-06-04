@@ -5,41 +5,36 @@ import LogoutButton from '../Logout';
 
 function FGDashboard() {
   const [serialNumber, setSerialNumber] = useState('');
-  const [validationResult, setValidationResult] = useState(null);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const userName = localStorage.getItem('userName');
-
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const handleReset = () => {
     setSerialNumber('');
-    setValidationResult(null);
+    setResult(null);
     setError('');
   };
 
   // Auto-reset after 5 seconds
   useEffect(() => {
-    if (validationResult) {
-      const timer = setTimeout(() => {
-        handleReset();
-      }, 5000);
-
+    if (result) {
+      const timer = setTimeout(handleReset, 5000);
       return () => clearTimeout(timer);
     }
-  }, [validationResult]);
+  }, [result]);
 
-  // Update the handleScan function to prioritize PASS status
+  // Main scan handler
   const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber.trim()) {
       setError('Please enter a serial number');
       return;
     }
-
     setIsLoading(true);
     setError('');
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
@@ -47,55 +42,27 @@ function FGDashboard() {
         { serialNumber },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      // Map backend response to our display states
-      if (response.data.passedFirstStation) {
-        setValidationResult({
-          status: 'PASS',
-          message: response.data.message,
-          scanRecord: response.data.scanRecord
-        });
-      } else if (response.data.Status === 'NG' || response.data.serialStatus === 'NG') {
-        setValidationResult({
-          status: 'NG',
-          message: response.data.message || 'Serial rejected at first station',
-          scanRecord: response.data.scanRecord
-        });
-      } else {
-        // Not processed case
-        setValidationResult({
-          status: 'NOT_PROCESSED',
-          message: response.data.message || 'Serial not processed at first station'
-        });
-      }
+      setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Validation failed');
-      setValidationResult(null);
+      setResult(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getStatusColor = () => {
-    switch(validationResult?.status) {
-      case 'PASS': return '#4CAF50'; // Green
-      case 'NG': return '#F44336';   // Red
-      case 'NOT_PROCESSED': return '#FF9800'; // Orange
-      default: return '#9E9E9E';     // Grey
-    }
-  };
-
-  const getStatusText = () => {
-    switch(validationResult?.status) {
-      case 'PASS': return 'PASS';
-      case 'NG': return 'NG';
-      case 'NOT_PROCESSED': return 'NOT PROCESSED';
-      default: return '';
+  // Status color helper
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'PASS': return '#4CAF50';
+      case 'NG': return '#F44336';
+      case 'PENDING_SECOND': return '#FF9800';
+      default: return '#9E9E9E';
     }
   };
 
   return (
-    <Box sx={{ p: 4, maxWidth: 800, margin: '0 auto' }}>
+    <Box sx={{ p: 4, maxWidth: 600, margin: '0 auto' }}>
       <Typography variant="h4" align="center" gutterBottom>
         Final Goods Inspection
       </Typography>
@@ -137,44 +104,70 @@ function FGDashboard() {
           </Button>
         </Box>
 
-        {validationResult && (
+        {result && (
           <Box sx={{ mt: 3 }}>
             <Paper
               elevation={2}
               sx={{
                 p: 2,
-                backgroundColor: getStatusColor(),
+                backgroundColor: getStatusColor(result.status),
                 color: 'white',
                 textAlign: 'center'
               }}
             >
               <Typography variant="h5">
-                {getStatusText()}
+                {result.status === 'PASS'
+                  ? 'PASS'
+                  : result.status === 'NG'
+                  ? 'NG'
+                  : result.status === 'PENDING_SECOND'
+                  ? 'PENDING SECOND'
+                  : 'UNKNOWN'}
               </Typography>
               <Typography variant="body1" sx={{ mt: 1 }}>
-                {validationResult.message}
+                {result.message}
               </Typography>
             </Paper>
 
-            {validationResult.scanRecord && (
-              <Box sx={{ mt: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                <Typography variant="subtitle2">First Station Details:</Typography>
-                <Typography>Model: {validationResult.scanRecord.model}</Typography>
-                <Typography>Operator: {validationResult.scanRecord.operator}</Typography>
-                <Typography>
-                  Time: {new Date(validationResult.scanRecord.scanTime).toLocaleString()}
-                </Typography>
-                {validationResult.status === 'NG' && (
-                  <Typography color="error">REJECTED</Typography>
-                )}
-              </Box>
-            )}
-
-            {validationResult.status === 'NOT_PROCESSED' && (
-              <Box sx={{ mt: 2, p: 2, backgroundColor: '#FFF3E0', borderRadius: 1 }}>
-                <Typography>This serial needs to be processed at first station</Typography>
-              </Box>
-            )}
+            <Box sx={{ mt: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+              <Typography variant="subtitle2">Serial Details:</Typography>
+              <Typography>
+                <strong>Line:</strong> {result.lineName || '-'}
+              </Typography>
+              <Typography>
+                <strong>Model:</strong> {result.model || '-'}
+              </Typography>
+              <Typography>
+                <strong>First Status:</strong> {result.firstStatus}
+              </Typography>
+              <Typography>
+                <strong>First Operator:</strong> {result.firstOperator}
+              </Typography>
+              <Typography>
+                <strong>First Scan Time:</strong>{' '}
+                {result.firstScanTime
+                  ? new Date(result.firstScanTime).toISOString().slice(11, 19)
+                  : '-'}
+              </Typography>
+              <Typography sx={{ mt: 1 }}>
+                <strong>Second Status:</strong>{' '}
+                {result.verificationStage >= 2
+                  ? (result.secondStatus || result.firstStatus)
+                  : 'Not yet verified'}
+              </Typography>
+              <Typography>
+                <strong>Second Verifier:</strong>{' '}
+                {result.verificationStage >= 2
+                  ? (result.secondVerifier || '-')
+                  : 'Not yet verified'}
+              </Typography>
+              <Typography>
+                <strong>Second Scan Time:</strong>{' '}
+                {result.verificationStage >= 2 && result.secondScanTime
+                  ? new Date(result.secondScanTime).toISOString().slice(11, 19)
+                  : 'Not yet verified'}
+              </Typography>
+            </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Button

@@ -383,62 +383,63 @@ const scanSerial = async (req, res) => {
 const validateSerial = async (req, res) => {
   try {
     const { serialNumber } = req.body;
-    
+
     if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
       return res.status(400).json({ message: "Valid serial number is required." });
     }
 
-    // Check if serial exists in ScanLog with PASS status
-    const existingScan = await ScanLog.findOne({ 
+    // Find the latest scan for this serial, on this line (optional: if your flow is per-line)
+    const scan = await ScanLog.findOne({ 
       serialNumber,
-      serialStatus: 'PASS' 
-    });
-    
-    if (existingScan) {
-      return res.status(200).json({ 
-        message: "Serial number has PASSED first station",
-        passedFirstStation: true,
-        Status: existingScan.serialStatus,
-        scanRecord: {
-          model: existingScan.model,
-          scanTime: existingScan.scanTime,
-          operator: existingScan.name,
-          productionLine: existingScan.productionLine
-        }
-      });
+    })
+    .populate('operator', 'name')
+    .populate('verifiedBy', 'name')
+    .populate('productionLine', 'name')
+    .sort({ scannedAt: -1 });
+
+    if (!scan) {
+      return res.status(404).json({ message: 'Serial number not found' });
     }
 
-    // Check if serial exists but with FAIL status
-    const failedScan = await ScanLog.findOne({ 
-      serialNumber,
-      serialStatus: 'NG' 
-    });
+    // Compose the response object
+    const response = {
+      message: '',
+      lineName: scan.productionLine?.name || '',
+      model: scan.model || '',
+      firstStatus: scan.serialStatus,
+      firstOperator: scan.operator?.name || scan.name || '-',
+      firstScanTime: scan.scannedAt,
+      verificationStage: scan.verificationStage,
+      secondStatus: scan.verificationStage >= 2 
+        ? (scan.secondSerialStatus || scan.serialStatus) // Fallback to serialStatus if you only use one status
+        : null,
+      secondVerifier: scan.verifiedBy?.name || scan.secondVerifierName || '-',
+      secondScanTime: scan.finalScanTime,
+    };
 
-    if (failedScan) {
-      return res.status(200).json({ 
-        message: "Serial number was REJECTED at first station",
-        passedFirstStation: false,
-        Status: failedScan.serialStatus,
-        scanRecord: {
-          model: failedScan.model,
-          scanTime: failedScan.scanTime,
-          operator: failedScan.name,
-          productionLine: failedScan.productionLine
-        }
-      });
+    // Set a summary message and status
+    if (scan.verificationStage === 2) {
+      response.message = 'Serial has been double-verified (finished goods).';
+      response.status = scan.secondSerialStatus === 'NG' || scan.serialStatus === 'NG' ? 'NG' : 'PASS';
+    } else if (scan.verificationStage === 1 && scan.serialStatus === 'PASS') {
+      response.message = 'Serial has been scanned at first station, pending second verification.';
+      response.status = 'PENDING_SECOND';
+    } else if (scan.verificationStage === 1 && scan.serialStatus === 'NG') {
+      response.message = 'Serial was rejected at first station.';
+      response.status = 'NG';
+    } else {
+      response.message = 'Serial record found, status unknown.';
+      response.status = 'UNKNOWN';
     }
 
-    // If no record found
-    return res.status(200).json({ 
-      message: "Serial number has not been processed at first station",
-      passedFirstStation: false
-    });
+    return res.status(200).json(response);
 
   } catch (error) {
     console.error("Error validating serial:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 const getLineFromSerial = async (req, res) => {
   try {
