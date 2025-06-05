@@ -42,4 +42,6 @@ scanLogSchema.pre('save', async function(next) {
   }
 });
 
+scanLogSchema.index({ scannedAt: 1 }, { expireAfterSeconds: 259200 });
+
 module.exports = mongoose.model('ScanRecord', scanLogSchema);
