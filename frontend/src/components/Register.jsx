@@ -114,6 +114,12 @@ export default function Register() {
                 Leader
               </SelectItem>
               <SelectItem
+                value="technician"
+                className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
+              >
+                Technician
+              </SelectItem>
+              <SelectItem
                 value="supervisor"
                 className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
               >

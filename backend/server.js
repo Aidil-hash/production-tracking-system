@@ -28,6 +28,7 @@ const authRoutes = require('./routes/authRoutes');
 const operatorRoutes = require('./routes/operatorRoutes');
 const engineerRoutes = require('./routes/engineerRoutes');
 const leaderRoutes = require('./routes/leaderRoutes');
+const technicianRoutes = require('./routes/technicianRoutes');
 
 // Use the routes
 app.use('/api/operators', operatorRoutes);
@@ -36,6 +37,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/lines', lineRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/leader', leaderRoutes);
+app.use('/api/technician', technicianRoutes);
 
 // Basic test route
 app.get('/', (req, res) => {

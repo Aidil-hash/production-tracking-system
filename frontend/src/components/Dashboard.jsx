@@ -4,6 +4,7 @@ import OperatorDashboard from './roleDashboards/OperatorDashboard';
 import FGDashboard from './roleDashboards/FGDashboard';
 import PDQCDashboard from './roleDashboards/PDQCDashboard';
 import LeaderDashboard from './roleDashboards/LeaderDashboard';
+import TechnicianDashboard from './roleDashboards/TechnicianDashboards';
 import SupervisorDashboard from './roleDashboards/SupervisorDashboard';
 import EngineerDashboard from './roleDashboards/EngineerDashboard';
 import AdminDashboard from './roleDashboards/AdminDashboard';
@@ -25,6 +26,8 @@ function Dashboard() {
       return <PDQCDashboard />;
     case 'leader':
       return <LeaderDashboard />;
+      case 'technician':
+      return <TechnicianDashboard />;
     case 'supervisor':
       return <SupervisorDashboard />;
     case 'engineer':

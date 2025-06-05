@@ -3,6 +3,7 @@ import { Box, Typography, Button } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
 import ExcelFolderWatcher from '../ui/ExcelFolderWatcher';
+import { io } from 'socket.io-client';
 
 function OperatorDashboard() {
   const [assignedLine, setAssignedLine] = useState(null);
@@ -15,6 +16,21 @@ function OperatorDashboard() {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    const socket = io(API_URL, { transports: ["websocket"] });
+  
+    socket.on("hourlyTargetsUpdated", async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/operators/assignedLine`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAssignedLine(response.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Could not fetch assigned line.');
+      }
+    });
+  }, [API_URL, token]);
 
   useEffect(() => {
     const fetchLine = async () => {

@@ -22,6 +22,17 @@ exports.setHourlyTargets = async (req, res) => {
 
     await line.save();
 
+    const io = req.app.get('io');
+    if (io) {
+      const eventName = 'hourlyTargetsUpdated';
+      io.emit(eventName, {
+        lineId,
+        date,
+        slots,
+        totalTarget
+      });
+    }
+
     res.json({
       lineId,
       date,
