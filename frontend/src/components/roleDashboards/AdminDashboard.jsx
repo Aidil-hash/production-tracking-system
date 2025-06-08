@@ -73,7 +73,7 @@ function UsersSection({ users, onEditUser, onDeleteUser }) {
   );
 }
 
-function LinesSection({ lines, onDeleteLine }) {
+function LinesSection({ lines, onDeleteLine, onResetLines }) {
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Production Lines</Typography>
@@ -102,6 +102,12 @@ function LinesSection({ lines, onDeleteLine }) {
                     <TableCell align="center">
                       <Button variant="contained" color="error" size="small" onClick={() => onDeleteLine(line.id)}>
                         Delete
+                      </Button>
+                      <Button
+                        variant="contained" color="success" size="small"
+                        className="ml-10"
+                        onClick={() => onResetLines()}>
+                        Reset
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -163,6 +169,25 @@ function AdminDashboard() {
     fetchUsers();
     fetchLines();
   }, [fetchUsers, fetchLines]);
+
+  const handleResetLines = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/api/lines/reset`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage('Production lines reset successfully!');
+      setError('');
+      // Refresh lines list
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reset production lines');
+      setMessage('');
+    }
+  };
 
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
@@ -268,7 +293,7 @@ function AdminDashboard() {
           <UsersSection users={users} onEditUser={handleEditUser} onDeleteUser={handleDeleteUser} />
         )}
         {section === 'lines' && (
-          <LinesSection lines={lines} onDeleteLine={handleDeleteLine} />
+          <LinesSection lines={lines} onDeleteLine={handleDeleteLine} onResetLines={handleResetLines} />
         )}
       </Box>
     </Box>

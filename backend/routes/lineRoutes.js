@@ -12,6 +12,7 @@ const {
   startLine,
   getModelsRun,
   getPendingSecondVerification,
+  resetLinesAtDayEnd,
   deleteLine
 } = require('../controllers/lineController');
 
@@ -75,6 +76,9 @@ router.get('/:lineId/pending-verification', verifyToken, getPendingSecondVerific
 
 // GET /api/lines/:lineId/models-run - Get models run
 router.get('/:lineId/models-run', verifyToken, getModelsRun);
+
+// POST /api/lines/reset - Reset lines at day end
+router.post('/reset', verifyToken, resetLinesAtDayEnd);
 
 // DELETE /api/lines/:id
 router.delete('/:id', verifyToken, deleteLine);

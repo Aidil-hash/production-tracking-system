@@ -158,6 +158,25 @@ function EngineerDashboard() {
     XLSX.writeFile(workbook, `scan_logs_${selectedLine}.xlsx`);
   };
 
+  const handleResetLines = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/api/lines/reset`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage('Production lines reset successfully!');
+      setError('');
+      // Refresh lines list
+      const res = await axios.get(`${API_URL}/api/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLines(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reset production lines');
+      setMessage('');
+    }
+  };
+
   // Sort & filter scan logs
   useEffect(() => {
     let sortedLogs = [...scanLogs];
@@ -297,12 +316,22 @@ function EngineerDashboard() {
         <LineViewChart/>
       </div>
 
+      <div className="mx-auto max-w-5xl mb-4">
+        <Button
+          variant="destructive"
+          className="w-[1027px] mx-auto bg-red-600 hover:bg-red-700 text-white"
+          onClick={handleResetLines}
+        >
+          Reset Production Lines
+        </Button>
+      </div>
+
       <div className="w-full max-w-5xl mx-auto overflow-x-auto">
         <div className="mb-4 text-center">
           <h2 className="text-lg font-semibold text-white">Production Lines</h2>
         </div>
         <div className="w-full">
-          <Table className="text-sm">
+          <Table>
             <TableHeader>
               <TableRow className="border-b border-white/20">
                 <TableHead className="w-[150px] text-white">Line</TableHead>
@@ -321,7 +350,7 @@ function EngineerDashboard() {
                     {line.operatorName || 'No operator'}
                   </TableCell>
                   <TableCell className="py-1 px-2 text-right">
-                    {line.operatorId && (
+                    {line.operatorIds && line.operatorIds.length > 0 && (
                       <Button
                         variant="destructive"
                         size="sm"

@@ -716,6 +716,30 @@ const getModelsRun = async (req, res) => {
   res.json(line.modelRuns || []);
 };
 
+const resetLinesAtDayEnd = async (req, res) => {
+  try {
+    // You can add filters for department, or just update all lines
+    await Line.updateMany({}, {
+      $set: {
+        totalOutputs: 0,
+        targetOutputs: 0,
+        rejectedOutputs: 0,
+        linestatus: 'STOPPED',
+        targetEfficiency: 0,
+        startTime: null,
+        efficiencyHistory: [],
+        hourlyTargets: [],
+        modelRuns: [],
+      }
+    });
+    return res.status(200).json({ message: 'All lines have been reset for the new day.' });
+  } catch (error) {
+    console.error('Error resetting lines:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
 // Delete line
 const deleteLine = async (req, res) => {
   try {
@@ -750,4 +774,5 @@ module.exports = {
   getModelsRun,
   getPendingSecondVerification,
   startLine,
+  resetLinesAtDayEnd
 };
