@@ -42,7 +42,7 @@ export default function Register() {
       await axios.post(`${API_URL}/api/users`, { name, role, password });
       setSuccess("User registered successfully!");
       setError("");
-      setTimeout(() => navigate("/"), 2000);
+      setTimeout(() => navigate("/dashboard"), 2000);
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
       setSuccess("");
@@ -157,10 +157,10 @@ export default function Register() {
 
         <div className="text-center">
           <Link
-            to="/"
+            to="/dashboard"
             className="inline-block mt-4 text-sm text-orange-600 hover:underline"
           >
-            ← Return to Login
+            ← Return to Page
           </Link>
         </div>
       </div>

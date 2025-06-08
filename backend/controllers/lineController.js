@@ -494,6 +494,7 @@ const getAllLines = async (req, res) => {
     const formatted = lines.map((l) => ({
       id: l._id.toString(),
       name: l.name,
+      modelRuns: l.modelRuns || [],
       department: l.department,
       operatorName: l.operatorIds?.map(o => o.name).join(', ') || 'No operator',
       operatorIds: l.operatorIds?.map(o => o._id.toString()) || [],

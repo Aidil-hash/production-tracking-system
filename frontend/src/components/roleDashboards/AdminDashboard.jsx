@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -221,6 +222,9 @@ function AdminDashboard() {
             Admin Dashboard
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
+          <Button color="inherit" component={Link} to="/register" sx={{ ml: 2 }}>
+              Create User
+            </Button>
           <LogoutButton />
         </Toolbar>
       </AppBar>

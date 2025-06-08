@@ -109,16 +109,7 @@ export default function Login() {
               >
                 Login
               </button>
-
-              <div className="text-center text-sm text-muted-foreground">or</div>
           </form>
-
-          <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/register" className="hover:underline underline-offset-4">
-              Sign up
-            </Link>
-          </div>
           <div className="text-center text-sm text-muted-foreground">
             <Link to="/performance" className="hover:underline underline-offset-4">
               Click to see Line Performance Chart

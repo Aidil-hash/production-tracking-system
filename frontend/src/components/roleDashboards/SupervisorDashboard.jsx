@@ -57,7 +57,8 @@ function SupervisorDashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Model</TableHead>
+                  <TableHead className="w-[100px]">Line</TableHead>
+                  <TableHead className="w-[175px]">Model</TableHead>
                   <TableHead>Target Outputs</TableHead>
                   <TableHead>Total Outputs</TableHead>
                 </TableRow>
@@ -65,7 +66,20 @@ function SupervisorDashboard() {
               <TableBody>
                 {lines.map((line) => (
                 <TableRow key={line.id}>
-                  <TableCell>{line.model}</TableCell>
+                  <TableCell>{line.name}</TableCell>
+                  <TableCell>
+                    {line.modelRuns && line.modelRuns.length > 0 ? (
+                      <ul className="list-disc ml-4">
+                        {line.modelRuns.map(run => (
+                          <li key={run.code} className="mb-2">
+                            <b>{run.modelName}</b> <span className="text-xs text-gray-500">[{run.code}]</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <i>No model runs yet</i>
+                    )}
+                  </TableCell>
                   <TableCell>{line.targetOutputs}</TableCell>
                   <TableCell>{line.totalOutputs}</TableCell>
                 </TableRow>
