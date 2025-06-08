@@ -234,7 +234,7 @@ export default function LeaderDashboard() {
         </button>
         <LogoutButton />
       </div>
-      <div className="h-auto overflow-y-auto">
+      <div className="max-h-[600px] overflow-y-auto">
         <table className="table-auto w-full border mb-4 text-white bg-gray-800">
           <thead>
             <tr>
