@@ -234,16 +234,16 @@ export default function LeaderDashboard() {
         </button>
         <LogoutButton />
       </div>
-      <div className="mb-4">
+      <div className="h-auto overflow-y-auto">
         <table className="table-auto w-full border mb-4 text-white bg-gray-800">
           <thead>
             <tr>
-              <th>TIME</th>
-              <th>TARGET</th>
-              <th>ACCUM TARGET</th>
-              <th>ACTUAL</th>
-              <th>ACCUM ACTUAL</th>
-              <th>+/ -</th>
+              <th className="sticky top-0 bg-gray-900 z-10">TIME</th>
+              <th className="sticky top-0 bg-gray-900 z-10">TARGET</th>
+              <th className="sticky top-0 bg-gray-900 z-10">ACCUM TARGET</th>
+              <th className="sticky top-0 bg-gray-900 z-10">ACTUAL</th>
+              <th className="sticky top-0 bg-gray-900 z-10">ACCUM ACTUAL</th>
+              <th className="sticky top-0 bg-gray-900 z-10">+/ -</th>
             </tr>
           </thead>
           <tbody>

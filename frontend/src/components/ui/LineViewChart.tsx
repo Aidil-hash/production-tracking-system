@@ -240,7 +240,7 @@ export default function LineViewChart() {
                 <Bar dataKey="currentEfficiency" stackId="a" fill="url(#performanceGradient)" name="Current">
                   <LabelList dataKey="currentEfficiency" position="top" />
                 </Bar>
-                <Bar dataKey="targetEfficiency" stackId="a" fill="url(#targetGradient)" name="Target">
+                <Bar dataKey="targetEfficiency" stackId="b" fill="url(#targetGradient)" name="Target">
                   <LabelList dataKey="targetEfficiency" position="top" />
                 </Bar>
               </BarChart>

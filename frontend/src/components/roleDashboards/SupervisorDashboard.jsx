@@ -52,15 +52,15 @@ function SupervisorDashboard() {
 
       <CardContent>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">Production Line Details</h2>
-            <Table>
+          <div className="mb-6 h-auto overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-2 text-center mt-10">Production Line Details</h2>
+            <Table className="table-auto w-[1000px] border mb-4 self-center mx-auto" aria-label="Production Lines">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Line</TableHead>
-                  <TableHead className="w-[175px]">Model</TableHead>
-                  <TableHead>Target Outputs</TableHead>
-                  <TableHead>Total Outputs</TableHead>
+                  <TableHead className="w-[100px] sticky top-0 bg-gray-900 z-10">Line</TableHead>
+                  <TableHead className="w-[300px] sticky top-0 bg-gray-900 z-10">Model</TableHead>
+                  <TableHead className="sticky top-0 bg-gray-900 z-10">Target Outputs</TableHead>
+                  <TableHead className="sticky top-0 bg-gray-900 z-10">Total Outputs</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
