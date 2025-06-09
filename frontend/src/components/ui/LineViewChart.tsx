@@ -74,6 +74,13 @@ export default function LineViewChart() {
       });
     });
 
+    // Handle line resets
+    socket.on("lineReset", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
+
     // Handle new lines
     socket.on("lineStarted", () => {
       axios.get(`${API_URL}/api/lines`).then((res) => {
@@ -116,6 +123,7 @@ export default function LineViewChart() {
     return () => {
       socket.off("newScan");
       socket.off("newLine");
+      socket.off("lineReset");
       socket.off("targetUpdate");
       socket.off("lineStarted");
       socket.off("error");

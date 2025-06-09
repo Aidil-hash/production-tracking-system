@@ -731,6 +731,12 @@ const resetLinesAtDayEnd = async (req, res) => {
         modelRuns: [],
       }
     });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('lineReset', {
+      });
+    }
     return res.status(200).json({ message: 'All lines have been reset for the new day.' });
   } catch (error) {
     console.error('Error resetting lines:', error);
