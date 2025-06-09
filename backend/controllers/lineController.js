@@ -728,7 +728,6 @@ const resetLinesAtDayEnd = async (req, res) => {
         targetEfficiency: 0,
         startTime: null,
         efficiencyHistory: [],
-        hourlyTargets: [],
         modelRuns: [],
       }
     });
