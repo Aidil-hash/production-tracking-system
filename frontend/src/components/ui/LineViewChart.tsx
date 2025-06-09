@@ -66,6 +66,13 @@ export default function LineViewChart() {
         setLinesData(res.data);
       });
     });
+
+    // Handle new scan batches
+    socket.on("newScanBatch", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
   
     // Handle new lines
     socket.on("newLine", () => {
@@ -125,6 +132,7 @@ export default function LineViewChart() {
       socket.off("newLine");
       socket.off("lineReset");
       socket.off("targetUpdate");
+      socket.off("newScanBatch");
       socket.off("lineStarted");
       socket.off("error");
       socket.off("connect_error");

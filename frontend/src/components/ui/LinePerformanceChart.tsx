@@ -88,6 +88,13 @@ export default function LinePerformanceChart() {
         setLinesData(res.data);
       });
     });
+
+    // Handle line reset
+    socket.on("lineReset", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
   
     // Handle target updates - optimized version
     socket.on("targetUpdates", () => {
@@ -111,6 +118,8 @@ export default function LinePerformanceChart() {
       socket.off("newLine");
       socket.off("targetUpdates");
       socket.off("lineStarted");
+      socket.off("lineReset");
+      socket.off("newScanBatch");
       socket.off("error");
       socket.off("connect_error");
       socket.disconnect();
