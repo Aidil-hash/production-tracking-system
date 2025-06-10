@@ -316,10 +316,10 @@ function EngineerDashboard() {
         <LineViewChart/>
       </div>
 
-      <div className="mx-auto max-w-5xl mb-4">
+      <div className="mx-auto max-w-[1027px] mb-4">
         <Button
           variant="destructive"
-          className="w-[1027px] mx-auto bg-red-600 hover:bg-red-700 text-white"
+          className="w-full bg-red-600 hover:bg-red-700 text-white"
           onClick={handleResetLines}
         >
           Reset Production Lines
