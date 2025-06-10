@@ -46,7 +46,7 @@ function SupervisorDashboard() {
         </div>
       </CardHeader>
 
-      <div className="w-full max-w-5xl mx-auto mt-8">
+      <div className="w-full mx-auto mt-8">
         <LineViewChart/>
       </div>
 
