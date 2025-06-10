@@ -245,7 +245,7 @@ export default function LineViewChart() {
                     active && payload?.length ? (
                       <div className="bg-white p-2 rounded-lg border">
                         <div className="text-gray-800">
-                          <p>Model: {payload[0].payload.name}</p>
+                          <p>Line: {payload[0].payload.name}</p>
                           <p>Current: {payload[0].value}/min</p>
                           <p>Target: {payload[0].payload.targetEfficiency}/min</p>
                         </div>
