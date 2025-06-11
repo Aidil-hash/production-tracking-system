@@ -4,7 +4,12 @@ const path = require('path');
 let mainWindow;
 
 function createWindow() {
-  mainWindow = new BrowserWindow({ width: 900, height: 680 });
+  mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    autoHideMenuBar: true,     // this auto-hides the menu
+    frame: true,               // keep native window controls (false = borderless)
+  });
 
   const isDev = !app.isPackaged;
   const startURL = isDev
