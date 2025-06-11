@@ -14,6 +14,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [unprocessedSerials, setUnprocessedSerials] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
   const fileCache = useRef(new Map());
   const currentDateRef = useRef('');
   const processedSerialsCache = useRef(new Set());
@@ -226,11 +227,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         setUnprocessedSerials(updatedSerials);
         setSuccess(`Found ${newUnprocessedSerials.length} new serials`);
 
-        // Auto-submit after updating state
-        setTimeout(() => {
-          handleSubmit();
-        }, 1000);
-
         if (scanInterval.current) {
           clearInterval(scanInterval.current);
           scanInterval.current = null;
@@ -261,6 +257,27 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     };
   }, [folderHandle, isWatching, unprocessedSerials.length]);
 
+  useEffect(() => {
+    // Trigger auto-submit as soon as unprocessedSerials has new entries
+    if (unprocessedSerials.length > 0 && !isSubmitting) {
+      // Set submitting flag
+      setIsSubmitting(true);
+
+      const autoSubmit = async () => {
+        try {
+          await handleSubmit(); // Trigger the submit function
+        } catch (err) {
+          setError('Auto-submit failed: ' + err.message);
+        } finally {
+          setIsSubmitting(false); // Reset submitting flag
+        }
+      };
+
+      // Delay to ensure state update is complete
+      setTimeout(autoSubmit, 1000); // 1 second delay for state update
+    }
+  }, [unprocessedSerials, isSubmitting]);
+
   const handleSubmit = async () => {
     if (unprocessedSerials.length === 0) {
       setError('No unprocessed serial numbers to submit.');
@@ -269,8 +286,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
     try {
       setIsProcessing(true);
-      setError(null);
-      setSuccess(null);
+      setError(null); // Clear any previous errors
+      setSuccess(null); // Clear any previous success messages
 
       const batchPayload = {
         serialNumbers: unprocessedSerials.map(sn => ({
@@ -298,12 +315,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       const responseData = await response.json();
       setSuccess(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
-      
+
+      // Mark serials as processed
       unprocessedSerials.forEach(sn => {
         processedSerialsCache.current.add(sn.serialNumber);
       });
-      setUnprocessedSerials([]);
-      
+      setUnprocessedSerials([]); // Clear the list after submission
+
       if (onBatchProcessed) {
         onBatchProcessed({
           success: true,
@@ -311,7 +329,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         });
       }
     } catch (err) {
-      setError(err.message || 'Batch submission failed');
+      setError('Batch submission failed: ' + err.message);
       console.error('Batch submission error:', err);
     } finally {
       setIsProcessing(false);
@@ -338,7 +356,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       <Typography variant="h6" gutterBottom>
         Excel Batch Upload (Smart Scan)
       </Typography>
-      <Typography variant="subtitle2" className='text.white' gutterBottom>
+      <Typography variant="subtitle2" gutterBottom>
         {`Scanning for files with date: ${currentDateRef.current}`}
       </Typography>
 
@@ -376,7 +394,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           variant="contained"
           color={isWatching ? 'error' : 'primary'}
           onClick={() => setIsWatching(!isWatching)}
-          disabled={isProcessing}
+          disabled={isProcessing || isSubmitting} // Disable when auto-submit is in progress
           fullWidth
           sx={{ mb: 3 }}
         >
@@ -386,9 +404,9 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       {isProcessing && (
         <Box sx={{ mb: 3 }}>
-          <LinearProgress variant="determinate" value={progress} />
+          <LinearProgress variant="indeterminate" />
           <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-            Processing... {Math.round(progress)}%
+            Submitting serial numbers...
           </Typography>
         </Box>
       )}
@@ -441,7 +459,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         variant="contained"
         color="success"
         onClick={handleSubmit}
-        disabled={unprocessedSerials.length === 0 || isProcessing}
+        disabled={unprocessedSerials.length === 0 || isProcessing || isSubmitting} // Disable button during auto-submit
         fullWidth
         size="large"
       >
