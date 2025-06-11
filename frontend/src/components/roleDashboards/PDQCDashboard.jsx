@@ -5,11 +5,10 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
+import { toast } from 'sonner';
 
 function SerialDrivenDashboard() {
   const [lineInfo, setLineInfo] = useState(null);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [pendingSerials, setPendingSerials] = useState([]);
   const [manualSerial, setManualSerial] = useState('');
   const [awaitingSecondStatus, setAwaitingSecondStatus] = useState(false);
@@ -26,7 +25,7 @@ function SerialDrivenDashboard() {
       setLineInfo(res.data);
       return res.data;
     } catch (err) {
-      setError('Could not find line for this serial.');
+      toast.error('Could not find line for this serial.');
       return null;
     }
   };
@@ -39,14 +38,12 @@ function SerialDrivenDashboard() {
       );
       setPendingSerials(res.data);
     } catch (err) {
-      setError('Failed to fetch pending serials.');
+      toast.error('Failed to fetch pending serials.');
     }
   };
 
   const handleManualSecondVerify = async () => {
     if (!manualSerial) return;
-    setMessage('');
-    setError('');
     setLineInfo(null);
     setPendingSerials([]);
     setSerialRejected(false);
@@ -63,7 +60,7 @@ function SerialDrivenDashboard() {
       }
       setAwaitingSecondStatus(true);
     } catch (err) {
-      setError('Failed to validate serial');
+      toast.error('Failed to validate serial');
     }
   };
 
@@ -77,41 +74,17 @@ function SerialDrivenDashboard() {
         { serialNumber: manualSerial, serialStatus: status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage(response.data.message || 'Second verification successful');
+      toast.success(response.data.message || 'Second verification successful');
       setManualSerial('');
       setAwaitingSecondStatus(false);
       fetchPendingSerials(line.lineId);
     } catch (err) {
-      setError(err.response?.data?.message || 'Second verification failed');
+      toast.error(err.response?.data?.message || 'Second verification failed');
     }
   };
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(''), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(''), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
   return (
     <Box sx={{ p: 4 }}>
-      {error && (
-        <Typography color="error" align="center" mb={2}>
-          {error}
-        </Typography>
-      )}
-      {message && (
-        <Typography color="success.main" align="center" mb={2}>
-          {message}
-        </Typography>
-      )}
 
       <Typography variant="h6" gutterBottom align="center">
         Assigned Line Operator: {userName}

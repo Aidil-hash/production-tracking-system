@@ -3,10 +3,11 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { io } from 'socket.io-client';
 import { Button } from "../ui/button";
-import { Typography } from '@mui/material';
 import { Input } from "../ui/input";
 import { Label } from '../ui/label';
+import { toast } from "sonner"
 import LineViewChart from '../ui/LineViewChart';
+import LinePerformanceChart from '../ui/LinePerformanceChart';
 import MultiSelectDropdown from '../ui/MultiSelectDropdown';
 import {
   Select,
@@ -23,18 +24,24 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "../ui/carousel"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent} from "../ui/accordion";
 import LogoutButton from '../Logout';
 
 function EngineerDashboard() {
   const [scanLogs, setScanLogs] = useState([]);
-  const [error, setError] = useState('');
   const [selectedLine, setSelectedLine] = useState('');
   const [lines, setLines] = useState([]);
   const [filterText, setFilterText] = useState('');
   const [filteredScanLogs, setFilteredScanLogs] = useState([]);
   const [newLineName, setNewLineName] = useState('');
   const [newLineDepartment, setNewLineDepartment] = useState('');
-  const [message, setMessage] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperators, setSelectedOperators] = useState([]);
   const [sortField, setSortField] = useState(null);
@@ -56,6 +63,7 @@ function EngineerDashboard() {
         setScanLogs(res.data);
       } catch (err) {
         console.error("Error fetching updated scan logs:", err);
+        toast.error("Error fetching updated scan logs:", err);
       }
     });
 
@@ -66,7 +74,6 @@ function EngineerDashboard() {
   useEffect(() => {
     const fetchOperatorsAndFilter = async () => {
       try {
-        setError('');
         const token = localStorage.getItem('token');
 
         const [usersRes, linesRes] = await Promise.all([
@@ -87,7 +94,7 @@ function EngineerDashboard() {
         setOperators(unassignedOperators);
         setLines(linesRes.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch operators or lines');
+        toast.error(err.response?.data?.message || 'Failed to fetch operators or lines');
       }
     };
 
@@ -105,7 +112,7 @@ function EngineerDashboard() {
           });
           setScanLogs(res.data);
         } catch (err) {
-          setError(err.response?.data?.message || 'Failed to fetch scan logs');
+          toast.error(err.response?.data?.message || 'Failed to fetch scan logs');
         }
       };
       fetchScanLogs();
@@ -164,16 +171,14 @@ function EngineerDashboard() {
       await axios.post(`${API_URL}/api/lines/reset`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMessage('Production lines reset successfully!');
-      setError('');
+      toast.success('Production lines reset successfully!');
       // Refresh lines list
       const res = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLines(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to reset production lines');
-      setMessage('');
+      toast.error(err.response?.data?.message || 'Failed to reset production lines');
     }
   };
 
@@ -212,7 +217,7 @@ function EngineerDashboard() {
   const handleAddNewLine = async (e) => {
     e.preventDefault();
     if (!newLineName || !newLineDepartment || selectedOperators.length === 0) {
-      setError('Please enter all details.');
+      toast.error('Please enter all details.');
       return;
     }
     try {
@@ -221,8 +226,7 @@ function EngineerDashboard() {
         { name: newLineName, department: newLineDepartment, operatorIds: selectedOperators },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage('New production line added successfully!');
-      setError('');
+      toast.success("New production line added successfully!",{ className: "animate-fade-in-up"});
       setNewLineName('');
       setNewLineDepartment('');
       setSelectedOperators([]);
@@ -232,88 +236,77 @@ function EngineerDashboard() {
       });
       setLines(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add new line');
-      setMessage('');
+      toast.error(err.response?.data?.message || 'Failed to add new line');
+    }
+  };
+
+    const handleDeleteLine = async (lineId) => {
+    if (!window.confirm('Are you sure you want to delete this production line?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/api/lines/${lineId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success('Production line deleted successfully.');
+      // Refresh lines list
+        const [usersRes, linesRes] = await Promise.all([
+          axios.get(`${API_URL}/api/users`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${API_URL}/api/lines`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        const allOperators = usersRes.data.filter((u) => u.role === 'operator');
+        const assignedOperatorIds = linesRes.data.flatMap((line) => line.operatorIds || []);
+        const unassignedOperators = allOperators.filter(
+          (op) => !assignedOperatorIds.includes(op._id)
+        );
+
+        setOperators(unassignedOperators);
+        setLines(linesRes.data);
+    } catch (err) {
+      console.error("Failed to delete production line:", err);
+      toast.error(err.response?.data?.message || 'Failed to delete production line');
     }
   };
 
   const handleDetachOperator = async (lineId) => {
     try {
-      setError('');
-      setMessage('');
       const token = localStorage.getItem('token');
       await axios.put(
         `${API_URL}/api/engineer/detachOperator`,
         { lineId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage('Operator detached from line successfully!');
+      toast.success('Operator detached from line successfully!');
       const res = await axios.get(`${API_URL}/api/lines`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLines(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to detach operator from line');
+      toast.error(err.response?.data?.message || 'Failed to detach operator from line');
     }
   };
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold text-center">Welcome, {userName}</h1>
-      {error && (
-        <Typography 
-          color="error" 
-          align="center" 
-          mb={2}
-          sx={{
-            animation: 'fadeIn 0.5s ease-in',
-            '@keyframes fadeIn': {
-              '0%': { opacity: 0, transform: 'translateY(-10px)' },
-              '100%': { opacity: 1, transform: 'translateY(0)' }
-            }
-          }}
-        >
-          {error}
-        </Typography>
-      )}
-      {message && (
-        <Typography 
-          color="success.main" 
-          align="center" 
-          mb={2}
-          sx={{
-            animation: 'fadeIn 0.5s ease-in',
-            '@keyframes fadeIn': {
-              '0%': { opacity: 0, transform: 'translateY(-10px)' },
-              '100%': { opacity: 1, transform: 'translateY(0)' }
-            }
-          }}
-        >
-          {message}
-        </Typography>
-      )}
       <LogoutButton />
-
-      <div className="w-full mx-auto mt-8">
-        <LineViewChart/>
+      <div>
+      <Carousel className="w-full max-w-[1400px] mx-auto mb-6">
+        <CarouselContent className="flex gap-4">
+          <CarouselItem className="sm:w-full md:w-1/2 lg:w-1/3">
+          <LineViewChart/>
+          </CarouselItem>
+          <CarouselItem className="sm:w-full md:w-1/2 lg:w-1/3">
+          <LinePerformanceChart/>
+          </CarouselItem>
+          </CarouselContent>
+        <CarouselNext/>
+        <CarouselPrevious/>
+      </Carousel>
       </div>
 
       <div className="mx-auto max-w-[1027px] mb-4">
@@ -337,6 +330,7 @@ function EngineerDashboard() {
                 <TableHead className="w-[150px] text-white">Line</TableHead>
                 <TableHead className="text-white">Operator</TableHead>
                 <TableHead className="w-[160px] text-right">Actions</TableHead>
+                <TableHead className="w-[100px] text-right">Delete Line</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -361,6 +355,16 @@ function EngineerDashboard() {
                       </Button>
                     )}
                   </TableCell>
+                  <TableCell className="py-1 px-2 text-right">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="bg-red-500 hover:bg-red-700 text-white"
+                        onClick={() => handleDeleteLine(line.id)}
+                      >
+                        DELETE
+                      </Button>
+                  </TableCell>
                 </TableRow>
               ))}
               {lines.length === 0 && (
@@ -375,61 +379,74 @@ function EngineerDashboard() {
         </div>
       </div>
 
-      <div className="mt-4 mx-auto max-w-600 p-4 border border-gray-300 rounded-md">
+      <div>
         <h5 className="mb-4 text-lg font-semibold text-center">
           Add New Production Line
         </h5>
-        <form onSubmit={handleAddNewLine}>
-          <div className="mb-4">
-            <Label htmlFor="lineName">Line Name/Number</Label>
-            <Input
-              id="lineName"
-              value={newLineName}
-              onChange={e => setNewLineName(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded-md text-white"
-              placeholder="Enter line name/number"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <Label htmlFor="operator">Select Operator(s)</Label>
-            <MultiSelectDropdown
-              options={operators}
-              selected={selectedOperators}
-              onChange={setSelectedOperators}
-              placeholder="-- Select operators --"
-              className="w-full border border-gray-300 p-2 rounded-md text-white"
-            />
-          </div>
-          <div className="mb-4">
-            <Label htmlFor="department">Department</Label>
-            <Select
-              value={newLineDepartment}
-              onValueChange={val => setNewLineDepartment(val)}
-            >
-              <SelectTrigger className="w-full text-white">
-                <SelectValue placeholder="Select the department" className="z-50"/>
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
-                {["E2 Drum", "E3 Compact", "E3 Non-Compact", "E4 Piano", "E4 Keyboard"].map(dept => (
-                  <SelectItem
-                    key={dept}
-                    value={dept}
-                    className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
+        <Accordion type="single" collapsible className="w-full max-w-7xl mx-auto border rounded-md">
+          <AccordionItem value="add-new-line">
+            <AccordionTrigger className="text-white hover:bg-zinc-700 rounded-md">
+              <div className="flex items-center max-w-6xl justify-between mx-auto">
+                <span>Add New Line</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className=" text-white p-4 rounded-md">
+              <div className="max-w-6xl mx-auto">
+              <form onSubmit={handleAddNewLine}>
+                <div className="mb-4">
+                  <Label htmlFor="lineName">Line Name/Number</Label>
+                  <Input
+                    id="lineName"
+                    value={newLineName}
+                    onChange={e => setNewLineName(e.target.value)}
+                    className="w-full border border-gray-300 p-2 rounded-md text-white"
+                    placeholder="Enter line name/number"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <Label htmlFor="operator">Select Operator(s)</Label>
+                  <MultiSelectDropdown
+                    options={operators}
+                    selected={selectedOperators}
+                    onChange={setSelectedOperators}
+                    placeholder="-- Select operators --"
+                    className="w-full border border-gray-300 p-2 rounded-md text-white"
+                  />
+                </div>
+                <div className="mb-4">
+                  <Label htmlFor="department">Department</Label>
+                  <Select
+                    value={newLineDepartment}
+                    onValueChange={val => setNewLineDepartment(val)}
                   >
-                    {dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <button
-            type="submit"
-            className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
-          >
-            Add New Line
-          </button>
-        </form>
+                    <SelectTrigger className="w-full text-white">
+                      <SelectValue placeholder="Select the department" className="z-50"/>
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 text-white border border-zinc-700 z-[100]">
+                      {["E2 Drum", "E3 Compact", "E3 Non-Compact", "E4 Piano", "E4 Keyboard"].map(dept => (
+                        <SelectItem
+                          key={dept}
+                          value={dept}
+                          className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer"
+                        >
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700"
+                >
+                  Add New Line
+                </button>
+              </form>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       {/* --- Scan Logs Section --- */}

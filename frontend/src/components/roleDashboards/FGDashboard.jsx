@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, TextField, Button, Paper } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
+import { toast } from 'sonner';
 
 function FGDashboard() {
   const [serialNumber, setSerialNumber] = useState('');
   const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const userName = localStorage.getItem('userName');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -14,7 +14,6 @@ function FGDashboard() {
   const handleReset = () => {
     setSerialNumber('');
     setResult(null);
-    setError('');
   };
 
   // Auto-reset after 5 seconds
@@ -29,11 +28,10 @@ function FGDashboard() {
   const handleScan = async (e) => {
     e.preventDefault();
     if (!serialNumber.trim()) {
-      setError('Please enter a serial number');
+      toast.error('Please enter a serial number');
       return;
     }
     setIsLoading(true);
-    setError('');
 
     try {
       const token = localStorage.getItem('token');
@@ -44,7 +42,7 @@ function FGDashboard() {
       );
       setResult(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Validation failed');
+      toast.error(err.response?.data?.message || 'Validation failed');
       setResult(null);
     } finally {
       setIsLoading(false);
@@ -87,13 +85,7 @@ function FGDashboard() {
             disabled={isLoading}
             sx={{ backgroundColor: '#fff' }}
           />
-
-          {error && (
-            <Typography color="error" align="center">
-              {error}
-            </Typography>
-          )}
-
+          
           <Button
             type="submit"
             variant="contained"

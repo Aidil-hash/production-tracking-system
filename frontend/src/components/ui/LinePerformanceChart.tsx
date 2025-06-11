@@ -5,9 +5,7 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import {
   AreaChart,
-  CartesianGrid,
   XAxis,
-  YAxis,
   Area as RechartsArea,
   ResponsiveContainer,
   Tooltip,
@@ -95,6 +93,13 @@ export default function LinePerformanceChart() {
         setLinesData(res.data);
       });
     });
+
+    // Handle line resets
+    socket.on("lineDeleted", () => {
+      axios.get(`${API_URL}/api/lines`).then((res) => {
+        setLinesData(res.data);
+      });
+    });
   
     // Handle target updates - optimized version
     socket.on("targetUpdates", () => {
@@ -120,6 +125,7 @@ export default function LinePerformanceChart() {
       socket.off("lineStarted");
       socket.off("lineReset");
       socket.off("newScanBatch");
+      socket.off("lineDeleted");
       socket.off("error");
       socket.off("connect_error");
       socket.disconnect();
@@ -255,14 +261,12 @@ export default function LinePerformanceChart() {
                             <stop offset="95%" stopColor="#2EDB37" stopOpacity={0.1}/>
                           </linearGradient>
                         </defs>
-                          <CartesianGrid strokeDasharray="1 1" />
                           <XAxis
                             dataKey="time"
                             type="number"
                             domain={["dataMin", "dataMax"]}
                             tickFormatter={(ts) => format(new Date(ts), "HH:mm")}
                           />
-                          <YAxis tickFormatter={(v) => `${v.toFixed(1)}/min`} />
                             <RechartsArea
                               type="monotone"
                               dataKey="performance"

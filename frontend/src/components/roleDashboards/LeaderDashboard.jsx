@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import LogoutButton from '../Logout'; // Adjust path as needed
 import { io } from 'socket.io-client';
+import { toast } from 'sonner';
 
 const initialSlots = [
   "8.00 - 9.00", "9.00 - 10.00", "10.15 - 11.00", "11.00 - 11.30", "12.10 - 1.00",
@@ -18,8 +19,6 @@ export default function LeaderDashboard() {
   const [rows, setRows] = useState(
     initialSlots.map(time => ({ time, target: '', actual: '' }))
   );
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const userName = localStorage.getItem('userName');
 
   // Keep current selected lineId/date in refs for use in socket handler
@@ -90,8 +89,6 @@ export default function LeaderDashboard() {
     const fetchAll = async () => {
       if (!selectedLineId || !date) return;
       try {
-        setMessage('');
-        setError('');
         const token = localStorage.getItem('token');
 
         // Fetch targets
@@ -134,7 +131,6 @@ export default function LeaderDashboard() {
   useEffect(() => {
     const fetchLines = async () => {
       try {
-        setError('');
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API_URL}/api/lines`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -142,7 +138,7 @@ export default function LeaderDashboard() {
         setLines(res.data);
         if (res.data.length) setSelectedLineId(res.data[0]._id || res.data[0].id);
       } catch (err) {
-        setError('Failed to fetch production lines');
+        toast.error('Failed to fetch production lines');
       }
     };
     fetchLines();
@@ -158,7 +154,6 @@ export default function LeaderDashboard() {
 
   const handleSave = async () => {
     try {
-      setError('');
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/leader/set-hourly-targets`,
@@ -171,37 +166,17 @@ export default function LeaderDashboard() {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      setMessage(response.data.message + ` Total Day Target: ${response.data.totalTarget}`);
+      toast.success(response.data.message + ` Total Day Target: ${response.data.totalTarget}`);
     } catch (error) {
-      setError('Error saving hourly targets');
+      toast.error('Error saving hourly targets');
     }
   };
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Welcome, {userName}</h1>
       </div>
-      {error && <div className="text-red-500 text-center mb-4">{error}</div>}
-      {message && <div className="text-green-600">{message}</div>}
       <div className="mb-6 flex flex-wrap gap-4 items-end">
         <div>
           <label className="block text-sm font-semibold mb-1">Select Production Line:</label>
