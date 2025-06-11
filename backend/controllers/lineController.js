@@ -172,6 +172,16 @@ const scanSerial = async (req, res) => {
         if (modelCodeDoc) detectedModel = modelCodeDoc.modelName;
       }
 
+      // If no model detected, reject the scan or set default model
+      if (!detectedModel) {
+        failedScans.push({
+          serialNumber,
+          reason: "Model not found for the serial number",
+          status: "MODEL_NOT_FOUND"
+        });
+        continue;  // Skip processing for this serial
+      }
+
       // Track modelRuns on the line (no duplicates)
       if (detectedModel && code) {
         await Line.updateOne(
