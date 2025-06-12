@@ -81,23 +81,18 @@ const getScanLogsByLine = async (req, res) => {
   // NEW FUNCTION: Detach operator from a line
 const detachOperatorFromLine = async (req, res) => {
   try {
-    // Ensure the requester is a leader
     if (req.user.role !== 'engineer') {
-      return res.status(403).json({
-        message: 'Access denied. Only engineer can detach operators from lines.'
-      });
+      return res.status(403).json({ message: 'Access denied.' });
     }
 
-    // Expect the lineId in the request body
-    const { lineId } = req.body;
-    if (!lineId) {
-      return res.status(400).json({ message: 'lineId is required.' });
+    const { lineId, operatorId } = req.body;
+    if (!lineId || !operatorId) {
+      return res.status(400).json({ message: 'lineId and operatorId are required.' });
     }
 
-    // Update the production line to remove the assigned operator
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
-      { operatorId: null }, // or undefined, depending on your schema
+      { $pull: { operatorIds: operatorId } },
       { new: true }
     );
 
@@ -105,13 +100,41 @@ const detachOperatorFromLine = async (req, res) => {
       return res.status(404).json({ message: 'Production line not found.' });
     }
 
-    return res.status(200).json({
-      message: 'Operator detached from line successfully.',
+    res.status(200).json({
+      message: 'Operator detached successfully.',
       line: updatedLine
     });
   } catch (error) {
-    console.error('Error detaching operator from line:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Detach operator error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const addOperatorToLine = async (req, res) => {
+  try {
+
+    const { lineId, operatorId } = req.body;
+    if (!lineId || !operatorId) {
+      return res.status(400).json({ message: 'lineId and operatorId are required.' });
+    }
+
+    const updatedLine = await Line.findByIdAndUpdate(
+      lineId,
+      { $addToSet: { operatorIds: operatorId } },
+      { new: true }
+    );
+
+    if (!updatedLine) {
+      return res.status(404).json({ message: 'Line not found.' });
+    }
+
+    res.status(200).json({
+      message: 'Operator added to line.',
+      line: updatedLine
+    });
+  } catch (error) {
+    console.error('Add operator error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -119,5 +142,6 @@ module.exports = {
   getScanLogs,
   getAllScans,
   getScanLogsByLine,
+  addOperatorToLine,
   detachOperatorFromLine
  };
