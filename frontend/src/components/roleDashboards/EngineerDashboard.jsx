@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { io } from 'socket.io-client';
+import { subHours } from "date-fns";
 import { Button } from "../ui/button";
 import { Typography } from '@mui/material';
 import { Input } from "../ui/input";
@@ -35,6 +36,7 @@ function EngineerDashboard() {
   const [newLineName, setNewLineName] = useState('');
   const [newLineDepartment, setNewLineDepartment] = useState('');
   const [message, setMessage] = useState('');
+  const [scanTime, setScanTime] = useState('');
   const [operators, setOperators] = useState([]);
   const [selectedOperators, setSelectedOperators] = useState([]);
   const [sortField, setSortField] = useState(null);
@@ -53,7 +55,9 @@ function EngineerDashboard() {
         const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        const Mytime = subHours(new Date(log.scannedAt), 8);
         setScanLogs(res.data);
+        setScanTime(Mytime);
       } catch (err) {
         console.error("Error fetching updated scan logs:", err);
       }
@@ -103,7 +107,9 @@ function EngineerDashboard() {
           const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          const Mytime = subHours(new Date(log.scannedAt), 8);
           setScanLogs(res.data);
+          setScanTime(Mytime);
         } catch (err) {
           setError(err.response?.data?.message || 'Failed to fetch scan logs');
         }
@@ -515,7 +521,7 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">
                       {log.verifiedBy ? log.secondVerifierName || 'Unknown' : 'N/A'}
                     </td>
-                    <td className="px-4 py-2">{log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
+                    <td className="px-4 py-2">{ scanTime.getTime() || 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
