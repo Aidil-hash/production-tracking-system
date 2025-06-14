@@ -2,11 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { io } from 'socket.io-client';
-<<<<<<< HEAD
-import { subHours } from "date-fns";
-=======
 import { motion, AnimatePresence } from 'framer-motion';
->>>>>>> 1743345f049be9622defb95c10a8b7cd802d59a0
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from '../ui/label';
@@ -60,11 +56,6 @@ function EngineerDashboard() {
   const [filteredScanLogs, setFilteredScanLogs] = useState([]);
   const [newLineName, setNewLineName] = useState('');
   const [newLineDepartment, setNewLineDepartment] = useState('');
-<<<<<<< HEAD
-  const [message, setMessage] = useState('');
-  const [scanTime, setScanTime] = useState('');
-=======
->>>>>>> 1743345f049be9622defb95c10a8b7cd802d59a0
   const [operators, setOperators] = useState([]);
   const [selectedNewOperator, setSelectedNewOperator] = useState(null);
   const [selectedOperators, setSelectedOperators] = useState([]);
@@ -86,9 +77,7 @@ function EngineerDashboard() {
         const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const Mytime = subHours(new Date(log.scannedAt), 8);
         setScanLogs(res.data);
-        setScanTime(Mytime);
       } catch (err) {
         console.error("Error fetching updated scan logs:", err);
         toast.error("Error fetching updated scan logs:", err);
@@ -145,9 +134,7 @@ function EngineerDashboard() {
           const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          const Mytime = subHours(new Date(log.scannedAt), 8);
           setScanLogs(res.data);
-          setScanTime(Mytime);
         } catch (err) {
           toast.error(err.response?.data?.message || 'Failed to fetch scan logs');
         }
@@ -794,7 +781,7 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">
                       {log.verifiedBy ? log.secondVerifierName || 'Unknown' : 'N/A'}
                     </td>
-                    <td className="px-4 py-2">{ scanTime.getTime() || 'N/A'}</td>
+                    <td className="px-4 py-2">{ log.scannedAt ? log.scannedAt.toLocaleString() : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>

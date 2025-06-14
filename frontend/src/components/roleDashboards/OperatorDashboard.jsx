@@ -4,11 +4,10 @@ import axios from 'axios';
 import LogoutButton from '../Logout';
 import ExcelFolderWatcher from '../ui/ExcelFolderWatcher';
 import { io } from 'socket.io-client';
+import { toast } from 'sonner';
 
 function OperatorDashboard() {
   const [assignedLine, setAssignedLine] = useState(null);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [lineStatus, setLineStatus] = useState(null);
   const [modelsRun, setModelsRun] = useState([]);
   const [todayTarget, setTodayTarget] = useState(null);
@@ -27,7 +26,7 @@ function OperatorDashboard() {
         });
         setAssignedLine(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Could not fetch assigned line.');
+        toast.error(err.response?.data?.message || 'Could not fetch assigned line.');
       }
     });
   }, [API_URL, token]);
@@ -40,7 +39,7 @@ function OperatorDashboard() {
         });
         setAssignedLine(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Could not fetch assigned line.');
+        toast.error(err.response?.data?.message || 'Could not fetch assigned line.');
       }
     };
     fetchLine();
@@ -71,24 +70,6 @@ function OperatorDashboard() {
     .catch(() => setTodayTarget(null));
   }, [assignedLine, API_URL, token]);
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
   const handleStart = async () => {
     if (!assignedLine) return;
     try {
@@ -100,14 +81,13 @@ function OperatorDashboard() {
         }
       );
       setLineStatus(response.data.line);
-      setMessage('Line started successfully');
+      toast.success('Line started successfully');
       const res = await axios.get(`${API_URL}/api/operators/assignedLine`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAssignedLine(res.data);
-      setError('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to start line');
+      toast.error(err.response?.data?.message || 'Failed to start line');
     }
   };
 
@@ -129,32 +109,22 @@ function OperatorDashboard() {
         return acc + (result.success ? 0 : 1);
       }, 0);
 
-      setMessage(`Batch processed: ${successCount} successful, ${failCount} failed.`);
+      toast.success(`Batch processed: ${successCount} successful, ${failCount} failed.`);
 
       // Refresh line data
       axios.get(`${API_URL}/api/operators/assignedLine`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(res => setAssignedLine(res.data))
-        .catch(() => setError('Failed to refresh line status'));
+        .catch(() => toast.error('Failed to refresh line status'));
 
     } catch (err) {
-      setError('Error processing batch results');
+      toast.error('Error processing batch results');
       console.error('Batch processing error:', err);
     }
   };
 
   return (
     <Box sx={{ p: 4 }}>
-      {error && (
-        <Typography color="error" align="center" mb={2} sx={{ animation: 'fadeIn 0.5s ease-in' }}>
-          {error}
-        </Typography>
-      )}
-      {message && (
-        <Typography color="success.main" align="center" mb={2} sx={{ animation: 'fadeIn 0.5s ease-in' }}>
-          {message}
-        </Typography>
-      )}
 
       <LogoutButton />
 

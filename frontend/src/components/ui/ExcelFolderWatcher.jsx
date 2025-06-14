@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Button, Typography, Box, LinearProgress, List, ListItem, 
   ListItemText, Paper, Alert
 } from '@mui/material';
+import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) => {
@@ -11,7 +12,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   const [isWatching, setIsWatching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [unprocessedSerials, setUnprocessedSerials] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
@@ -33,17 +33,16 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
   const requestFolderAccess = async () => {
     try {
-      setError(null);
       updateTodaysDate();
       const handle = await window.showDirectoryPicker();
       setFolderHandle(handle);
-      setSuccess(`Watching folder: ${handle.name}`);
+      toast.success(`Watching folder: ${handle.name}`);
       fileCache.current = new Map();
       processedSerialsCache.current = new Set();
       setProcessedFiles([]);
       setUnprocessedSerials([]);
     } catch (err) {
-      setError('Folder access was denied or cancelled');
+      toast.error('Folder access was denied or cancelled');
       console.error("Folder access error:", err);
     }
   };
@@ -176,13 +175,12 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     }
   };
 
-  const scanAllFiles = async () => {
+  const scanAllFiles = useCallback(async () => {
     if (!folderHandle || isProcessing) return;
 
     try {
       setIsProcessing(true);
       setProgress(0);
-      setError(null);
 
       const newDate = updateTodaysDate();
       if (newDate !== currentDateRef.current) {
@@ -190,7 +188,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         processedSerialsCache.current = new Set();
         setProcessedFiles([]);
         setUnprocessedSerials([]);
-      }
+    }
 
       const allFiles = [];
       for await (const entry of folderHandle.values()) {
@@ -225,7 +223,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       if (newUnprocessedSerials.length > 0) {
         const updatedSerials = [...unprocessedSerials, ...newUnprocessedSerials];
         setUnprocessedSerials(updatedSerials);
-        setSuccess(`Found ${newUnprocessedSerials.length} new serials`);
+        toast.success(`Found ${newUnprocessedSerials.length} new serials`);
 
         if (scanInterval.current) {
           clearInterval(scanInterval.current);
@@ -235,17 +233,16 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         setSuccess('No new serials found');
       }
     } catch (err) {
-      setError(`Error scanning files: ${err.message}`);
+      toast.error(`Error scanning files: ${err.message}`);
       console.error("Scan error:", err);
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [folderHandle, isProcessing, updateTodaysDate]); // Add dependencies
 
   useEffect(() => {
     if (!folderHandle || !isWatching || unprocessedSerials.length > 0) return;
 
-    // Start scanning only when there's no unprocessed serials
     scanInterval.current = setInterval(scanAllFiles, 10000);
     scanAllFiles(); // Initial scan
 
@@ -255,7 +252,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         scanInterval.current = null;
       }
     };
-  }, [folderHandle, isWatching, unprocessedSerials.length]);
+  }, [folderHandle, isWatching, unprocessedSerials.length, scanAllFiles]); // Add scanAllFiles to deps
 
   useEffect(() => {
     // Trigger auto-submit as soon as unprocessedSerials has new entries
@@ -267,7 +264,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         try {
           await handleSubmit(); // Trigger the submit function
         } catch (err) {
-          setError('Auto-submit failed: ' + err.message);
+          toast.error('Auto-submit failed: ' + err.message);
         } finally {
           setIsSubmitting(false); // Reset submitting flag
         }
@@ -280,14 +277,12 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
   const handleSubmit = async () => {
     if (unprocessedSerials.length === 0) {
-      setError('No unprocessed serial numbers to submit.');
+      toast.error('No unprocessed serial numbers to submit.');
       return;
     }
 
     try {
       setIsProcessing(true);
-      setError(null); // Clear any previous errors
-      setSuccess(null); // Clear any previous success messages
 
       const batchPayload = {
         serialNumbers: unprocessedSerials.map(sn => ({
@@ -314,7 +309,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       }
 
       const responseData = await response.json();
-      setSuccess(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
+      toast.success(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
 
       // Mark serials as processed
       unprocessedSerials.forEach(sn => {
@@ -329,7 +324,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         });
       }
     } catch (err) {
-      setError('Batch submission failed: ' + err.message);
+      toast.error('Batch submission failed: ' + err.message);
       console.error('Batch submission error:', err);
     } finally {
       setIsProcessing(false);
@@ -340,7 +335,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     setFolderHandle(null);
     setProcessedFiles([]);
     setIsWatching(false);
-    setError(null);
     setSuccess(null);
     setUnprocessedSerials([]);
     fileCache.current = new Map();
@@ -359,12 +353,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       <Typography variant="subtitle2" gutterBottom>
         {`Scanning for files with date: ${currentDateRef.current}`}
       </Typography>
-
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
 
       {success && (
         <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>

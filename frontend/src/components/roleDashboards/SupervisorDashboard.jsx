@@ -8,12 +8,20 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "../ui/carousel"
 import { Card, CardHeader, CardContent } from "../ui/card"; // ShadCN Card
 import LogoutButton from '../Logout';
 import LineViewChart from '../ui/LineViewChart';
+import LinePerformanceChart from '../ui/LinePerformanceChart';
+import { toast } from 'sonner';
 
 function SupervisorDashboard() {
-  const [error, setError] = useState('');
   const [lines, setLines] = useState([]);
   const userName = localStorage.getItem('userName');
 
@@ -23,7 +31,6 @@ function SupervisorDashboard() {
   useEffect(() => {
     const fetchLines = async () => {
       try {
-        setError('');
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API_URL}/api/lines`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -31,6 +38,7 @@ function SupervisorDashboard() {
         setLines(res.data);
       } catch (err) {
         console.error('Failed to fetch production lines:', err);
+        toast.error('Could not fetch production lines. Please try again later.');
       }
     };
 
@@ -46,12 +54,22 @@ function SupervisorDashboard() {
         </div>
       </CardHeader>
 
-      <div className="w-full mx-auto mt-8">
-        <LineViewChart/>
+      <div>
+      <Carousel className="w-full max-w-[1780px] mx-auto mb-6">
+        <CarouselContent className="flex gap-4">
+          <CarouselItem className="sm:w-full md:w-1/2 lg:w-1/3">
+          <LineViewChart/>
+          </CarouselItem>
+          <CarouselItem className="sm:w-full md:w-1/2 lg:w-1/3">
+          <LinePerformanceChart/>
+          </CarouselItem>
+          </CarouselContent>
+        <CarouselNext/>
+        <CarouselPrevious/>
+      </Carousel>
       </div>
 
       <CardContent>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
           <div className="mb-6 h-auto overflow-y-auto">
             <h2 className="text-lg font-semibold mb-2 text-center mt-10">Production Line Details</h2>
             <Table className="table-auto w-[1000px] border mb-4 self-center mx-auto" aria-label="Production Lines">
