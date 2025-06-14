@@ -768,12 +768,6 @@ const deleteLine = async (req, res) => {
       return res.status(404).json({ message: 'Line not found' });
     }
 
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('lineDeleted', {
-      });
-    }
-
     return res.status(200).json({ message: 'Production line deleted successfully' });
   } catch (error) {
     console.error('Error deleting line:', error);

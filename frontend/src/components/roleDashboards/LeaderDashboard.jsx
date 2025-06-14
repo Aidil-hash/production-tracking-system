@@ -1,16 +1,12 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import LogoutButton from '../Logout';
+import LogoutButton from '../Logout'; // Adjust path as needed
 import { io } from 'socket.io-client';
-import { toast } from 'sonner';
 
-const defaultSlots = [
-  "8.00 - 9.00", "9.00 - 10.00", "10.15 - 11.30", "12.10 - 1.00", "1.00 - 2.00", "2.00 - 3.00", "3.15 - 4.00", "4.00 - 5.00", "5.00 - 5.30",
+const initialSlots = [
+  "8.00 - 9.00", "9.00 - 10.00", "10.15 - 11.00", "11.00 - 11.30", "12.10 - 1.00",
+  "1.00 - 2.00", "2.00 - 3.00", "3.15 - 4.00", "4.00 - 5.00", "5.00 - 5.30",
   "5.45 - 6.45", "6.45 - 7.45"
-];
-
-const fridaySlot = ["8.00 - 9.00", "9.00 - 10.00", "10.15 - 11.00", "11.00 - 12.00", "12.00 - 1.00", "2.30 - 3.00", "3.00 - 4.00", "4.00 - 5.00",
-  "5.00 - 5.30", "5.45 - 6.45", "6.45 - 7.45"
 ];
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -18,40 +14,37 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 export default function LeaderDashboard() {
   const [lines, setLines] = useState([]);
   const [selectedLineId, setSelectedLineId] = useState('');
-  const [latestModel, setLatestModel] = useState(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-
-  const initialSlots = useMemo(() => {
-    const selectedDate = new Date(date);
-    const isFriday = selectedDate.getDay() === 5;
-    return isFriday ? fridaySlot : defaultSlots;
-  }, [date]);
-
   const [rows, setRows] = useState(
     initialSlots.map(time => ({ time, target: '', actual: '' }))
   );
-
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const userName = localStorage.getItem('userName');
+
+  // Keep current selected lineId/date in refs for use in socket handler
   const selectedLineIdRef = useRef(selectedLineId);
   const dateRef = useRef(date);
 
   useEffect(() => {
     selectedLineIdRef.current = selectedLineId;
   }, [selectedLineId]);
-
   useEffect(() => {
     dateRef.current = date;
   }, [date]);
 
+  // Socket.io: only connect once per component mount
   useEffect(() => {
     const socket = io(API_URL, { transports: ['websocket'] });
 
+    // Handler to refresh dashboard when new scan event comes
     const handleScanEvent = async () => {
       const currentLineId = selectedLineIdRef.current;
       const currentDate = dateRef.current;
       if (!currentLineId || !currentDate) return;
       try {
         const token = localStorage.getItem('token');
+        // Fetch targets
         let targets = initialSlots.map(time => ({ time, target: '', actual: '' }));
         try {
           const targetsRes = await axios.get(`${API_URL}/api/leader/get-hourly-targets`, {
@@ -65,6 +58,7 @@ export default function LeaderDashboard() {
             });
           }
         } catch {}
+        // Fetch actuals
         try {
           const actualsRes = await axios.get(`${API_URL}/api/leader/get-actuals`, {
             params: { lineId: currentLineId, date: currentDate },
@@ -76,27 +70,6 @@ export default function LeaderDashboard() {
               return found ? { ...row, actual: found.actual } : row;
             });
           }
-        } catch {}
-        try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/lines`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const lineList = res.data;
-        setLines(lineList);
-
-        if (lineList.length) {
-          const defaultLine = lineList[0];
-          setSelectedLineId(defaultLine._id || defaultLine.id);
-
-          // Set latest model run if available
-          if (defaultLine.modelRuns && defaultLine.modelRuns.length > 0) {
-            const latest = defaultLine.modelRuns.reduce((a, b) =>
-              new Date(a.lastSeen) > new Date(b.lastSeen) ? a : b
-            );
-            setLatestModel(latest);
-          }
-        }
         } catch {}
         setRows(targets);
       } catch (err) {
@@ -106,55 +79,22 @@ export default function LeaderDashboard() {
 
     socket.on('newScan', handleScanEvent);
     socket.on('newScanBatch', handleScanEvent);
+
+    // Clean up on unmount
     return () => socket.disconnect();
-  }, [initialSlots]);
-
-  useEffect(() => {
-    const fetchLines = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/api/lines`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const lineList = res.data;
-        setLines(lineList);
-
-        if (lineList.length) {
-          const defaultLine = lineList[0];
-          setSelectedLineId(defaultLine._id || defaultLine.id);
-
-          // Set latest model run if available
-          if (defaultLine.modelRuns && defaultLine.modelRuns.length > 0) {
-            const latest = defaultLine.modelRuns.reduce((a, b) =>
-              new Date(a.lastSeen) > new Date(b.lastSeen) ? a : b
-            );
-            setLatestModel(latest);
-          }
-        }
-      } catch (err) {
-        toast.error('Failed to fetch production lines');
-      }
-    };
-    fetchLines();
+    // eslint-disable-next-line
   }, []);
 
-  useEffect(() => {
-    const selectedLine = lines.find(line => (line._id || line.id) === selectedLineId);
-    if (selectedLine && selectedLine.modelRuns?.length > 0) {
-      const latest = selectedLine.modelRuns.reduce((a, b) =>
-        new Date(a.lastSeen) > new Date(b.lastSeen) ? a : b
-      );
-      setLatestModel(latest);
-    } else {
-      setLatestModel(null);
-    }
-  }, [selectedLineId, lines]);
-
+  // Normal data fetching (on selectedLineId/date changes)
   useEffect(() => {
     const fetchAll = async () => {
       if (!selectedLineId || !date) return;
       try {
+        setMessage('');
+        setError('');
         const token = localStorage.getItem('token');
+
+        // Fetch targets
         let targets = initialSlots.map(time => ({ time, target: '', actual: '' }));
         try {
           const targetsRes = await axios.get(`${API_URL}/api/leader/get-hourly-targets`, {
@@ -167,8 +107,9 @@ export default function LeaderDashboard() {
               return found ? found : { time: slot, target: '', actual: '' };
             });
           }
-        } catch {}
+        } catch (err) {}
 
+        // Fetch actuals
         try {
           const actualsRes = await axios.get(`${API_URL}/api/leader/get-actuals`, {
             params: { lineId: selectedLineId, date },
@@ -180,18 +121,20 @@ export default function LeaderDashboard() {
               return found ? { ...row, actual: found.actual } : row;
             });
           }
-        } catch {}
+        } catch (err) {}
         setRows(targets);
-      } catch {
+      } catch (err) {
         setRows(initialSlots.map(time => ({ time, target: '', actual: '' })));
       }
     };
     fetchAll();
-  }, [selectedLineId, date, initialSlots]);
+    // eslint-disable-next-line
+  }, [selectedLineId, date]);
 
   useEffect(() => {
     const fetchLines = async () => {
       try {
+        setError('');
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API_URL}/api/lines`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -199,7 +142,7 @@ export default function LeaderDashboard() {
         setLines(res.data);
         if (res.data.length) setSelectedLineId(res.data[0]._id || res.data[0].id);
       } catch (err) {
-        toast.error('Failed to fetch production lines');
+        setError('Failed to fetch production lines');
       }
     };
     fetchLines();
@@ -215,6 +158,7 @@ export default function LeaderDashboard() {
 
   const handleSave = async () => {
     try {
+      setError('');
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/leader/set-hourly-targets`,
@@ -227,17 +171,37 @@ export default function LeaderDashboard() {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      toast.success(response.data.message + ` Total Day Target: ${response.data.totalTarget}`);
+      setMessage(response.data.message + ` Total Day Target: ${response.data.totalTarget}`);
     } catch (error) {
-      toast.error('Error saving hourly targets');
+      setError('Error saving hourly targets');
     }
   };
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Welcome, {userName}</h1>
       </div>
+      {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+      {message && <div className="text-green-600">{message}</div>}
       <div className="mb-6 flex flex-wrap gap-4 items-end">
         <div>
           <label className="block text-sm font-semibold mb-1">Select Production Line:</label>
@@ -269,13 +233,6 @@ export default function LeaderDashboard() {
           Save Targets
         </button>
         <LogoutButton />
-      </div>
-      <div className="mb-4">
-        {latestModel && (
-          <p className="text-sm text-gray-300">
-            Latest Model: <strong>{latestModel.modelName}</strong> ({latestModel.code})
-          </p>
-        )}
       </div>
       <div className="max-h-[600px] overflow-y-auto">
         <table className="table-auto w-full border mb-4 text-white bg-gray-800">
@@ -311,7 +268,9 @@ export default function LeaderDashboard() {
                   </td>
                   <td className="border px-2 py-1 text-white bg-gray-800">{accumActual}</td>
                   <td className="border px-2 py-1 text-center text-white bg-gray-800">
-                    {Number(row.actual || 0) - Number(row.target || 0)}
+                    {row.target !== '' && row.actual !== ''
+                      ? Number(row.actual) - Number(row.target)
+                      : ''}
                   </td>
                 </tr>
               );

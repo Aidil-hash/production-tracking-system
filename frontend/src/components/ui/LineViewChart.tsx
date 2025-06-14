@@ -6,6 +6,7 @@ import { io } from "socket.io-client";
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   XAxis,
   LabelList,
   ResponsiveContainer,
@@ -87,13 +88,6 @@ export default function LineViewChart() {
       });
     });
 
-    // Handle line resets
-    socket.on("lineDeleted", () => {
-      axios.get(`${API_URL}/api/lines`).then((res) => {
-        setLinesData(res.data);
-      });
-    });
-
     // Handle new lines
     socket.on("lineStarted", () => {
       axios.get(`${API_URL}/api/lines`).then((res) => {
@@ -140,7 +134,6 @@ export default function LineViewChart() {
       socket.off("targetUpdate");
       socket.off("newScanBatch");
       socket.off("lineStarted");
-      socket.off("lineDeleted");
       socket.off("error");
       socket.off("connect_error");
       socket.disconnect();
@@ -240,6 +233,7 @@ export default function LineViewChart() {
                         <stop offset="95%" stopColor="#2EDB37" stopOpacity={0.1}/>
                     </linearGradient>
                 </defs>
+                <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="name"
                   angle={-45}

@@ -1,8 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.1.8",
-  "main": "public/electron.js",
-  "homepage": "./",
+  "version": "0.1.0",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -10,14 +8,11 @@
     "@mui/icons-material": "^7.1.0",
     "@mui/material": "^6.4.11",
     "@radix-ui/react-accordion": "^1.2.10",
-    "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-label": "^2.1.2",
-    "@radix-ui/react-popover": "^1.1.14",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-separator": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.2",
-    "@radix-ui/react-tabs": "^1.1.12",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@shadcn/ui": "^0.0.4",
     "@testing-library/dom": "^10.4.0",
@@ -29,11 +24,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "embla-carousel-react": "^8.6.0",
-    "framer-motion": "^12.17.0",
+    "framer-motion": "^12.5.0",
+    "frontend": "file:",
     "lucide-react": "^0.483.0",
-    "motion": "^12.17.0",
-    "next-themes": "^0.4.6",
     "pouchdb": "^9.0.0",
     "quagga": "^0.12.1",
     "react": "^19.0.0",
@@ -42,8 +35,7 @@
     "react-scripts": "5.0.1",
     "recharts": "^2.15.2",
     "socket.io-client": "^4.8.1",
-    "sonner": "^2.0.5",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.0.2",
     "tailwind-variants": "^1.0.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
@@ -58,8 +50,7 @@
     "eject": "react-scripts eject",
     "electron": "electron .",
     "electron-pack": "npm run build && electron .",
-    "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
-    "dist": "npm run build && electron-builder"
+    "electron-dev": "concurrently \"npm run start\" \"wait-on http://localhost:3000 && electron .\""
   },
   "eslintConfig": {
     "extends": [
@@ -84,37 +75,17 @@
     "@babel/preset-react": "^7.27.1",
     "@svgr/webpack": "^8.1.0",
     "babel-loader": "^10.0.0",
-    "concurrently": "^9.1.2",
     "copy-webpack-plugin": "^13.0.0",
     "css-loader": "^7.1.2",
     "electron": "^35.1.4",
-    "electron-builder": "^26.0.12",
-    "electron-is-dev": "^3.0.1",
     "electron-webpack": "^2.8.2",
     "html-webpack-plugin": "^5.6.3",
     "postcss-loader": "^8.1.1",
     "style-loader": "^4.0.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
-    "wait-on": "^8.0.3",
     "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1",
     "webpack-merge": "^6.0.1"
-  },
-  "build": {
-    "appId": "com.roland.frontend",
-    "productName": "Roland App",
-    "files": [
-      "build/**/*",
-      "node_modules/**/*",
-      "public/**/*",
-      "!public",
-      "build/index.html",
-      "electron.js"
-    ],
-    "directories": {
-      "buildResources": "assets"
-    },
-    "icon": "assets/favicon"
   }
 }

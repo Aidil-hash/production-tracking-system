@@ -72,42 +72,29 @@ exports.getActualsBySlot = async (req, res) => {
     const { lineId, date } = req.query;
     if (!lineId || !date) return res.status(400).json({ error: 'Missing lineId or date' });
 
-    const isFriday = new Date(date).getDay() === 5;
-
-    const slots = isFriday
-      ? [
-          { label: "8.00 - 9.00", start: "08:00", end: "09:00" },
-          { label: "9.00 - 10.00", start: "09:00", end: "10:00" },
-          { label: "10.15 - 11.00", start: "10:15", end: "11:00" },
-          { label: "11.00 - 12.00", start: "11:00", end: "12:00" },
-          { label: "12.00 - 1.00", start: "12:00", end: "13:00" },
-          { label: "2.30 - 3.00", start: "14:30", end: "15:00" },
-          { label: "3.00 - 4.00", start: "15:00", end: "16:00" },
-          { label: "4.00 - 5.00", start: "16:00", end: "17:00" },
-          { label: "5.00 - 5.30", start: "17:00", end: "17:30" },
-          { label: "5.45 - 6.45", start: "17:45", end: "18:45" },
-          { label: "6.45 - 7.45", start: "18:45", end: "19:45" }
-        ]
-      : [
-          { label: "8.00 - 9.00", start: "08:00", end: "09:00" },
-          { label: "9.00 - 10.00", start: "09:00", end: "10:00" },
-          { label: "10.15 - 11.30", start: "10:15", end: "11:30" },
-          { label: "12.10 - 1.00", start: "12:10", end: "13:00" },
-          { label: "1.00 - 2.00", start: "13:00", end: "14:00" },
-          { label: "2.00 - 3.00", start: "14:00", end: "15:00" },
-          { label: "3.15 - 4.00", start: "15:15", end: "16:00" },
-          { label: "4.00 - 5.00", start: "16:00", end: "17:00" },
-          { label: "5.00 - 5.30", start: "17:00", end: "17:30" },
-          { label: "5.45 - 6.45", start: "17:45", end: "18:45" },
-          { label: "6.45 - 7.45", start: "18:45", end: "19:45" }
-        ];
+    const slots = [
+      { label: "8.00 - 9.00", start: "08:00", end: "09:00" },
+      { label: "9.00 - 10.00", start: "09:00", end: "10:00" },
+      { label: "10.15 - 11.00", start: "10:15", end: "11:00" },
+      { label: "11.00 - 11.30", start: "11:00", end: "11:30" },
+      { label: "12.10 - 1.00", start: "12:10", end: "13:00" },
+      { label: "1.00 - 2.00", start: "13:00", end: "14:00" },
+      { label: "2.00 - 3.00", start: "14:00", end: "15:00" },
+      { label: "3.15 - 4.00", start: "15:15", end: "16:00" },
+      { label: "4.00 - 5.00", start: "16:00", end: "17:00" },
+      { label: "5.00 - 5.30", start: "17:00", end: "17:30" },
+      { label: "5.45 - 6.45", start: "17:45", end: "18:45" },
+      { label: "6.45 - 7.45", start: "18:45", end: "19:45" }
+    ];
 
     const results = [];
 
     for (let slot of slots) {
+      // Convert date and time into Date objects
       const slotStart = new Date(`${date}T${slot.start}:00.000Z`);
       const slotEnd = new Date(`${date}T${slot.end}:00.000Z`);
 
+      // Query and sum for this slot
       const outputs = await Output.aggregate([
         {
           $match: {
@@ -122,7 +109,6 @@ exports.getActualsBySlot = async (req, res) => {
           }
         }
       ]);
-
       results.push({ time: slot.label, actual: outputs[0]?.total || 0 });
     }
 

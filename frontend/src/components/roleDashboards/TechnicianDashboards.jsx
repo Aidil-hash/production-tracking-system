@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import LogoutButton from '../Logout';
-import { toast } from 'sonner';
 import { Box, Typography, TextField, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -10,13 +9,16 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 function TechnicianDashboard() {
   const [serial, setSerial] = useState('');
   const [serialDetail, setSerialDetail] = useState(null);
+  const [error, setError] = useState('');
   const [reason, setReason] = useState('');
   const [repairs, setRepairs] = useState([]);
+	const [success, setSuccess] = useState('');
   const [technicianName, setTechnicianName] = useState(localStorage.getItem('userName') || '');
 
   // Search serial details
   const handleSearch = async () => {
     setSerialDetail(null);
+    setError('');
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_URL}/api/technician/serial/${serial}`, {
@@ -24,7 +26,7 @@ function TechnicianDashboard() {
       });
       setSerialDetail(res.data);
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Serial not found');
+      setError(e.response?.data?.message || 'Serial not found');
     }
   };
 
@@ -38,11 +40,13 @@ function TechnicianDashboard() {
         reason,
         technicianName,
       }, { headers: { Authorization: `Bearer ${token}` } });
+      setReason('');
 			setReason('');
-    	toast.success('Repair recorded successfully!');
+    	setSuccess('Repair recorded successfully!');
       fetchRepairs();
+			setTimeout(() => setSuccess(''), 2000);
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Failed to record repair');
+      setError(e.response?.data?.message || 'Failed to record repair');
     }
   };
 
@@ -86,6 +90,8 @@ function TechnicianDashboard() {
 				<Typography variant="h5" gutterBottom>Technician Dashboard</Typography>
 				<LogoutButton />
 			</div>
+			{error && <div style={{ marginBottom: '20px'}}><Typography color="error">{error}</Typography></div>}
+			{success && <div style={{ marginBottom: '20px'}}><Typography color="success.main">{success}</Typography></div>}
 			
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField

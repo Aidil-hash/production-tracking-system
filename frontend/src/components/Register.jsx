@@ -4,7 +4,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
-import { toast } from "sonner";
 import {
   Select,
   SelectTrigger,
@@ -31,6 +30,8 @@ export default function Register() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -39,10 +40,12 @@ export default function Register() {
     e.preventDefault();
     try {
       await axios.post(`${API_URL}/api/users`, { name, role, password });
-      toast.success("User registered successfully!");
+      setSuccess("User registered successfully!");
+      setError("");
       setTimeout(() => navigate("/dashboard"), 2000);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || "Registration failed");
+      setSuccess("");
     }
   };
 
@@ -58,6 +61,13 @@ export default function Register() {
       <div className="bg-zinc-900 text-white flex items-center justify-center px-6">
         <div className="w-[600px] max-w-xl px-10 py-8 bg-zinc-900 rounded-lg shadow-md space-y-6">
         <h2 className="text-2xl font-bold text-center">Register</h2>
+
+        {error && (
+          <p className="text-red-500 text-sm text-center font-medium">{error}</p>
+        )}
+        {success && (
+          <p className="text-green-600 text-sm text-center font-medium">{success}</p>
+        )}
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="space-y-1">
