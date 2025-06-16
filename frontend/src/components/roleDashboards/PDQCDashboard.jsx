@@ -83,6 +83,20 @@ function SerialDrivenDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (!awaitingSecondStatus || serialRejected) return;
+    const handleKeyDown = (event) => {
+      if (event.repeat) return;
+      if (event.key === 'Enter' || event.key.toLowerCase() === 'p') {
+        handleFinalSecondVerify("PASS");
+      } else if (event.key.toLowerCase() === 'n' || event.key === 'Escape') {
+        handleFinalSecondVerify("NG");
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [awaitingSecondStatus, serialRejected, manualSerial, handleFinalSecondVerify]);
+
   return (
     <Box sx={{ p: 4 }}>
 
@@ -94,7 +108,16 @@ function SerialDrivenDashboard() {
 
       {/* Serial input with conditional action buttons */}
       <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            if (!awaitingSecondStatus && manualSerial) {
+              handleManualSecondVerify();
+            }
+            // When awaitingSecondStatus, keyboard shortcuts below will handle!
+          }}
+          style={{ display: 'flex', gap: 16, alignItems: 'center' }}
+        >
           <TextField
             label="Serial for Second Verification"
             value={manualSerial}
@@ -105,19 +128,19 @@ function SerialDrivenDashboard() {
             variant="outlined"
             fullWidth
             sx={{
-                '& label': { color: '#ffffff' },
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: '#ffffff' },
-                  '&:hover fieldset': { borderColor: '#1565c0' },
-                  '&.Mui-focused fieldset': { borderColor: '#0d47a1' }
-                },
-                '& input': { color: '#ffffff' }
-              }}
+              '& label': { color: '#ffffff' },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: '#ffffff' },
+                '&:hover fieldset': { borderColor: '#1565c0' },
+                '&.Mui-focused fieldset': { borderColor: '#0d47a1' }
+              },
+              '& input': { color: '#ffffff' }
+            }}
           />
           {!awaitingSecondStatus ? (
             <Button
+              type="submit"
               variant="contained"
-              onClick={handleManualSecondVerify}
               disabled={!manualSerial}
               sx={{ backgroundColor: '#1976d2', color: '#fff' }}
             >
@@ -127,8 +150,8 @@ function SerialDrivenDashboard() {
             <Button
               disabled
               sx={{
-                backgroundColor: '#fdd835', // yellow
-                color: '#000',              // black text
+                backgroundColor: '#fdd835',
+                color: '#000',
                 fontWeight: 'bold',
                 paddingX: 2,
                 paddingY: 1
@@ -145,7 +168,6 @@ function SerialDrivenDashboard() {
               >
                 PASS
               </Button>
-
               <Button
                 variant="contained"
                 onClick={() => handleFinalSecondVerify("NG")}
@@ -155,7 +177,7 @@ function SerialDrivenDashboard() {
               </Button>
             </>
           )}
-        </Box>
+        </form>
       </Box>
 
       {/* Line Info */}
