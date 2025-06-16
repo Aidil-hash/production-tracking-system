@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, TextField, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper
@@ -87,9 +87,9 @@ function SerialDrivenDashboard() {
     if (!awaitingSecondStatus || serialRejected) return;
     const handleKeyDown = (event) => {
       if (event.repeat) return;
-      if (event.key === 'Enter' || event.key.toLowerCase() === 'p') {
+      if (event.key === 'Enter' || event.key === '1') {
         handleFinalSecondVerify("PASS");
-      } else if (event.key.toLowerCase() === 'n' || event.key === 'Escape') {
+      } else if (event.key === '3' || event.key === 'Escape') {
         handleFinalSecondVerify("NG");
       }
     };
