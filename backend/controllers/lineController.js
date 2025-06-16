@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
-const Output = require('../models/Output'); // Add at top if not present
+const Output = require('../models/Output');
 const User = require('../models/User');
-const ModelCode = require('../models/ModelCode'); // <-- Make sure this is required at the top!
+const ModelCode = require('../models/ModelCode');
+const { encryptSerial, decryptSerial } = require('../utils/serialCrypto');
 const { getMalaysiaTime, formatMalaysiaTime, getMalaysiaShiftEnd } = require('../utils/timeHelper');
 
 // Utility function
@@ -116,7 +117,6 @@ const updateLine = async (req, res) => {
 const scanSerial = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
     const { lineId } = req.params;
     const { serialNumber, serialStatus, serialNumbers } = req.body;
@@ -134,13 +134,13 @@ const scanSerial = async (req, res) => {
     const line = await Line.findById(lineId).session(session);
     if (!line) return res.status(404).json({ message: "Production line not found." });
 
-    // Fetch the user for role-based authorization
     const user = await User.findById(operatorId);
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    // Find existing scan logs for these serials
+    // Encrypt all serial numbers for querying
+    const encryptedSerials = scansToProcess.map(s => encryptSerial(s.serialNumber.trim()));
     const existingScans = await ScanLog.find({
-      serialNumber: { $in: scansToProcess.map(s => s.serialNumber) }
+      serialNumber: { $in: encryptedSerials }
     }).session(session);
 
     const existingSerialMap = new Map();
@@ -162,6 +162,7 @@ const scanSerial = async (req, res) => {
         });
         continue;
       }
+      const encSerial = encryptSerial(serialNumber.trim());
 
       // Model detection (first 6 chars)
       let detectedModel = undefined;
@@ -172,23 +173,12 @@ const scanSerial = async (req, res) => {
         if (modelCodeDoc) detectedModel = modelCodeDoc.modelName;
       }
 
-      // If no model detected, reject the scan or set default model
-      if (!detectedModel) {
-        failedScans.push({
-          serialNumber,
-          reason: "Model not found for the serial number",
-          status: "MODEL_NOT_FOUND"
-        });
-        continue;  // Skip processing for this serial
-      }
-
-      // Track modelRuns on the line (no duplicates)
+      // Track modelRuns
       if (detectedModel && code) {
         await Line.updateOne(
           { _id: line._id, "modelRuns.code": code },
           { $set: { "modelRuns.$.lastSeen": malaysiaNow } }
         ).session(session);
-        // Only push if not already present
         const updatedLine = await Line.findById(line._id, null, { session });
         const existsAfter = (updatedLine.modelRuns || []).some(run => run.code === code);
         if (!existsAfter) {
@@ -199,11 +189,10 @@ const scanSerial = async (req, res) => {
         }
       }
 
-      const existingScan = existingSerialMap.get(serialNumber);
+      const existingScan = existingSerialMap.get(encSerial);
 
-      // AUTHORIZATION CHECKS for each stage
+      // FIRST STATION (stage 1)
       if (!existingScan) {
-        // FIRST STATION (stage 1): Only assigned operator can scan
         if (!line.operatorIds.map(String).includes(operatorId) || user.role !== 'operator') {
           failedScans.push({
             serialNumber,
@@ -212,14 +201,13 @@ const scanSerial = async (req, res) => {
           });
           continue;
         }
-        // FIRST SCAN LOGIC
         if (serialStatus === 'PASS' || serialStatus === 'NG') {
           scanResults.push(new ScanLog({
             productionLine: lineId,
             model: detectedModel,
             operator: operatorId,
             name: user.name,
-            serialNumber,
+            serialNumber: encSerial,
             serialStatus,
             scannedAt: malaysiaNow,
             verificationStage: 1,
@@ -237,7 +225,7 @@ const scanSerial = async (req, res) => {
         continue;
       }
 
-      // SECOND STATION (stage 2): Only PDQC operator can scan
+      // SECOND STATION (stage 2)
       if (existingScan.verificationStage === 1 && existingScan.serialStatus === 'PASS') {
         if (user.role !== 'PDQC operator' && user.role !== 'pdqc') {
           failedScans.push({
@@ -262,9 +250,7 @@ const scanSerial = async (req, res) => {
               $set: {
                 verificationStage: 2,
                 verifiedBy: operatorId,
-                finalScanTime: malaysiaNow,
-                secondSerialStatus: 'PASS',
-                secondVerifierName: user.name,
+                finalScanTime: malaysiaNow
               }
             }
           ).session(session);
@@ -283,8 +269,7 @@ const scanSerial = async (req, res) => {
                 verificationStage: 2,
                 verifiedBy: operatorId,
                 finalScanTime: malaysiaNow,
-                secondSerialStatus: 'NG',
-                secondVerifierName: user.name,
+                serialStatus: 'NG'
               }
             }
           ).session(session);
@@ -320,7 +305,7 @@ const scanSerial = async (req, res) => {
       }
     }
 
-    // Update totals and efficiency (totalOutputs = finished goods)
+    // Update totals and efficiency
     const nextTotalOutputs = line.totalOutputs + totalPassed;
     const nextRejectedOutputs = line.rejectedOutputs + totalRejected;
 
@@ -397,10 +382,10 @@ const validateSerial = async (req, res) => {
     if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
       return res.status(400).json({ message: "Valid serial number is required." });
     }
+    const encryptedSerial = encryptSerial(serialNumber.trim());
 
-    // Find the latest scan for this serial, on this line (optional: if your flow is per-line)
     const scan = await ScanLog.findOne({ 
-      serialNumber,
+      serialNumber: encryptedSerial
     })
     .populate('operator', 'name')
     .populate('verifiedBy', 'name')
@@ -411,23 +396,29 @@ const validateSerial = async (req, res) => {
       return res.status(404).json({ message: 'Serial number not found' });
     }
 
-    // Compose the response object
+    let decryptedSerial = '';
+    try {
+      decryptedSerial = decryptSerial(scan.serialNumber);
+    } catch {
+      decryptedSerial = '[decryption error]';
+    }
+
     const response = {
       message: '',
       lineName: scan.productionLine?.name || '',
       model: scan.model || '',
+      serialNumber: decryptedSerial,
       firstStatus: scan.serialStatus,
       firstOperator: scan.operator?.name || scan.name || '-',
       firstScanTime: scan.scannedAt,
       verificationStage: scan.verificationStage,
       secondStatus: scan.verificationStage >= 2 
-        ? (scan.secondSerialStatus || scan.serialStatus) // Fallback to serialStatus if you only use one status
+        ? (scan.secondSerialStatus || scan.serialStatus)
         : null,
       secondVerifier: scan.verifiedBy?.name || scan.secondVerifierName || '-',
       secondScanTime: scan.finalScanTime,
     };
 
-    // Set a summary message and status
     if (scan.verificationStage === 2) {
       response.message = 'Serial has been double-verified (finished goods).';
       response.status = scan.secondSerialStatus === 'NG' || scan.serialStatus === 'NG' ? 'NG' : 'PASS';
@@ -450,7 +441,6 @@ const validateSerial = async (req, res) => {
   }
 };
 
-
 const getLineFromSerial = async (req, res) => {
   try {
     const { serialNumber } = req.params;
@@ -458,7 +448,8 @@ const getLineFromSerial = async (req, res) => {
       return res.status(400).json({ message: 'Valid serial number is required' });
     }
 
-    const scan = await ScanLog.findOne({ serialNumber, verificationStage: 1, serialStatus: 'PASS' });
+    const encryptedSerial = encryptSerial(serialNumber.trim());
+    const scan = await ScanLog.findOne({ serialNumber: encryptedSerial, verificationStage: 1, serialStatus: 'PASS' });
 
     if (!scan) {
       return res.status(404).json({ message: 'No valid scan record found for this serial' });
@@ -481,7 +472,6 @@ const getLineFromSerial = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
 
 // Get one line
 const getLine = async (req, res) => {

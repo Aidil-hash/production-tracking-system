@@ -1,10 +1,9 @@
 // routes/engineerRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getScanLogs, getAllScans, getScanLogsByLine, detachOperatorFromLine } = require('../controllers/engineerController');
+const { getAllScans, getScanLogsByLine, detachOperatorFromLine } = require('../controllers/engineerController');
 const { verifyToken } = require('../middleware/authMiddleware'); // Assumes you have token verification middleware
 
-router.get('/:lineId/scanlogs', verifyToken, getScanLogs);
 router.get('/allscanlogs', verifyToken, getAllScans);
 router.get('/scanlogs/:lineId', verifyToken, getScanLogsByLine);
 
