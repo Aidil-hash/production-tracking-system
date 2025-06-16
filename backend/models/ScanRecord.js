@@ -7,6 +7,7 @@ const scanLogSchema = new mongoose.Schema({
   operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   serialNumber: { type: String, required: true },
+  serialNumberHash: { type: String, required: true, unique: true },
   serialStatus: { type: String, required: true },
   scannedAt: { type: Date, default: Date.now },
 

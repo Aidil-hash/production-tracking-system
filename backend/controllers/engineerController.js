@@ -4,22 +4,19 @@ const ScanLog = require('../models/ScanRecord');
 
 const getAllScans = async (req, res) => {
   try {
-    // Ensure that only engineers can access
-    if (req.user.role !== 'engineer') {
-      return res.status(403).json({ message: "Access denied. Only engineers can view all scans." });
-    }
-
-    // Fetch all scan logs from the DB
-    const logs = await ScanLog.find({})
-      .populate('productionLine', 'model')
+    const logs = await ScanLog.find()
       .populate('operator', 'name')
       .sort({ scannedAt: -1 });
 
-    // Return the raw logs or transform them
-    return res.status(200).json(logs);
+    // Decrypt serial numbers before sending
+    const decryptedLogs = logs.map(log => ({
+      ...log.toObject(),
+      serialNumber: log.serialNumber ? decryptSerial(log.serialNumber) : '',
+    }));
+
+    return res.status(200).json(decryptedLogs);
   } catch (error) {
-    console.error("Error fetching all scan logs:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const ENCRYPTION_KEY = Buffer.from(process.env.SERIAL_ENCRYPT_KEY, 'hex'); // 32 bytes hex string
+const HASH_SECRET = process.env.SERIAL_HASH_KEY || 'change_this_to_a_random_secret';
 const IV_LENGTH = 16; // AES block size
 
 function encryptSerial(plainText) {
@@ -22,4 +23,8 @@ function decryptSerial(encryptedText) {
   return decrypted;
 }
 
-module.exports = { encryptSerial, decryptSerial };
+function hashSerial(plainText) {
+  return crypto.createHmac('sha256', HASH_SECRET).update(plainText).digest('hex');
+}
+
+module.exports = { encryptSerial, decryptSerial, hashSerial };
