@@ -27,14 +27,24 @@ const getScanLogsByLine = async (req, res) => {
       .populate('operator', 'name')
       .sort({ scannedAt: -1 });
 
-    // Decrypt serial numbers before sending to frontend
-    const decryptedLogs = logs.map(log => ({
-      ...log.toObject(),
-      serialNumber: log.serialNumber ? decryptSerial(log.serialNumber) : '',
-    }));
+    // Safe decryption: never crash on one bad record
+    const decryptedLogs = logs.map(log => {
+      let serial = '';
+      try {
+        serial = log.serialNumber ? decryptSerial(log.serialNumber) : '';
+      } catch (err) {
+        serial = '[decryption error]';
+      }
+      return {
+        ...log.toObject(),
+        serialNumber: serial,
+      };
+    });
 
     res.json(decryptedLogs);
   } catch (error) {
+    // Log to server console for debug!
+    console.error("Error in getScanLogsByLine:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
