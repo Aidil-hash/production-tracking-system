@@ -80,7 +80,6 @@ const detachOperatorFromLine = async (req, res) => {
 };
 
 module.exports = { 
-  getScanLogs,
   getAllScans,
   getScanLogsByLine,
   detachOperatorFromLine
