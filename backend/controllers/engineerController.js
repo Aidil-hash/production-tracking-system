@@ -1,6 +1,7 @@
 // controllers/engineerController.js
 const Line = require('../models/Line');
 const ScanLog = require('../models/ScanRecord');
+const { decryptSerial } = require('../utils/serialCrypto');
 
 const getAllScans = async (req, res) => {
   try {
