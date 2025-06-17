@@ -135,6 +135,8 @@ function EngineerDashboard() {
             headers: { Authorization: `Bearer ${token}` },
           });
           setScanLogs(res.data);
+          const adjTime = subHours(new Date(log.scannedAt), 8);
+          return{ scanTime: adjTime }
         } catch (err) {
           toast.error(err.response?.data?.message || 'Failed to fetch scan logs');
         }
@@ -781,7 +783,7 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">
                       {log.verifiedBy ? log.secondVerifierName || 'Unknown' : 'N/A'}
                     </td>
-                    <td className="px-4 py-2">{ log.scannedAt ? log.scannedAt.toLocaleString() : 'N/A'}</td>
+                    <td className="px-4 py-2">{ log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
