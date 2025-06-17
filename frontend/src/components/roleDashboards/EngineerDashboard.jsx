@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from '../ui/label';
 import { toast } from "sonner";
-import { format, subHours, addHours } from "date-fns";
+import { subHours } from "date-fns";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import LineViewChart from '../ui/LineViewChart';
 import LinePerformanceChart from '../ui/LinePerformanceChart';
@@ -136,8 +136,6 @@ function EngineerDashboard() {
             headers: { Authorization: `Bearer ${token}` },
           });
           setScanLogs(res.data);
-          const adjTime = subHours(new Date(log.scannedAt), 8);
-          return{ scanTime: adjTime }
         } catch (err) {
           toast.error(err.response?.data?.message || 'Failed to fetch scan logs');
         }
@@ -784,7 +782,7 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">
                       {log.verifiedBy ? log.secondVerifierName || 'Unknown' : 'N/A'}
                     </td>
-                    <td className="px-4 py-2">{ log.scannedAt ? new Date(log.scannedAt).toLocaleString() : 'N/A'}</td>
+                    <td className="px-4 py-2">{ log.scannedAt ? subHours(new Date(log.scannedAt), 8) : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
