@@ -782,7 +782,7 @@ function EngineerDashboard() {
                     <td className="px-4 py-2">
                       {log.verifiedBy ? log.secondVerifierName || 'Unknown' : 'N/A'}
                     </td>
-                    <td className="px-4 py-2">{ log.scannedAt ? subHours(new Date(log.scannedAt), 8) : 'N/A'}</td>
+                    <td className="px-4 py-2">{log.scannedAt ? subHours(new Date(log.scannedAt), 8).toLocaleString() : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
