@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "node server-pinger.js"
+  },
+  "dependencies": {
+    "https": "^1.0.0"
+  }
+}
