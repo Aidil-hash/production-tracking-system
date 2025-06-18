@@ -730,7 +730,19 @@ const getPendingSecondVerification = async (req, res) => {
       }
     ]);
 
-    res.status(200).json(pending);
+    // Decrypt serial numbers before returning
+    const result = pending.map(doc => ({
+      ...doc,
+      serialNumber: (() => {
+        try {
+          return decryptSerial(doc.serialNumber);
+        } catch {
+          return '[decryption error]';
+        }
+      })(),
+    }));
+
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching pending second verification:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
