@@ -248,6 +248,12 @@ const scanSerial = async (req, res) => {
           }));
           totalPassed++;
           netOutputDelta++; // Only increment on PASS at first scan
+          await Output.create([{
+            lineId,
+            timestamp: malaysiaNow,
+            count: 1,
+          }], { session });
+          continue;
         } else if (serialStatus === 'NG') {
           // NG at first station: do not affect outputs
           scanResults.push(new ScanLog({
