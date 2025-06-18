@@ -792,9 +792,10 @@ const getModelsRun = async (req, res) => {
   res.json(line.modelRuns || []);
 };
 
+// Reset all lines at the end of the day
 const resetLinesAtDayEnd = async (req, res) => {
   try {
-    // You can add filters for department, or just update all lines
+    // Reset all lines as before
     await Line.updateMany({}, {
       $set: {
         totalOutputs: 0,
@@ -808,10 +809,26 @@ const resetLinesAtDayEnd = async (req, res) => {
       }
     });
 
+    // Add a "stopped" point to each line's history
+    const lines = await Line.find({});
+    const malaysiaNow = getMalaysiaTime();
+    for (const line of lines) {
+      await Line.findByIdAndUpdate(line._id, {
+        $push: {
+          efficiencyHistory: {
+            timestamp: malaysiaNow,
+            efficiency: 0,
+            target: 0,
+            rejectedOutputs: 0,
+            stopped: true
+          }
+        }
+      });
+    }
+
     const io = req.app.get('io');
     if (io) {
-      io.emit('lineReset', {
-      });
+      io.emit('lineReset', {});
     }
     return res.status(200).json({ message: 'All lines have been reset for the new day.' });
   } catch (error) {
