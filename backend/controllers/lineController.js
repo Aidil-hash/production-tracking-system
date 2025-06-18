@@ -379,6 +379,9 @@ const scanSerial = async (req, res) => {
         scanId: scanResults[0]?._id,
       }),
       outputs: nextTotalOutputs,
+      rejectedOutputs: nextRejectedOutputs,
+      targetEfficiency: targetEfficiency,
+      lineId,
       efficiency: currentEfficiency
     });
   } catch (error) {
