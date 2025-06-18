@@ -231,8 +231,8 @@ const scanSerial = async (req, res) => {
           continue;
         }
 
-        // Add to totalOutputs for PASS, subtract for NG
         if (serialStatus === 'PASS') {
+          // PASS at first station: increment outputs
           scanResults.push(new ScanLog({
             productionLine: lineId,
             model: detectedModel,
@@ -247,8 +247,9 @@ const scanSerial = async (req, res) => {
             finalScanTime: null,
           }));
           totalPassed++;
-          netOutputDelta++; // ADD to outputs on PASS at first scan
+          netOutputDelta++; // Only increment on PASS at first scan
         } else if (serialStatus === 'NG') {
+          // NG at first station: do not affect outputs
           scanResults.push(new ScanLog({
             productionLine: lineId,
             model: detectedModel,
@@ -263,7 +264,7 @@ const scanSerial = async (req, res) => {
             finalScanTime: null,
           }));
           totalRejected++;
-          netOutputDelta--; // SUBTRACT from outputs on NG at first scan
+          // No change to netOutputDelta on NG at first scan
         } else {
           failedScans.push({
             serialNumber,
@@ -294,7 +295,7 @@ const scanSerial = async (req, res) => {
           });
           continue;
         }
-        // Accept only PASS or NG at second verification, but do not update outputs here
+        // Accept only PASS or NG at second verification
         if (serialStatus === 'PASS') {
           await ScanLog.updateOne(
             { _id: existingScan._id },
@@ -306,6 +307,7 @@ const scanSerial = async (req, res) => {
               }
             }
           ).session(session);
+          // Do not change netOutputDelta here
           continue;
         } else if (serialStatus === 'NG') {
           await ScanLog.updateOne(
@@ -319,6 +321,8 @@ const scanSerial = async (req, res) => {
               }
             }
           ).session(session);
+          // Only NG at second station after PASS at first station will decrement totalOutputs
+          netOutputDelta--;
           continue;
         } else {
           failedScans.push({
@@ -351,7 +355,7 @@ const scanSerial = async (req, res) => {
     }
 
     // --- Update totals and efficiency on the line ---
-    // Only the first scan affects output count, and totalOutputs cannot go below zero
+    // Only PASS at first scan increments and NG at second scan decrements output count. totalOutputs cannot go below zero.
     let nextTotalOutputs = line.totalOutputs + netOutputDelta;
     if (nextTotalOutputs < 0) nextTotalOutputs = 0;
     let nextRejectedOutputs = line.rejectedOutputs + totalRejected;
