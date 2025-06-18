@@ -469,8 +469,15 @@ const getLineFromSerial = async (req, res) => {
       return res.status(400).json({ message: 'Valid serial number is required' });
     }
 
-    const encryptedSerial = encryptSerial(serialNumber.trim());
-    const scan = await ScanLog.findOne({ serialNumber: encryptedSerial, verificationStage: 1, serialStatus: 'PASS' });
+    // Use hash for lookup, matching scanSerial's logic
+    const serialHash = hashSerial(serialNumber.trim());
+
+    // Find the latest scan with this serial, stage 1, and status PASS
+    const scan = await ScanLog.findOne({
+      serialNumberHash: serialHash,
+      verificationStage: 1,
+      serialStatus: 'PASS'
+    }).sort({ scannedAt: -1 });
 
     if (!scan) {
       return res.status(404).json({ message: 'No valid scan record found for this serial' });
