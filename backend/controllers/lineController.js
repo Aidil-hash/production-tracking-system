@@ -303,7 +303,9 @@ const scanSerial = async (req, res) => {
               $set: {
                 verificationStage: 2,
                 verifiedBy: operatorId,
-                finalScanTime: malaysiaNow
+                finalScanTime: malaysiaNow,
+                secondSerialStatus: 'PASS',
+                secondVerifierName: user.name
               }
             }
           ).session(session);
@@ -317,7 +319,8 @@ const scanSerial = async (req, res) => {
                 verificationStage: 2,
                 verifiedBy: operatorId,
                 finalScanTime: malaysiaNow,
-                serialStatus: 'NG'
+                secondSerialStatus: 'NG',
+                secondVerifierName: user.name
               }
             }
           ).session(session);
