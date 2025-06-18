@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import LogoutButton from '../Logout';
+import { subHours } from "date-fns";
 import { toast } from 'sonner';
 
 function SerialDrivenDashboard() {
@@ -214,7 +215,17 @@ function SerialDrivenDashboard() {
                       <TableCell>{s.model}</TableCell>
                       <TableCell>{s.name}</TableCell>
                       <TableCell>
-                        {s.scannedAt ? new Date(s.scannedAt).toLocaleString('en-MY') : '-'}
+                        {s.scannedAt
+                        ? subHours(new Date(s.scannedAt), 8).toLocaleString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',    // or 'numeric' for 4-digit year
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                          })
+                        : 'N/A'}
                       </TableCell>
                     </TableRow>
                   )) : (
