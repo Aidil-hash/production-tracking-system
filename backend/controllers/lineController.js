@@ -664,16 +664,17 @@ const startLine = async (req, res) => {
 const updateTargetRates = async (io) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  
+
   try {
     const now = getMalaysiaTime();
-    const activeLines = await Line.find({ 
+    // Find all running lines with startTime set
+    const activeLines = await Line.find({
       startTime: { $ne: null },
       linestatus: 'RUNNING'
     }).session(session);
 
     const bulkOps = [];
-    const updates = []; // Store updates for socket emission
+    const updates = [];
 
     for (const line of activeLines) {
       const newTarget = calculateTargetEfficiency({
@@ -683,36 +684,35 @@ const updateTargetRates = async (io) => {
         totalOutputs: line.totalOutputs
       });
 
-      if (Math.abs(newTarget - (line.targetEfficiency || 0)) > 0.001) {
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: line._id },
-            update: {
-              $set: { targetEfficiency: newTarget },
-              $push: {
-                efficiencyHistory: {
-                  timestamp: now,
-                  efficiency: calculateCurrentEfficiency(line),
-                  target: newTarget,
-                  rejectedOutputs: line.rejectedOutputs
-                }
+      // Always update, no threshold check
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: line._id },
+          update: {
+            $set: { targetEfficiency: newTarget },
+            $push: {
+              efficiencyHistory: {
+                timestamp: now,
+                efficiency: calculateCurrentEfficiency(line),
+                target: newTarget,
+                rejectedOutputs: line.rejectedOutputs
               }
             }
           }
-        });
-        
-        // Prepare update for socket
-        updates.push({
-          lineId: line._id,
-          targetEfficiency: newTarget
-        });
-      }
+        }
+      });
+
+      // Prepare update for socket.io
+      updates.push({
+        lineId: line._id,
+        targetEfficiency: newTarget
+      });
     }
 
     if (bulkOps.length > 0) {
       await Line.bulkWrite(bulkOps, { session });
 
-      // Use the io parameter passed to the function
+      // Emit updates to clients
       if (io) {
         try {
           io.emit('targetUpdates', updates);
@@ -727,8 +727,7 @@ const updateTargetRates = async (io) => {
   } catch (error) {
     console.error('Error updating target rates:', error);
     await session.abortTransaction();
-    // Consider adding retry logic here for transient errors
-    throw error; // Re-throw if you want calling code to handle it
+    throw error;
   } finally {
     await session.endSession();
   }
