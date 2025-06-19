@@ -192,7 +192,7 @@ export default function LinePerformanceChartNoAccordion() {
                 <div className="flex flex-wrap justify-between items-center mb-2">
                   <div className="text-xl font-semibold text-gray-800">{line.name} – {line.department}</div>
                   <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-                    <div className="text-gray-800 text-[14px]"><strong>Total Outputs:</strong> {line.totalOutputs}</div>
+                    <div className="text-gray-800 text-xl"><strong>Total Outputs:</strong> {line.totalOutputs}</div>
                     <div className="text-gray-800 text-[14px]">
                       <strong className="text-[14px]">Line Status:</strong>{" "}
                       <span className={`px-2 py-1 rounded-md border text-[14px] ${
