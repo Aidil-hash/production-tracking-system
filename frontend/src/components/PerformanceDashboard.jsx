@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from "react-router-dom";
 import { Card, CardHeader, CardContent } from '../components/ui/card';
-import LinePerformanceChart from '../components/ui/LinePerformanceChart';
+import LinePerformanceChartNoAccordion from '../components/ui/PerformanceDashboard';
 import { Button } from "../components/ui/button";
 
 export default function PerformanceDashboard() {
@@ -20,7 +20,7 @@ export default function PerformanceDashboard() {
       <CardContent>
         <div>
           <h2 className="text-lg font-semibold text-center mb-4 text-black">Line Performance</h2>
-          <LinePerformanceChart />
+          <LinePerformanceChartNoAccordion />
         </div>
       </CardContent>
     </Card>
