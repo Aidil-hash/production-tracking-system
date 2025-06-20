@@ -144,6 +144,7 @@ export default function LinePerformanceChartNoAccordion() {
 
   // Fullscreen handler for all charts together
   const handleFullscreen = () => {
+    console.log("chartsContainerRef.current:", chartsContainerRef.current);
     const el = chartsContainerRef.current;
     if (el) {
       if (el.requestFullscreen) {
