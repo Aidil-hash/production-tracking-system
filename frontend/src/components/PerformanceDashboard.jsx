@@ -10,7 +10,7 @@ export default function PerformanceDashboard() {
       <CardHeader>
         <div className="flex justify-between items-center">
           <Button variant="contained" color="primary" size="small"
-          className="hover:bg-gray-500 focus:bg-gray-500 cursor-pointer px-3 py-1">
+          className="hover:bg-gray-300 focus:bg-gray-500 cursor-pointer px-3 py-1">
             <Link to="/" className="text-black">
             Back to Login Screen
             </Link>

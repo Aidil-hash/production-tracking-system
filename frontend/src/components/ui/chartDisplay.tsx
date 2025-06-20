@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { format, subHours } from "date-fns";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -32,6 +32,8 @@ export default function LinePerformanceChartNoAccordion() {
   const [linesData, setLinesData] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("All");
   const [timeFilter, setTimeFilter] = useState<string>("All");
+
+  const chartsContainerRef = useRef<HTMLDivElement>(null);
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -140,6 +142,20 @@ export default function LinePerformanceChartNoAccordion() {
       }));
   }, [linesData, selectedDepartment, timeFilter]);
 
+  // Fullscreen handler for all charts together
+  const handleFullscreen = () => {
+    const el = chartsContainerRef.current;
+    if (el) {
+      if (el.requestFullscreen) {
+        el.requestFullscreen();
+      } else if ((el as any).webkitRequestFullscreen) {
+        (el as any).webkitRequestFullscreen();
+      } else if ((el as any).msRequestFullscreen) {
+        (el as any).msRequestFullscreen();
+      }
+    }
+  };
+
   return (
     <Card className="bg-white">
       <CardHeader>
@@ -180,6 +196,17 @@ export default function LinePerformanceChartNoAccordion() {
                 <SelectItem value="All" className="hover:bg-orange-600 focus:bg-orange-600 cursor-pointer">All Time</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          {/* Fullscreen button for all charts */}
+          <div className="flex items-end ml-auto">
+            <button
+              className="text-gray-800 border px-3 py-1 rounded hover:bg-gray-300"
+              onClick={handleFullscreen}
+              type="button"
+              title="Fullscreen All Charts"
+            >
+              ⬜️ Fullscreen All
+            </button>
           </div>
         </div>
 
