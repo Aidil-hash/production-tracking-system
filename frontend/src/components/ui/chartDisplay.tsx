@@ -213,7 +213,7 @@ export default function LinePerformanceChartNoAccordion() {
         {error ? (
           <div className="text-red-500">{error}</div>
         ) : (
-          <div className="space-y-8">
+          <div ref={chartsContainerRef} className="space-y-8">
             {chartData.map((line) => (
               <div key={line._id || line.name} className="bg-white rounded-lg shadow border px-4 py-4 mb-4">
                 <div className="flex flex-wrap justify-between items-center mb-2">
