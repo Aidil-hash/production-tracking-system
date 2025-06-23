@@ -350,6 +350,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       let totalSuccess = 0;
       let totalFail = 0;
       let newlyFailedSerials = [];
+      // Collect all failedScans from all chunks
+      let allFailedScans = [];
 
       for (const chunk of chunks) {
         try {
@@ -363,6 +365,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
           // Get failed serial numbers from failedScans
           const failedScans = (result.failedScans || []).map(fs => fs.serialNumber);
+          allFailedScans = allFailedScans.concat(result.failedScans || []);
 
           // Show error messages for failed serials
           (result.failedScans || []).forEach(f =>
@@ -403,16 +406,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         'FINISHED'
       ];
 
-      // failedScans = array from backend response
-      const failedScans = (result.failedScans || []);
-
       // Remove permanent failures from unprocessedSerials
       setUnprocessedSerials(current => 
         current.filter(sn => 
           // Keep in queue if:
           // - it was not in failedScans (i.e., succeeded), OR
           // - it failed with a retryable status (not permanent)
-          !failedScans.some(f => 
+          !allFailedScans.some(f => 
             f.serialNumber === sn.serialNumber && 
             permanentFailureStatuses.includes(f.status)
           )
