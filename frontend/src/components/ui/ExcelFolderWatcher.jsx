@@ -344,11 +344,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
     try {
       setIsProcessing(true);
-      const chunkSize = 5; // Number of serials per request (tune as needed)
+      const chunkSize = 5;
       const chunks = chunkArray(unprocessedSerials, chunkSize);
       let totalSuccess = 0;
       let totalFail = 0;
-      let allFailedSerials = [];
+      let newlyFailedSerials = [];
 
       for (const chunk of chunks) {
         try {
@@ -378,28 +378,30 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           // Count successes/failures
           totalSuccess += chunk.length - failedScans.length;
           totalFail += failedScans.length;
-          allFailedSerials = allFailedSerials.concat(
+          // Only keep failed serial objects for future submission
+          newlyFailedSerials = newlyFailedSerials.concat(
             chunk.filter(sn => sn && failedScans.includes(sn.serialNumber))
           );
         } catch (err) {
+          // If the whole chunk fails, keep all of them for retry
           totalFail += chunk.length;
-          allFailedSerials = allFailedSerials.concat(chunk.filter(sn => sn && sn.serialNumber));
+          newlyFailedSerials = newlyFailedSerials.concat(chunk.filter(sn => sn && sn.serialNumber));
           toast.error('Chunk failed: ' + err.message);
         }
         // Wait 200-350ms (random) before next chunk to avoid conflicts
         await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 150)));
       }
 
-      // Only keep the serials that failed in unprocessedSerials
+      // Update unprocessedSerials: only serials that failed remain
       setUnprocessedSerials(
-        allFailedSerials
+        newlyFailedSerials
           .map(sn => (typeof sn === "string" ? { serialNumber: sn, status: "" } : sn))
           .filter(sn => sn && sn.serialNumber)
       );
 
       toast.success(`Batch processed: ${totalSuccess} successful, ${totalFail} failed.`);
       if (onBatchProcessed) {
-        onBatchProcessed({ success: totalFail === 0, count: totalSuccess, failedSerials: allFailedSerials });
+        onBatchProcessed({ success: totalFail === 0, count: totalSuccess, failedSerials: newlyFailedSerials });
       }
     } catch (err) {
       toast.error('Batch submission failed: ' + err.message);
