@@ -275,6 +275,56 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     }
   }, [unprocessedSerials, isSubmitting]);
 
+  async function batchSubmitWithRetry({ API_URL, lineId, authToken, unprocessedSerials, maxRetries = 3, delay = 300 }) {
+    const batchPayload = {
+      serialNumbers: unprocessedSerials.map(sn => ({
+        serialNumber: sn.serialNumber,
+        serialStatus: sn.status
+      }))
+    };
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${API_URL}/api/lines/${lineId}/scan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(batchPayload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          // Only retry for write conflict error
+          if (
+            errorData.message &&
+            errorData.message.toLowerCase().includes('write conflict')
+          ) {
+            if (attempt < maxRetries - 1) {
+              await new Promise(r => setTimeout(r, delay));
+              continue; // retry
+            }
+            throw new Error('Write conflict after multiple retries. Please try again.');
+          } else {
+            throw new Error(
+              errorData.message ||
+              `Server responded with ${response.status}: ${response.statusText}`
+            );
+          }
+        }
+        // Success
+        return await response.json();
+      } catch (err) {
+        // Last attempt or non-write-conflict error
+        if (attempt === maxRetries - 1 || !err.message.toLowerCase().includes('write conflict')) {
+          throw err;
+        }
+        // else retry
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+
   const handleSubmit = async () => {
     if (unprocessedSerials.length === 0) {
       toast.error('No unprocessed serial numbers to submit.');
@@ -284,32 +334,14 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     try {
       setIsProcessing(true);
 
-      const batchPayload = {
-        serialNumbers: unprocessedSerials.map(sn => ({
-          serialNumber: sn.serialNumber,
-          serialStatus: sn.status
-        }))
-      };
-
-      const response = await fetch(`${API_URL}/api/lines/${lineId}/scan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(batchPayload),
+      const responseData = await batchSubmitWithRetry({
+        API_URL,
+        lineId,
+        authToken,
+        unprocessedSerials
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || 
-          `Server responded with ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const responseData = await response.json();
-      toast.success(`Successfully submitted ${batchPayload.serialNumbers.length} serials`);
+      toast.success(`Successfully submitted ${unprocessedSerials.length} serials`);
 
       // Mark serials as processed
       unprocessedSerials.forEach(sn => {
@@ -320,7 +352,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       if (onBatchProcessed) {
         onBatchProcessed({
           success: true,
-          count: batchPayload.serialNumbers.length
+          count: unprocessedSerials.length
         });
       }
     } catch (err) {
