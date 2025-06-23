@@ -352,39 +352,37 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       for (const chunk of chunks) {
         try {
-          await batchSubmitWithRetry({
+          const result = await batchSubmitWithRetry({
             API_URL,
             lineId,
             authToken,
             unprocessedSerials: chunk
           });
-          totalSuccess += chunk.length;
-          // Mark these serials as processed
-          chunk.forEach(sn => {
-            if (sn && sn.serialNumber) processedSerialsCache.current.add(sn.serialNumber);
-          });
+          // Log the backend result for debugging
+          console.log('Batch submit result:', result);
+
+          if (result && result.processed) {
+            totalSuccess += result.processed.length;
+            result.processed.forEach(sn => processedSerialsCache.current.add(sn));
+          }
+          if (result && result.failed) {
+            totalFail += result.failed.length;
+            failedSerials = failedSerials.concat(result.failed.map(f => f.serialNumber));
+            result.failed.forEach(f =>
+              toast.error(`Serial ${f.serialNumber} failed: ${f.reason}`)
+            );
+          }
         } catch (err) {
           totalFail += chunk.length;
           failedSerials = failedSerials.concat(chunk.map(sn => sn.serialNumber));
           toast.error('Chunk failed: ' + err.message);
         }
-        // Wait 200-350ms (random) before next chunk to avoid conflicts
         await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 150)));
       }
 
-      // Remove successfully processed serials from unprocessedSerials
       setUnprocessedSerials(
         failedSerials
-          .map(sn => {
-            if (!sn) return null; // skip undefined/null
-            if (typeof sn === "string") {
-              return sn ? { serialNumber: sn, status: "" } : null;
-            }
-            if (typeof sn === "object" && sn.serialNumber) {
-              return sn;
-            }
-            return null;
-          })
+          .map(sn => typeof sn === "string" ? { serialNumber: sn, status: "" } : sn)
           .filter(sn => sn && sn.serialNumber)
       );
 
