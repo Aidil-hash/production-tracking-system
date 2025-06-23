@@ -87,8 +87,46 @@ const detachOperatorFromLine = async (req, res) => {
   }
 };
 
+// NEW FUNCTION: Attach operator to a line
+const attachOperatorToLine = async (req, res) => {
+  try {
+    // Ensure the requester is an engineer
+    if (req.user.role !== 'engineer') {
+      return res.status(403).json({
+        message: 'Access denied. Only engineer can attach operators to lines.'
+      });
+    }
+
+    // Expect the lineId and operatorId in the request body
+    const { lineId, operatorId } = req.body;
+    if (!lineId || !operatorId) {
+      return res.status(400).json({ message: 'lineId and operatorId are required.' });
+    }
+
+    // Update the production line to assign the operator
+    const updatedLine = await Line.findByIdAndUpdate(
+      lineId,
+      { operatorId: operatorId },
+      { new: true }
+    );
+
+    if (!updatedLine) {
+      return res.status(404).json({ message: 'Production line not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Operator attached to line successfully.',
+      line: updatedLine
+    });
+  } catch (error) {
+    console.error('Error attaching operator to line:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = { 
   getAllScans,
   getScanLogsByLine,
+  attachOperatorToLine,
   detachOperatorFromLine
  };
