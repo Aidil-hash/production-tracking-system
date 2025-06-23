@@ -325,6 +325,15 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     }
   }
 
+  // Helper: Chunk array into smaller parts
+  function chunkArray(array, chunkSize) {
+    const results = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      results.push(array.slice(i, i + chunkSize));
+    }
+    return results;
+  }
+
   const handleSubmit = async () => {
     if (unprocessedSerials.length === 0) {
       toast.error('No unprocessed serial numbers to submit.');
@@ -333,27 +342,38 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
     try {
       setIsProcessing(true);
+      const chunkSize = 5; // Number of serials per request (tune as needed)
+      const chunks = chunkArray(unprocessedSerials, chunkSize);
+      let totalSuccess = 0;
+      let totalFail = 0;
+      let failedSerials = [];
 
-      const responseData = await batchSubmitWithRetry({
-        API_URL,
-        lineId,
-        authToken,
-        unprocessedSerials
-      });
+      for (const chunk of chunks) {
+        try {
+          await batchSubmitWithRetry({
+            API_URL,
+            lineId,
+            authToken,
+            unprocessedSerials: chunk
+          });
+          totalSuccess += chunk.length;
+          // Mark these serials as processed
+          chunk.forEach(sn => processedSerialsCache.current.add(sn.serialNumber));
+        } catch (err) {
+          totalFail += chunk.length;
+          failedSerials = failedSerials.concat(chunk.map(sn => sn.serialNumber));
+          toast.error('Chunk failed: ' + err.message);
+        }
+        // Wait 200-350ms (random) before next chunk to avoid conflicts
+        await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 150)));
+      }
 
-      toast.success(`Successfully submitted ${unprocessedSerials.length} serials`);
+      // Remove successfully processed serials from unprocessedSerials
+      setUnprocessedSerials(failedSerials); // Only keep failed ones for retry
 
-      // Mark serials as processed
-      unprocessedSerials.forEach(sn => {
-        processedSerialsCache.current.add(sn.serialNumber);
-      });
-      setUnprocessedSerials([]); // Clear the list after submission
-
+      toast.success(`Batch processed: ${totalSuccess} successful, ${totalFail} failed.`);
       if (onBatchProcessed) {
-        onBatchProcessed({
-          success: true,
-          count: unprocessedSerials.length
-        });
+        onBatchProcessed({ success: totalFail === 0, count: totalSuccess, failedSerials });
       }
     } catch (err) {
       toast.error('Batch submission failed: ' + err.message);
