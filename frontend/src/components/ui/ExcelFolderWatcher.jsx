@@ -130,12 +130,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           }
 
           // Get test status from Result column
-          let testStatus = (item.Result || '').toUpperCase();
+          let testStatusRaw = (item.Result || '').toUpperCase().trim();
           
           // Convert "FAIL:xx" to "NG" and "PASS" to "PASS"
-          if (testStatus.includes('FAIL')) {
+          let testStatus;
+          if (testStatusRaw.includes('FAIL')) {
             testStatus = 'NG';
-          } else if (testStatus.includes('PASS')) {
+          } else if (testStatusRaw.includes('PASS')) {
             testStatus = 'PASS';
           } else {
             throw new Error(`Invalid test status: ${testStatus}`);
