@@ -393,11 +393,30 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 150)));
       }
 
-      // Update unprocessedSerials: only serials that failed remain
-      setUnprocessedSerials(
-        newlyFailedSerials
-          .map(sn => (typeof sn === "string" ? { serialNumber: sn, status: "" } : sn))
-          .filter(sn => sn && sn.serialNumber)
+      const permanentFailureStatuses = [
+        'MODEL_NOT_FOUND', 
+        'INVALID', 
+        'NOT_OPERATOR', 
+        'NOT_PDQC', 
+        'DUPLICATE', 
+        'REJECTED_STAGE1', 
+        'FINISHED'
+      ];
+
+      // failedScans = array from backend response
+      const failedScans = (result.failedScans || []);
+
+      // Remove permanent failures from unprocessedSerials
+      setUnprocessedSerials(current => 
+        current.filter(sn => 
+          // Keep in queue if:
+          // - it was not in failedScans (i.e., succeeded), OR
+          // - it failed with a retryable status (not permanent)
+          !failedScans.some(f => 
+            f.serialNumber === sn.serialNumber && 
+            permanentFailureStatuses.includes(f.status)
+          )
+        )
       );
 
       toast.success(`Batch processed: ${totalSuccess} successful, ${totalFail} failed.`);
