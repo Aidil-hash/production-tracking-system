@@ -345,7 +345,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
     try {
       setIsProcessing(true);
-      const chunkSize = 3;
+      const chunkSize = 1;
       const chunks = chunkArray(unprocessedSerials, chunkSize);
       let totalSuccess = 0;
       let totalFail = 0;
