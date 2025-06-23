@@ -87,7 +87,7 @@ const detachOperatorFromLine = async (req, res) => {
   }
 };
 
-// NEW FUNCTION: Attach operator to a line
+// NEW FUNCTION: Attach operator to a line (supports multiple operators)
 const attachOperatorToLine = async (req, res) => {
   try {
     // Ensure the requester is an engineer
@@ -103,10 +103,10 @@ const attachOperatorToLine = async (req, res) => {
       return res.status(400).json({ message: 'lineId and operatorId are required.' });
     }
 
-    // Update the production line to assign the operator
+    // Add the operatorId to the operatorIds array, but only if not already present
     const updatedLine = await Line.findByIdAndUpdate(
       lineId,
-      { operatorId: operatorId },
+      { $addToSet: { operatorIds: operatorId } },
       { new: true }
     );
 
