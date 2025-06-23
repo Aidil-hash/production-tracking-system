@@ -348,7 +348,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       const chunks = chunkArray(unprocessedSerials, chunkSize);
       let totalSuccess = 0;
       let totalFail = 0;
-      let failedSerials = [];
+      let allFailedSerials = [];
 
       for (const chunk of chunks) {
         try {
@@ -362,6 +362,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
           // Get failed serial numbers from failedScans
           const failedScans = (result.failedScans || []).map(fs => fs.serialNumber);
+
           // Show error messages for failed serials
           (result.failedScans || []).forEach(f =>
             toast.error(`Serial ${f.serialNumber} failed: ${f.reason}`)
@@ -377,12 +378,12 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           // Count successes/failures
           totalSuccess += chunk.length - failedScans.length;
           totalFail += failedScans.length;
-          failedSerials = failedSerials.concat(
+          allFailedSerials = allFailedSerials.concat(
             chunk.filter(sn => sn && failedScans.includes(sn.serialNumber))
           );
         } catch (err) {
           totalFail += chunk.length;
-          failedSerials = failedSerials.concat(chunk.filter(sn => sn && sn.serialNumber));
+          allFailedSerials = allFailedSerials.concat(chunk.filter(sn => sn && sn.serialNumber));
           toast.error('Chunk failed: ' + err.message);
         }
         // Wait 200-350ms (random) before next chunk to avoid conflicts
@@ -391,14 +392,14 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       // Only keep the serials that failed in unprocessedSerials
       setUnprocessedSerials(
-        failedSerials
+        allFailedSerials
           .map(sn => (typeof sn === "string" ? { serialNumber: sn, status: "" } : sn))
           .filter(sn => sn && sn.serialNumber)
       );
 
       toast.success(`Batch processed: ${totalSuccess} successful, ${totalFail} failed.`);
       if (onBatchProcessed) {
-        onBatchProcessed({ success: totalFail === 0, count: totalSuccess, failedSerials });
+        onBatchProcessed({ success: totalFail === 0, count: totalSuccess, failedSerials: allFailedSerials });
       }
     } catch (err) {
       toast.error('Batch submission failed: ' + err.message);
@@ -407,7 +408,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       setIsProcessing(false);
     }
   };
-  
+
   const resetAll = () => {
     setFolderHandle(null);
     setProcessedFiles([]);
