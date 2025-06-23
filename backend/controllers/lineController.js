@@ -113,6 +113,7 @@ const updateLine = async (req, res) => {
   }
 };
 
+// Scan a serial number
 const scanSerial = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -122,10 +123,12 @@ const scanSerial = async (req, res) => {
     const { serialNumber, serialStatus, serialNumbers } = req.body;
     const operatorId = req.user.id;
 
+    // Support batch and single scan
     const isBatch = Array.isArray(serialNumbers);
     const scansToProcess = isBatch ? serialNumbers : [{ serialNumber, serialStatus }];
     const malaysiaNow = getMalaysiaTime();
 
+    // Validate for single scan
     if (!isBatch && (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '')) {
       return res.status(400).json({ message: "Valid serial number is required." });
     }
@@ -136,25 +139,27 @@ const scanSerial = async (req, res) => {
     const user = await User.findById(operatorId);
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    // Build a map of serial hashes for efficient lookup and collect hashes for batch
+    // For batch optimization, precompute hashes
     const hashMap = new Map();
     scansToProcess.forEach(s => {
       hashMap.set(s.serialNumber.trim(), hashSerial(s.serialNumber.trim()));
     });
-    const serialHashes = Array.from(hashMap.values());
 
-    // Fetch existing scan records to prevent duplicates
+    // Pre-fetch all existing (serialNumberHash + serialStatus)
+    const allLookups = scansToProcess.map(({ serialNumber, serialStatus }) => ({
+      serialNumberHash: hashSerial(serialNumber.trim()),
+      serialStatus
+    }));
     const existingScans = await ScanLog.find({
-      serialNumberHash: { $in: serialHashes }
+      $or: allLookups
     }).session(session);
 
-    // Map existing scans by their hash for quick access
-    const existingSerialMap = new Map();
+    // Create a lookup map for existing scans
+    const existingLookup = new Map();
     existingScans.forEach(scan => {
-      existingSerialMap.set(scan.serialNumberHash, scan);
+      existingLookup.set(`${scan.serialNumberHash}_${scan.serialStatus}`, scan);
     });
 
-    // Counters for result summary
     let totalPassed = 0;
     let totalRejected = 0;
     let netOutputDelta = 0;
@@ -174,7 +179,8 @@ const scanSerial = async (req, res) => {
       const plainSerial = serialNumber.trim();
       const encSerial = encryptSerial(plainSerial);
       const serialHash = hashSerial(plainSerial);
-      const existingScan = existingSerialMap.get(serialHash);
+      const key = `${serialHash}_${serialStatus}`;
+      const existingScan = existingLookup.get(key);
 
       // --- Model detection by serial prefix (first 6 chars) ---
       let detectedModel = undefined;
@@ -184,7 +190,6 @@ const scanSerial = async (req, res) => {
         const modelCodeDoc = await ModelCode.findOne({ code });
         if (modelCodeDoc) detectedModel = modelCodeDoc.modelName;
       }
-
       if (!detectedModel) {
         failedScans.push({
           serialNumber,
@@ -194,7 +199,7 @@ const scanSerial = async (req, res) => {
         continue;
       }
 
-      // --- Track or update modelRuns for this line ---
+      // Track or update modelRuns for this line
       if (detectedModel && code) {
         await Line.updateOne(
           { _id: line._id, "modelRuns.code": code },
@@ -210,9 +215,18 @@ const scanSerial = async (req, res) => {
         }
       }
 
+      // --- Duplicate check (serial + status) ---
+      if (existingScan) {
+        failedScans.push({
+          serialNumber,
+          reason: "Duplicate serial and status detected",
+          status: "DUPLICATE"
+        });
+        continue;
+      }
+
       // --- Stage 1: First scan logic ---
-      if (!existingScan) {
-        // Only assigned operators can scan first station
+      if (serialStatus === 'PASS' || serialStatus === 'NG') {
         if (!line.operatorIds.map(String).includes(operatorId) || user.role !== 'operator') {
           failedScans.push({
             serialNumber,
@@ -222,134 +236,46 @@ const scanSerial = async (req, res) => {
           continue;
         }
 
-        if (serialStatus === 'PASS' || serialStatus === 'NG') {
-          scanResults.push(new ScanLog({
-            productionLine: lineId,
-            model: detectedModel,
-            operator: operatorId,
-            name: user.name,
-            serialNumber: encSerial,
-            serialNumberHash: serialHash,
-            serialStatus,
-            scannedAt: malaysiaNow,
-            verificationStage: 1,
-            verifiedBy: null,
-            finalScanTime: null,
-            secondSerialStatus: null,
-            secondVerifierName: null
-          }));
-          if (serialStatus === 'PASS') {
-            totalPassed++;
-            netOutputDelta++;
-            await Output.create([{
-              lineId,
-              timestamp: malaysiaNow,
-              count: 1,
-            }], { session });
-          } else {
-            totalRejected++;
-          }
-          continue;
-        } else {
-          failedScans.push({
-            serialNumber,
-            reason: "Invalid status (must be PASS or NG)",
-            status: "INVALID_STATUS"
-          });
-        }
-        continue;
-      }
-
-      // --- Stage 2: Second scan logic ---
-      if (existingScan.verificationStage === 1 && existingScan.serialStatus === 'PASS') {
-        // Only PDQC operators can verify at second station
-        if (user.role !== 'PDQC operator' && user.role !== 'pdqc') {
-          failedScans.push({
-            serialNumber,
-            reason: "Only PDQC operators can perform second station verification.",
-            status: "NOT_PDQC"
-          });
-          continue;
-        }
-        // Prevent same operator from verifying twice
-        if (existingScan.operator.toString() === operatorId) {
-          failedScans.push({
-            serialNumber,
-            reason: "Second verification must be by different operator",
-            status: "SAME_OPERATOR"
-          });
-          continue;
-        }
-        // Accept only PASS or NG at second verification
-        if (serialStatus === 'PASS' || serialStatus === 'NG') {
-          await ScanLog.updateOne(
-            { _id: existingScan._id },
-            {
-              $set: {
-                verificationStage: 2,
-                verifiedBy: operatorId,
-                finalScanTime: malaysiaNow,
-                secondSerialStatus: serialStatus,
-                secondVerifierName: user.name
-              }
-            }
-          ).session(session);
-          if (serialStatus === 'NG') netOutputDelta--;
-          continue;
-        } else {
-          failedScans.push({
-            serialNumber,
-            reason: "Invalid status for second verification (must be PASS or NG)",
-            status: "INVALID_SECOND_STATUS"
-          });
-          continue;
-        }
-      }
-
-      // Already rejected at first stage
-      if (existingScan.verificationStage === 1 && existingScan.serialStatus === 'NG') {
-        failedScans.push({
-          serialNumber,
-          reason: "Serial rejected at first verification",
-          status: "REJECTED_STAGE1"
+        const scanDoc = new ScanLog({
+          productionLine: lineId,
+          model: detectedModel,
+          operator: operatorId,
+          name: user.name,
+          serialNumber: encSerial,
+          serialNumberHash: serialHash,
+          serialStatus,
+          scannedAt: malaysiaNow,
+          verificationStage: 1,
+          verifiedBy: null,
+          finalScanTime: null,
+          secondSerialStatus: null,
+          secondVerifierName: null
         });
+        scanResults.push(scanDoc);
+
+        if (serialStatus === 'PASS') {
+          totalPassed++;
+          netOutputDelta++;
+          await Output.create([{
+            lineId,
+            timestamp: malaysiaNow,
+            count: 1,
+          }], { session });
+        } else {
+          totalRejected++;
+        }
         continue;
-      }
-      // Already fully finished
-      if (existingScan.verificationStage === 2) {
+      } else {
         failedScans.push({
           serialNumber,
-          reason: "Already fully verified as finished goods",
-          status: "FINISHED"
+          reason: "Invalid status (must be PASS or NG)",
+          status: "INVALID_STATUS"
         });
         continue;
       }
     }
 
-    // --- Batch insert with duplicate handling ---
-    if (scanResults.length > 0) {
-      try {
-        await ScanLog.insertMany(scanResults, { session, ordered: false });
-      } catch (err) {
-        // Handle duplicates in batch insert
-        if (err.code === 11000 || (err.writeErrors && err.writeErrors.length > 0)) {
-          const dupIndexes = err.writeErrors ? err.writeErrors.map(e => e.index) : [];
-          for (const i of dupIndexes) {
-            const scanDoc = scanResults[i];
-            failedScans.push({
-              serialNumber: scanDoc ? decryptSerial(scanDoc.serialNumber) : 'UNKNOWN',
-              reason: "Duplicate serial detected",
-              status: "DUPLICATE"
-            });
-          }
-        } else {
-          await session.abortTransaction();
-          throw err;
-        }
-      }
-    }
-
-    // --- Update totals and efficiency on the line ---
+    // Update totals and efficiency on the line
     let nextTotalOutputs = line.totalOutputs + netOutputDelta;
     if (nextTotalOutputs < 0) nextTotalOutputs = 0;
     let nextRejectedOutputs = line.rejectedOutputs + totalRejected;
@@ -359,6 +285,7 @@ const scanSerial = async (req, res) => {
       totalOutputs: nextTotalOutputs,
       startTime: line.startTime
     });
+
     const targetEfficiency = calculateTargetEfficiency({
       ...line.toObject(),
       totalOutputs: nextTotalOutputs
@@ -384,15 +311,33 @@ const scanSerial = async (req, res) => {
       { new: true, session }
     );
 
+    // Save all new scan logs (with duplicate error catch)
+    await Promise.all(scanResults.map(async (scanDoc) => {
+      try {
+        await scanDoc.save({ session });
+      } catch (err) {
+        if (err.code === 11000) {
+          failedScans.push({
+            serialNumber: '[duplicate]', 
+            reason: "Duplicate serial and status detected (insert)",
+            status: "DUPLICATE"
+          });
+        } else {
+          throw err;
+        }
+      }
+    }));
+
     await session.commitTransaction();
 
-    // Notify connected clients via socket if applicable
+    // Notify via socket
     const io = req.app.get('io');
     if (io) {
       const eventName = isBatch ? 'newScanBatch' : 'newScan';
       io.emit(eventName, { lineId });
     }
 
+    // Response
     return res.status(200).json({
       message: isBatch ?
         `Batch processed: ${totalPassed} PASS at first scan, ${totalRejected} NG at first scan, ${failedScans.length} failed` :
@@ -407,6 +352,7 @@ const scanSerial = async (req, res) => {
       outputs: nextTotalOutputs,
       efficiency: currentEfficiency
     });
+
   } catch (error) {
     console.error(error);
     await session.abortTransaction();

@@ -7,7 +7,7 @@ const scanLogSchema = new mongoose.Schema({
   operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   serialNumber: { type: String, required: true },
-  serialNumberHash: { type: String, required: true, unique: true },
+  serialNumberHash: { type: String, required: true }, // <-- removed unique: true!
   serialStatus: { type: String, required: true },
   scannedAt: { type: Date, default: Date.now },
 
@@ -16,10 +16,16 @@ const scanLogSchema = new mongoose.Schema({
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // second verifier
   finalScanTime: { type: Date, default: null }, // time of second verification
   secondSerialStatus: { type: String, default: null }, // status after second verification
-  secondVerifierName: { type: String, default: null }, // Add if you want to store the name directly
+  secondVerifierName: { type: String, default: null },
 });
 
-// Pre-save middleware to populate lineModel and operatorName
+// Compound unique index for serialNumberHash + serialStatus
+scanLogSchema.index({ serialNumberHash: 1, serialStatus: 1 }, { unique: true });
+
+// TTL index: Auto-delete after 3 days
+scanLogSchema.index({ scannedAt: 1 }, { expireAfterSeconds: 259200 });
+
+// (Optional: Pre-save hook for auto-populating names if you use it in your app)
 scanLogSchema.pre('save', async function(next) {
   try {
     if (this.isModified('productionLine') || !this.lineModel) {
@@ -29,7 +35,6 @@ scanLogSchema.pre('save', async function(next) {
         this.lineModel = line.model;
       }
     }
-    
     if (this.isModified('operator') || !this.operatorName) {
       const User = mongoose.model('User');
       const operator = await User.findById(this.operator);
@@ -42,7 +47,5 @@ scanLogSchema.pre('save', async function(next) {
     next(error);
   }
 });
-
-scanLogSchema.index({ scannedAt: 1 }, { expireAfterSeconds: 259200 });
 
 module.exports = mongoose.model('ScanRecord', scanLogSchema);
