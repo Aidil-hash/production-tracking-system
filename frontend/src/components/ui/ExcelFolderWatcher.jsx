@@ -277,10 +277,12 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
   async function batchSubmitWithRetry({ API_URL, lineId, authToken, unprocessedSerials, maxRetries = 3, delay = 300 }) {
     const batchPayload = {
-      serialNumbers: unprocessedSerials.map(sn => ({
-        serialNumber: sn.serialNumber,
-        serialStatus: sn.status
-      }))
+      serialNumbers: unprocessedSerials
+        .filter(sn => sn && sn.serialNumber && sn.status)
+        .map(sn => ({
+          serialNumber: sn.serialNumber,
+          serialStatus: sn.status
+        }))
     };
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -358,7 +360,9 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           });
           totalSuccess += chunk.length;
           // Mark these serials as processed
-          chunk.forEach(sn => processedSerialsCache.current.add(sn.serialNumber));
+          chunk.forEach(sn => {
+            if (sn && sn.serialNumber) processedSerialsCache.current.add(sn.serialNumber);
+          });
         } catch (err) {
           totalFail += chunk.length;
           failedSerials = failedSerials.concat(chunk.map(sn => sn.serialNumber));
@@ -369,7 +373,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       }
 
       // Remove successfully processed serials from unprocessedSerials
-      setUnprocessedSerials(failedSerials); // Only keep failed ones for retry
+      setUnprocessedSerials(
+        failedSerials
+          .map(sn => typeof sn === "string" ? { serialNumber: sn, status: "" } : sn) // In case you stored just the serial string
+          .filter(sn => sn && sn.serialNumber) // Filter out undefined or empty
+      );
 
       toast.success(`Batch processed: ${totalSuccess} successful, ${totalFail} failed.`);
       if (onBatchProcessed) {
@@ -477,14 +485,17 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           Ready to Submit ({unprocessedSerials.length} serials)
         </Typography>
         <List dense>
-          {unprocessedSerials.slice(0, 10).map((sn, index) => (
-            <ListItem key={index} divider>
-              <ListItemText
-                primary={sn.serialNumber}
-                secondary={`Status: ${sn.status} (from ${sn.sourceFile})`}
-              />
-            </ListItem>
-          ))}
+          {unprocessedSerials
+            .filter(sn => sn && sn.serialNumber)
+            .slice(0, 10)
+            .map((sn, index) => (
+              <ListItem key={index} divider>
+                <ListItemText
+                  primary={sn.serialNumber}
+                  secondary={`Status: ${sn.status} (from ${sn.sourceFile})`}
+                />
+              </ListItem>
+            ))}
           {unprocessedSerials.length > 10 && (
             <ListItem>
               <ListItemText
