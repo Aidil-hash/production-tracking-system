@@ -233,6 +233,16 @@ const scanSerial = async (req, res) => {
 
         if (serialStatus === 'PASS') {
           // PASS at first station: increment outputs
+          // Prevent duplicate scan insert for same serialNumberHash
+          if (await ScanLog.findOne({ serialNumberHash: serialHash }).session(session)) {
+            failedScans.push({
+              serialNumber,
+              reason: "Duplicate serial detected",
+              status: "DUPLICATE"
+            });
+            continue;
+          }
+
           scanResults.push(new ScanLog({
             productionLine: lineId,
             model: detectedModel,
@@ -245,6 +255,8 @@ const scanSerial = async (req, res) => {
             verificationStage: 1,
             verifiedBy: null,
             finalScanTime: null,
+            secondSerialStatus: null,
+            secondVerifierName: null
           }));
           totalPassed++;
           netOutputDelta++; // Only increment on PASS at first scan
@@ -256,6 +268,16 @@ const scanSerial = async (req, res) => {
           continue;
         } else if (serialStatus === 'NG') {
           // NG at first station: do not affect outputs
+          // Prevent duplicate scan insert for same serialNumberHash
+          if (await ScanLog.findOne({ serialNumberHash: serialHash }).session(session)) {
+            failedScans.push({
+              serialNumber,
+              reason: "Duplicate serial detected",
+              status: "DUPLICATE"
+            });
+            continue;
+          }
+
           scanResults.push(new ScanLog({
             productionLine: lineId,
             model: detectedModel,
@@ -268,6 +290,8 @@ const scanSerial = async (req, res) => {
             verificationStage: 1,
             verifiedBy: null,
             finalScanTime: null,
+            secondSerialStatus: null,
+            secondVerifierName: null
           }));
           totalRejected++;
           // No change to netOutputDelta on NG at first scan
