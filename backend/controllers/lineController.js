@@ -115,253 +115,273 @@ const updateLine = async (req, res) => {
 
 // Scan a serial number
 const scanSerial = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const maxAttempts = 3;
+  let attempts = 0;
 
-  try {
-    const { lineId } = req.params;
-    const { serialNumber, serialStatus, serialNumbers } = req.body;
-    const operatorId = req.user.id;
+  while (attempts < maxAttempts) {
+    const session = await mongoose.startSession();
+    let committed = false;
+    try {
+      session.startTransaction();
 
-    // Support batch and single scan
-    const isBatch = Array.isArray(serialNumbers);
-    const scansToProcess = isBatch ? serialNumbers : [{ serialNumber, serialStatus }];
-    const malaysiaNow = getMalaysiaTime();
+      const { lineId } = req.params;
+      const { serialNumber, serialStatus, serialNumbers } = req.body;
+      const operatorId = req.user.id;
 
-    // Validate for single scan
-    if (!isBatch && (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '')) {
-      return res.status(400).json({ message: "Valid serial number is required." });
-    }
+      const isBatch = Array.isArray(serialNumbers);
+      const scansToProcess = isBatch ? serialNumbers : [{ serialNumber, serialStatus }];
+      const malaysiaNow = getMalaysiaTime();
 
-    // Fetch line and operator/user details
-    const line = await Line.findById(lineId).session(session);
-    if (!line) return res.status(404).json({ message: "Production line not found." });
-    const user = await User.findById(operatorId);
-    if (!user) return res.status(401).json({ message: "User not found" });
-
-    // For batch optimization, precompute hashes
-    const hashMap = new Map();
-    scansToProcess.forEach(s => {
-      hashMap.set(s.serialNumber.trim(), hashSerial(s.serialNumber.trim()));
-    });
-
-    // Pre-fetch all existing (serialNumberHash + serialStatus)
-    const allLookups = scansToProcess.map(({ serialNumber, serialStatus }) => ({
-      serialNumberHash: hashSerial(serialNumber.trim()),
-      serialStatus
-    }));
-    const existingScans = await ScanLog.find({
-      $or: allLookups
-    }).session(session);
-
-    // Create a lookup map for existing scans
-    const existingLookup = new Map();
-    existingScans.forEach(scan => {
-      existingLookup.set(`${scan.serialNumberHash}_${scan.serialStatus}`, scan);
-    });
-
-    let totalPassed = 0;
-    let totalRejected = 0;
-    let netOutputDelta = 0;
-    const scanResults = [];
-    const failedScans = [];
-
-    for (const { serialNumber, serialStatus } of scansToProcess) {
-      if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
-        failedScans.push({
-          serialNumber: serialNumber || 'N/A',
-          reason: "Invalid serial number format",
-          status: "INVALID"
-        });
-        continue;
+      if (!isBatch && (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '')) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ message: "Valid serial number is required." });
       }
 
-      const plainSerial = serialNumber.trim();
-      const encSerial = encryptSerial(plainSerial);
-      const serialHash = hashSerial(plainSerial);
-      const key = `${serialHash}_${serialStatus}`;
-      const existingScan = existingLookup.get(key);
-
-      // --- Model detection by serial prefix (first 6 chars) ---
-      let detectedModel = undefined;
-      let code = undefined;
-      if (plainSerial.length >= 6) {
-        code = plainSerial.slice(0, 6);
-        const modelCodeDoc = await ModelCode.findOne({ code });
-        if (modelCodeDoc) detectedModel = modelCodeDoc.modelName;
+      const line = await Line.findById(lineId).session(session);
+      if (!line) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ message: "Production line not found." });
       }
-      if (!detectedModel) {
-        failedScans.push({
-          serialNumber,
-          reason: "Model not found for serial prefix",
-          status: "MODEL_NOT_FOUND"
-        });
-        continue;
+      const user = await User.findById(operatorId);
+      if (!user) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(401).json({ message: "User not found" });
       }
 
-      // Track or update modelRuns for this line
-      if (detectedModel && code) {
-        await Line.updateOne(
-          { _id: line._id, "modelRuns.code": code },
-          { $set: { "modelRuns.$.lastSeen": malaysiaNow } }
-        ).session(session);
-        const updatedLine = await Line.findById(line._id, null, { session });
-        const existsAfter = (updatedLine.modelRuns || []).some(run => run.code === code);
-        if (!existsAfter) {
-          await Line.updateOne(
-            { _id: line._id },
-            { $push: { modelRuns: { code, modelName: detectedModel, firstSeen: malaysiaNow, lastSeen: malaysiaNow } } }
-          ).session(session);
-        }
-      }
+      const hashMap = new Map();
+      scansToProcess.forEach(s => {
+        hashMap.set(s.serialNumber.trim(), hashSerial(s.serialNumber.trim()));
+      });
 
-      // --- Duplicate check (serial + status) ---
-      if (existingScan) {
-        failedScans.push({
-          serialNumber,
-          reason: "Duplicate serial and status detected",
-          status: "DUPLICATE"
-        });
-        continue;
-      }
+      const allLookups = scansToProcess.map(({ serialNumber, serialStatus }) => ({
+        serialNumberHash: hashSerial(serialNumber.trim()),
+        serialStatus
+      }));
+      const existingScans = await ScanLog.find({ $or: allLookups }).session(session);
 
-      // --- Stage 1: First scan logic ---
-      if (serialStatus === 'PASS' || serialStatus === 'NG') {
-        if (!line.operatorIds.map(String).includes(operatorId) || user.role !== 'operator') {
+      const existingLookup = new Map();
+      existingScans.forEach(scan => {
+        existingLookup.set(`${scan.serialNumberHash}_${scan.serialStatus}`, scan);
+      });
+
+      let totalPassed = 0;
+      let totalRejected = 0;
+      let netOutputDelta = 0;
+      const scanResults = [];
+      const failedScans = [];
+
+      for (const { serialNumber, serialStatus } of scansToProcess) {
+        if (!serialNumber || typeof serialNumber !== 'string' || serialNumber.trim() === '') {
           failedScans.push({
-            serialNumber,
-            reason: "Only assigned line operators can perform first scan.",
-            status: "NOT_OPERATOR"
+            serialNumber: serialNumber || 'N/A',
+            reason: "Invalid serial number format",
+            status: "INVALID"
           });
           continue;
         }
 
-        const scanDoc = new ScanLog({
-          productionLine: lineId,
-          model: detectedModel,
-          operator: operatorId,
-          name: user.name,
-          serialNumber: encSerial,
-          serialNumberHash: serialHash,
-          serialStatus,
-          scannedAt: malaysiaNow,
-          verificationStage: 1,
-          verifiedBy: null,
-          finalScanTime: null,
-          secondSerialStatus: null,
-          secondVerifierName: null
-        });
-        scanResults.push(scanDoc);
+        const plainSerial = serialNumber.trim();
+        const encSerial = encryptSerial(plainSerial);
+        const serialHash = hashSerial(plainSerial);
+        const key = `${serialHash}_${serialStatus}`;
+        const existingScan = existingLookup.get(key);
 
-        if (serialStatus === 'PASS') {
-          totalPassed++;
-          netOutputDelta++;
-          await Output.create([{
-            lineId,
-            timestamp: malaysiaNow,
-            count: 1,
-          }], { session });
-        } else {
-          totalRejected++;
+        let detectedModel = undefined;
+        let code = undefined;
+        if (plainSerial.length >= 6) {
+          code = plainSerial.slice(0, 6);
+          const modelCodeDoc = await ModelCode.findOne({ code });
+          if (modelCodeDoc) detectedModel = modelCodeDoc.modelName;
         }
-        continue;
-      } else {
-        failedScans.push({
-          serialNumber,
-          reason: "Invalid status (must be PASS or NG)",
-          status: "INVALID_STATUS"
-        });
-        continue;
-      }
-    }
+        if (!detectedModel) {
+          failedScans.push({
+            serialNumber,
+            reason: "Model not found for serial prefix",
+            status: "MODEL_NOT_FOUND"
+          });
+          continue;
+        }
 
-    // Update totals and efficiency on the line
-    let nextTotalOutputs = line.totalOutputs + netOutputDelta;
-    if (nextTotalOutputs < 0) nextTotalOutputs = 0;
-    let nextRejectedOutputs = line.rejectedOutputs + totalRejected;
-
-    const currentEfficiency = calculateCurrentEfficiency({
-      ...line.toObject(),
-      totalOutputs: nextTotalOutputs,
-      startTime: line.startTime
-    });
-
-    const targetEfficiency = calculateTargetEfficiency({
-      ...line.toObject(),
-      totalOutputs: nextTotalOutputs
-    });
-
-    await Line.findByIdAndUpdate(
-      lineId,
-      {
-        $set: { 
-          totalOutputs: nextTotalOutputs,
-          rejectedOutputs: nextRejectedOutputs,
-          targetEfficiency: targetEfficiency
-        },
-        $push: {
-          efficiencyHistory: {
-            timestamp: malaysiaNow,
-            efficiency: currentEfficiency,
-            target: targetEfficiency,
-            rejectedOutputs: nextRejectedOutputs,
+        // Track or update modelRuns for this line
+        if (detectedModel && code) {
+          await Line.updateOne(
+            { _id: line._id, "modelRuns.code": code },
+            { $set: { "modelRuns.$.lastSeen": malaysiaNow } }
+          ).session(session);
+          const updatedLine = await Line.findById(line._id, null, { session });
+          const existsAfter = (updatedLine.modelRuns || []).some(run => run.code === code);
+          if (!existsAfter) {
+            await Line.updateOne(
+              { _id: line._id },
+              { $push: { modelRuns: { code, modelName: detectedModel, firstSeen: malaysiaNow, lastSeen: malaysiaNow } } }
+            ).session(session);
           }
         }
-      },
-      { new: true, session }
-    );
 
-    // Save all new scan logs (with duplicate error catch)
-    await Promise.all(scanResults.map(async (scanDoc) => {
-      try {
-        await scanDoc.save({ session });
-      } catch (err) {
-        if (err.code === 11000) {
+        // Duplicate check (serial + status)
+        if (existingScan) {
           failedScans.push({
-            serialNumber: '[duplicate]', 
-            reason: "Duplicate serial and status detected (insert)",
+            serialNumber,
+            reason: "Duplicate serial and status detected",
             status: "DUPLICATE"
           });
+          continue;
+        }
+
+        // Stage 1: First scan logic
+        if (serialStatus === 'PASS' || serialStatus === 'NG') {
+          if (!line.operatorIds.map(String).includes(operatorId) || user.role !== 'operator') {
+            failedScans.push({
+              serialNumber,
+              reason: "Only assigned line operators can perform first scan.",
+              status: "NOT_OPERATOR"
+            });
+            continue;
+          }
+
+          const scanDoc = new ScanLog({
+            productionLine: lineId,
+            model: detectedModel,
+            operator: operatorId,
+            name: user.name,
+            serialNumber: encSerial,
+            serialNumberHash: serialHash,
+            serialStatus,
+            scannedAt: malaysiaNow,
+            verificationStage: 1,
+            verifiedBy: null,
+            finalScanTime: null,
+            secondSerialStatus: null,
+            secondVerifierName: null
+          });
+          scanResults.push(scanDoc);
+
+          if (serialStatus === 'PASS') {
+            totalPassed++;
+            netOutputDelta++;
+            await Output.create([{
+              lineId,
+              timestamp: malaysiaNow,
+              count: 1,
+            }], { session });
+          } else {
+            totalRejected++;
+          }
+          continue;
         } else {
-          throw err;
+          failedScans.push({
+            serialNumber,
+            reason: "Invalid status (must be PASS or NG)",
+            status: "INVALID_STATUS"
+          });
+          continue;
         }
       }
-    }));
 
-    await session.commitTransaction();
+      // Update totals and efficiency on the line
+      let nextTotalOutputs = line.totalOutputs + netOutputDelta;
+      if (nextTotalOutputs < 0) nextTotalOutputs = 0;
+      let nextRejectedOutputs = line.rejectedOutputs + totalRejected;
 
-    // Notify via socket
-    const io = req.app.get('io');
-    if (io) {
-      const eventName = isBatch ? 'newScanBatch' : 'newScan';
-      io.emit(eventName, { lineId });
+      const currentEfficiency = calculateCurrentEfficiency({
+        ...line.toObject(),
+        totalOutputs: nextTotalOutputs,
+        startTime: line.startTime
+      });
+
+      const targetEfficiency = calculateTargetEfficiency({
+        ...line.toObject(),
+        totalOutputs: nextTotalOutputs
+      });
+
+      await Line.findByIdAndUpdate(
+        lineId,
+        {
+          $set: { 
+            totalOutputs: nextTotalOutputs,
+            rejectedOutputs: nextRejectedOutputs,
+            targetEfficiency: targetEfficiency
+          },
+          $push: {
+            efficiencyHistory: {
+              timestamp: malaysiaNow,
+              efficiency: currentEfficiency,
+              target: targetEfficiency,
+              rejectedOutputs: nextRejectedOutputs,
+            }
+          }
+        },
+        { new: true, session }
+      );
+
+      // Save all new scan logs (with duplicate error catch)
+      await Promise.all(scanResults.map(async (scanDoc) => {
+        try {
+          await scanDoc.save({ session });
+        } catch (err) {
+          if (err.code === 11000) {
+            failedScans.push({
+              serialNumber: '[duplicate]', 
+              reason: "Duplicate serial and status detected (insert)",
+              status: "DUPLICATE"
+            });
+          } else {
+            throw err;
+          }
+        }
+      }));
+
+      await session.commitTransaction();
+      session.endSession();
+
+      // Notify via socket
+      const io = req.app.get('io');
+      if (io) {
+        const eventName = isBatch ? 'newScanBatch' : 'newScan';
+        io.emit(eventName, { lineId });
+      }
+
+      // Response
+      return res.status(200).json({
+        message: isBatch ?
+          `Batch processed: ${totalPassed} PASS at first scan, ${totalRejected} NG at first scan, ${failedScans.length} failed` :
+          (serialStatus === 'PASS' ? "Serial scanned successfully" : "Serial marked as NG"),
+        ...(isBatch ? {
+          passedCount: totalPassed,
+          rejectedCount: totalRejected,
+          failedScans: failedScans
+        } : {
+          scanId: scanResults[0]?._id,
+        }),
+        outputs: nextTotalOutputs,
+        efficiency: currentEfficiency
+      });
+    } catch (error) {
+      // Handle transient (retryable) error
+      if (
+        error.codeName === "WriteConflict" ||
+        (error.errorLabels && error.errorLabels.includes("TransientTransactionError"))
+      ) {
+        attempts++;
+        try { await session.abortTransaction(); } catch {}
+        session.endSession();
+        if (attempts === maxAttempts) {
+          return res.status(500).json({ message: "Write conflict, please retry." });
+        }
+        continue; // retry
+      } else {
+        // Permanent error: abort and return error
+        try { await session.abortTransaction(); } catch {}
+        session.endSession();
+        return res.status(500).json({
+          message: "Scan failed",
+          error: error.message
+        });
+      }
     }
-
-    // Response
-    return res.status(200).json({
-      message: isBatch ?
-        `Batch processed: ${totalPassed} PASS at first scan, ${totalRejected} NG at first scan, ${failedScans.length} failed` :
-        (serialStatus === 'PASS' ? "Serial scanned successfully" : "Serial marked as NG"),
-      ...(isBatch ? {
-        passedCount: totalPassed,
-        rejectedCount: totalRejected,
-        failedScans: failedScans
-      } : {
-        scanId: scanResults[0]?._id,
-      }),
-      outputs: nextTotalOutputs,
-      efficiency: currentEfficiency
-    });
-
-  } catch (error) {
-    console.error(error);
-    await session.abortTransaction();
-    return res.status(500).json({
-      message: "Scan failed",
-      error: error.message
-    });
-  } finally {
-    session.endSession();
   }
 };
 
