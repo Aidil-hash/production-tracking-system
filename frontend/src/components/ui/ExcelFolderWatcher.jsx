@@ -375,8 +375,17 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       // Remove successfully processed serials from unprocessedSerials
       setUnprocessedSerials(
         failedSerials
-          .map(sn => typeof sn === "string" ? { serialNumber: sn, status: "" } : sn) // In case you stored just the serial string
-          .filter(sn => sn && sn.serialNumber) // Filter out undefined or empty
+          .map(sn => {
+            if (!sn) return null; // skip undefined/null
+            if (typeof sn === "string") {
+              return sn ? { serialNumber: sn, status: "" } : null;
+            }
+            if (typeof sn === "object" && sn.serialNumber) {
+              return sn;
+            }
+            return null;
+          })
+          .filter(sn => sn && sn.serialNumber)
       );
 
       toast.success(`Batch processed: ${totalSuccess} successful, ${totalFail} failed.`);
@@ -486,13 +495,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         </Typography>
         <List dense>
           {unprocessedSerials
-            .filter(sn => sn && sn.serialNumber)
+            .filter(sn => sn && typeof sn === "object" && sn.serialNumber)
             .slice(0, 10)
             .map((sn, index) => (
               <ListItem key={index} divider>
                 <ListItemText
                   primary={sn.serialNumber}
-                  secondary={`Status: ${sn.status} (from ${sn.sourceFile})`}
+                  secondary={`Status: ${sn.status || '-'} (from ${sn.sourceFile || '-'})`}
                 />
               </ListItem>
             ))}
