@@ -3,6 +3,7 @@ import axios from 'axios';
 import LogoutButton from '../Logout';
 import { io } from 'socket.io-client';
 import { toast } from 'sonner';
+import { useIsMobile } from '../hooks/use-mobile'; // <-- import the hook
 
 const defaultSlots = [
   "8.00 - 9.00", "9.00 - 10.00", "10.15 - 11.30", "12.10 - 1.00", "1.00 - 2.00", "2.00 - 3.00", "3.15 - 4.00", "4.00 - 5.00", "5.00 - 5.30",
@@ -34,6 +35,7 @@ export default function LeaderDashboard() {
   const userName = localStorage.getItem('userName');
   const selectedLineIdRef = useRef(selectedLineId);
   const dateRef = useRef(date);
+  const isMobile = useIsMobile(); // <-- use the hook
 
   useEffect(() => {
     selectedLineIdRef.current = selectedLineId;
@@ -278,46 +280,89 @@ export default function LeaderDashboard() {
         )}
       </div>
       <div className="max-h-[600px] overflow-y-auto">
-        <table className="table-auto w-full border mb-4 text-white bg-gray-800">
-          <thead>
-            <tr>
-              <th className="sticky top-0 bg-gray-900 z-10">TIME</th>
-              <th className="sticky top-0 bg-gray-900 z-10">TARGET</th>
-              <th className="sticky top-0 bg-gray-900 z-10">ACCUM TARGET</th>
-              <th className="sticky top-0 bg-gray-900 z-10">ACTUAL</th>
-              <th className="sticky top-0 bg-gray-900 z-10">ACCUM ACTUAL</th>
-              <th className="sticky top-0 bg-gray-900 z-10">+/ -</th>
-            </tr>
-          </thead>
-          <tbody>
+        {isMobile ? (
+          <div>
             {rows.map((row, idx) => {
               const accumTarget = rows.slice(0, idx + 1).reduce((sum, r) => sum + Number(r.target || 0), 0);
               const accumActual = rows.slice(0, idx + 1).reduce((sum, r) => sum + Number(r.actual || 0), 0);
               return (
-                <tr key={row.time}>
-                  <td className="border px-2 py-1 text-white bg-gray-800">{row.time}</td>
-                  <td className="border px-2 py-1 text-white bg-gray-800">
+                <div key={row.time} className="mb-3 p-3 border rounded bg-gray-800 text-white">
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Time:</span>
+                    <span>{row.time}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="font-semibold">Target:</span>
                     <input
                       type="number"
                       value={row.target}
                       onChange={e => handleInput(idx, 'target', e.target.value)}
-                      className="border p-1 w-20 text-white bg-gray-800"
+                      className="border p-1 w-20 text-white bg-gray-700 ml-2"
                       min="0"
                     />
-                  </td>
-                  <td className="border px-2 py-1 text-white bg-gray-800">{accumTarget}</td>
-                  <td className="border px-2 py-1 text-white bg-gray-800">
-                    {row.actual !== '' ? row.actual : 0}
-                  </td>
-                  <td className="border px-2 py-1 text-white bg-gray-800">{accumActual}</td>
-                  <td className="border px-2 py-1 text-center text-white bg-gray-800">
-                    {Number(row.actual || 0) - Number(row.target || 0)}
-                  </td>
-                </tr>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="font-semibold">Accum Target:</span>
+                    <span>{accumTarget}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="font-semibold">Actual:</span>
+                    <span>{row.actual !== '' ? row.actual : 0}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="font-semibold">Accum Actual:</span>
+                    <span>{accumActual}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="font-semibold">+/- :</span>
+                    <span>{Number(row.actual || 0) - Number(row.target || 0)}</span>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          <table className="table-auto w-full border mb-4 text-white bg-gray-800">
+            <thead>
+              <tr>
+                <th className="sticky top-0 bg-gray-900 z-10">TIME</th>
+                <th className="sticky top-0 bg-gray-900 z-10">TARGET</th>
+                <th className="sticky top-0 bg-gray-900 z-10">ACCUM TARGET</th>
+                <th className="sticky top-0 bg-gray-900 z-10">ACTUAL</th>
+                <th className="sticky top-0 bg-gray-900 z-10">ACCUM ACTUAL</th>
+                <th className="sticky top-0 bg-gray-900 z-10">+/ -</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => {
+                const accumTarget = rows.slice(0, idx + 1).reduce((sum, r) => sum + Number(r.target || 0), 0);
+                const accumActual = rows.slice(0, idx + 1).reduce((sum, r) => sum + Number(r.actual || 0), 0);
+                return (
+                  <tr key={row.time}>
+                    <td className="border px-2 py-1 text-white bg-gray-800">{row.time}</td>
+                    <td className="border px-2 py-1 text-white bg-gray-800">
+                      <input
+                        type="number"
+                        value={row.target}
+                        onChange={e => handleInput(idx, 'target', e.target.value)}
+                        className="border p-1 w-20 text-white bg-gray-800"
+                        min="0"
+                      />
+                    </td>
+                    <td className="border px-2 py-1 text-white bg-gray-800">{accumTarget}</td>
+                    <td className="border px-2 py-1 text-white bg-gray-800">
+                      {row.actual !== '' ? row.actual : 0}
+                    </td>
+                    <td className="border px-2 py-1 text-white bg-gray-800">{accumActual}</td>
+                    <td className="border px-2 py-1 text-center text-white bg-gray-800">
+                      {Number(row.actual || 0) - Number(row.target || 0)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
