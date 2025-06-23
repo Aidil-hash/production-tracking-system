@@ -358,31 +358,41 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
             authToken,
             unprocessedSerials: chunk
           });
-          // Log the backend result for debugging
           console.log('Batch submit result:', result);
 
-          if (result && result.processed) {
-            totalSuccess += result.processed.length;
-            result.processed.forEach(sn => processedSerialsCache.current.add(sn));
-          }
-          if (result && result.failed) {
-            totalFail += result.failed.length;
-            failedSerials = failedSerials.concat(result.failed.map(f => f.serialNumber));
-            result.failed.forEach(f =>
-              toast.error(`Serial ${f.serialNumber} failed: ${f.reason}`)
-            );
-          }
+          // Get failed serial numbers from failedScans
+          const failedScans = (result.failedScans || []).map(fs => fs.serialNumber);
+          // Show error messages for failed serials
+          (result.failedScans || []).forEach(f =>
+            toast.error(`Serial ${f.serialNumber} failed: ${f.reason}`)
+          );
+
+          // Mark successful serials as processed
+          chunk.forEach(sn => {
+            if (sn && sn.serialNumber && !failedScans.includes(sn.serialNumber)) {
+              processedSerialsCache.current.add(sn.serialNumber);
+            }
+          });
+
+          // Count successes/failures
+          totalSuccess += chunk.length - failedScans.length;
+          totalFail += failedScans.length;
+          failedSerials = failedSerials.concat(
+            chunk.filter(sn => sn && failedScans.includes(sn.serialNumber))
+          );
         } catch (err) {
           totalFail += chunk.length;
-          failedSerials = failedSerials.concat(chunk.map(sn => sn.serialNumber));
+          failedSerials = failedSerials.concat(chunk.filter(sn => sn && sn.serialNumber));
           toast.error('Chunk failed: ' + err.message);
         }
+        // Wait 200-350ms (random) before next chunk to avoid conflicts
         await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 150)));
       }
 
+      // Only keep the serials that failed in unprocessedSerials
       setUnprocessedSerials(
         failedSerials
-          .map(sn => typeof sn === "string" ? { serialNumber: sn, status: "" } : sn)
+          .map(sn => (typeof sn === "string" ? { serialNumber: sn, status: "" } : sn))
           .filter(sn => sn && sn.serialNumber)
       );
 
@@ -397,7 +407,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       setIsProcessing(false);
     }
   };
-
+  
   const resetAll = () => {
     setFolderHandle(null);
     setProcessedFiles([]);
