@@ -48,7 +48,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   };
 
   const isTodaysFile = (filename) => {
-    const datePattern = new RegExp(`_${currentDateRef.current}_`);
+    const datePattern = new RegExp(`(_)?${currentDateRef.current}_`);
     return datePattern.test(filename);
   };
 
