@@ -29,6 +29,7 @@ import { Label } from "../ui/label";
 
 export default function LinePerformanceChartNoAccordion() {
   const [error, setError] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [linesData, setLinesData] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("All");
   const [timeFilter, setTimeFilter] = useState<string>("All");
@@ -142,6 +143,20 @@ export default function LinePerformanceChartNoAccordion() {
       }));
   }, [linesData, selectedDepartment, timeFilter]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const getChartHeight = () => {
+    if (!isFullscreen || chartData.length === 0) return 150;
+    const availableHeight = window.innerHeight - 120;
+    return Math.max(150, Math.floor(availableHeight / chartData.length));
+  };
+
   // Fullscreen handler for all charts together
   const handleFullscreen = () => {
     console.log("chartsContainerRef.current:", chartsContainerRef.current);
@@ -246,7 +261,7 @@ export default function LinePerformanceChartNoAccordion() {
                   {line.data.length === 0 ? (
                     <div className="text-muted-foreground text-center py-4">No efficiency data available.</div>
                   ) : (
-                    <div style={{ width: '100%', height: 150 }}>
+                    <div style={{ width: '100%', height: getChartHeight() }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={line.data} stackOffset="expand">
                           <defs>
