@@ -441,6 +441,7 @@ const scanSerial = async (req, res) => {
   })
   .then(result => res.status(200).json(result))
   .catch(error => {
+    console.error("Error processing scan:", error);
     return res.status(500).json({ message: "Scan failed (queue)", error: error.message });
   });
 };

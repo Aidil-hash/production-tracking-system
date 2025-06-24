@@ -142,13 +142,17 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
             throw new Error(`Invalid test status: ${testStatus}`);
           }
 
-          if (!processedSerialsCache.current.has(serialNumber)) {
+          // PATCH: Allow duplicate serials for different statuses
+          const serialKey = `${serialNumber}-${testStatus}`;
+          if (!processedSerialsCache.current.has(serialKey)) {
             newSerials.push({
               serialNumber,
               status: testStatus,
               sourceFile: file.name,
               row: index + 2
             });
+            // Add to cache immediately to prevent re-adding in the same batch
+            processedSerialsCache.current.add(serialKey);
           }
         } catch (err) {
           errors.push({
@@ -345,7 +349,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
     try {
       setIsProcessing(true);
-      const chunkSize = 3;
+      const chunkSize = 1;
       const chunks = chunkArray(unprocessedSerials, chunkSize);
       let totalSuccess = 0;
       let totalFail = 0;
@@ -364,7 +368,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           console.log('Batch submit result:', result);
 
           // Get failed serial numbers from failedScans
-          const failedScans = (result.failedScans || []).map(fs => fs.serialNumber);
+          const failedScans = (result.failedScans || []).map(fs => `${fs.serialNumber}-${fs.status || fs.serialStatus}`);
           allFailedScans = allFailedScans.concat(result.failedScans || []);
 
           // Show error messages for failed serials
@@ -374,8 +378,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
           // Mark successful serials as processed
           chunk.forEach(sn => {
-            if (sn && sn.serialNumber && !failedScans.includes(sn.serialNumber)) {
-              processedSerialsCache.current.add(sn.serialNumber);
+            if (sn && sn.serialNumber && sn.status && !failedScans.includes(`${sn.serialNumber}-${sn.status}`)) {
+              processedSerialsCache.current.add(`${sn.serialNumber}-${sn.status}`);
             }
           });
 
@@ -384,7 +388,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           totalFail += failedScans.length;
           // Only keep failed serial objects for future submission
           newlyFailedSerials = newlyFailedSerials.concat(
-            chunk.filter(sn => sn && failedScans.includes(sn.serialNumber))
+            chunk.filter(sn => sn && sn.serialNumber && sn.status && failedScans.includes(`${sn.serialNumber}-${sn.status}`))
           );
         } catch (err) {
           // If the whole chunk fails, keep all of them for retry
