@@ -221,15 +221,6 @@ export default function LinePerformanceChartNoAccordion() {
                   <div className="text-xl font-semibold text-gray-800">{line.name} – {line.department}</div>
                   <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
                     <div className="text-gray-800 text-xl"><strong>Total Outputs:</strong> {line.totalOutputs}</div>
-                    <div className="text-gray-800 text-[14px]">
-                      <span className={`px-2 py-1 rounded-md border text-[14px] ${
-                        line.linestatus === 'RUNNING' 
-                          ? 'bg-green-500 text-green-900' 
-                          : 'bg-red-500 text-red-800'
-                      }`}>
-                        {line.linestatus}
-                      </span>
-                    </div>
                     <div className="text-gray-800 text-xl">
                       <strong className="text-[14px]">Target Rate:</strong>{" "}
                       {(line.data.length > 0
@@ -239,6 +230,15 @@ export default function LinePerformanceChartNoAccordion() {
                     <div className="text-gray-800 text-xl">
                       <strong className="text-[14px]">Average Rate:</strong>{" "}
                       {(line.data.length > 0 ? (line.data.reduce((sum, d) => sum + d.performance, 0) / line.data.length).toFixed(2) : "0.00")} /min
+                    </div>
+                    <div className="text-gray-800 text-[14px]">
+                      <span className={`px-2 py-1 rounded-md border text-[14px] ${
+                        line.linestatus === 'RUNNING' 
+                          ? 'bg-green-500 text-green-900' 
+                          : 'bg-red-500 text-red-800'
+                      }`}>
+                        {line.linestatus}
+                      </span>
                     </div>
                   </div>
                 </div>
