@@ -88,6 +88,26 @@ function EngineerDashboard() {
     return () => socket.disconnect();
   }, [API_URL, selectedLine]);
 
+  useEffect(() => {
+    const socket = io(API_URL, { transports: ["websocket"] });
+
+    socket.on("newScanBatch", async () => {
+      try {
+        if (!selectedLine) return;
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API_URL}/api/engineer/scanlogs/${selectedLine}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setScanLogs(res.data);
+      } catch (err) {
+        console.error("Error fetching updated scan logs:", err);
+        toast.error("Error fetching updated scan logs:", err);
+      }
+    });
+
+    return () => socket.disconnect();
+  }, [API_URL, selectedLine]);
+
   // Fetch the list of operators and lines
   useEffect(() => {
     const fetchOperatorsAndFilter = async () => {
