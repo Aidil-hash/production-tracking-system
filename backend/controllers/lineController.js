@@ -397,7 +397,7 @@ const scanSerial = async (req, res) => {
         // Notify via socket
         const io = req.app.get('io');
         if (io) {
-          io.emit(isBatch ? 'newScanBatch' : 'newScan', { lineId });
+          io.emit( 'newScan', { lineId });
         }
 
         // Build the response
