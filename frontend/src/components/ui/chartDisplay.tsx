@@ -238,9 +238,9 @@ export default function LinePerformanceChartNoAccordion() {
                     <div className="text-gray-800 text-xl"><strong>Total Outputs:</strong> {line.totalOutputs}</div>
                     <div className="text-gray-800 text-xl">
                       <strong className="text-[14px]">Target Rate:</strong>{" "}
-                      {(line.data.length > 0
-                        ? (line.data.reduce((sum, d) => sum + d.target, 0) / line.data.length).toFixed(2)
-                        : "0.00")} /min
+                      {line.data.length > 0
+                        ? line.data[line.data.length - 1].target.toFixed(2)
+                        : "0.00"} /min
                     </div>
                     <div className="text-gray-800 text-xl">
                       <strong className="text-[14px]">Average Rate:</strong>{" "}

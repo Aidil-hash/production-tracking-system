@@ -6,6 +6,28 @@ import {
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
+// Use electron-store exposed via preload.js
+const store = window.electronStore;
+
+// LRUCache for serials (you can tune limit)
+class LRUCache {
+  constructor(limit = 5000) {
+    this.limit = limit;
+    this.cache = new Map();
+  }
+  has(key) { return this.cache.has(key); }
+  add(key) {
+    if (this.cache.has(key)) this.cache.delete(key);
+    this.cache.set(key, true);
+    if (this.cache.size > this.limit) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+  }
+  keys() { return Array.from(this.cache.keys()); }
+  clear() { this.cache.clear(); }
+}
+
 const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) => {
   const [folderHandle, setFolderHandle] = useState(null);
   const [processedFiles, setProcessedFiles] = useState([]);
@@ -14,13 +36,28 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(null);
   const [unprocessedSerials, setUnprocessedSerials] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileCache = useRef(new Map());
   const currentDateRef = useRef('');
-  const processedSerialsCache = useRef(new Set());
+  const processedSerialsCache = useRef(new LRUCache(5000));
   const scanInterval = useRef(null);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+  // Load cache from disk on mount
+  useEffect(() => {
+    if (store && typeof store.get === 'function') {
+      const saved = store.get('processedSerials', []);
+      saved.forEach(key => processedSerialsCache.current.add(key));
+    }
+  }, []);
+
+  // Save cache to disk
+  const saveCacheToDisk = useCallback(() => {
+    if (store && typeof store.set === 'function') {
+      store.set('processedSerials', processedSerialsCache.current.keys());
+    }
+  }, []);
 
   const updateTodaysDate = () => {
     const today = new Date();
@@ -38,7 +75,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       setFolderHandle(handle);
       toast.success(`Watching folder: ${handle.name}`);
       fileCache.current = new Map();
-      processedSerialsCache.current = new Set();
+      processedSerialsCache.current.clear();
+      saveCacheToDisk();
       setProcessedFiles([]);
       setUnprocessedSerials([]);
     } catch (err) {
@@ -86,15 +124,12 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       let jsonData = [];
       
       if (file.name.toLowerCase().endsWith('.csv')) {
-        // Custom CSV parsing for this specific format
         const text = new TextDecoder().decode(data);
         const lines = text.split('\n').filter(line => line.trim() !== '');
         
         if (lines.length > 0) {
           const headers = lines[0].split(',');
-          
           jsonData = lines.slice(1).map(line => {
-            // Handle quoted fields that might contain commas
             const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             const obj = {};
             headers.forEach((header, i) => {
@@ -104,7 +139,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           });
         }
       } else {
-        // Process Excel file
         const workbook = XLSX.read(data);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -116,33 +150,26 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
       jsonData.forEach((item, index) => {
         try {
-          // Get raw serial from InputText column (specific to this CSV format)
           let rawSerial = item.InputText || '';
-          
-          // Clean the serial number - remove quotes and trailing comma
           const serialNumber = rawSerial
-            .replace(/^"+|"+$/g, '')  // Remove surrounding quotes
-            .replace(/,$/, '')        // Remove trailing comma
+            .replace(/^"+|"+$/g, '')
+            .replace(/,$/, '')
             .trim();
 
           if (!serialNumber) {
             throw new Error('Missing serial number in InputText column');
           }
 
-          // Get test status from Result column
           let testStatusRaw = (item.Result || '').toUpperCase().trim();
-          
-          // Convert "FAIL:xx" to "NG" and "PASS" to "PASS"
           let testStatus;
           if (testStatusRaw.includes('FAIL')) {
             testStatus = 'NG';
           } else if (testStatusRaw.includes('PASS')) {
             testStatus = 'PASS';
           } else {
-            throw new Error(`Invalid test status: ${testStatus}`);
+            throw new Error(`Invalid test status: ${testStatusRaw}`);
           }
 
-          // PATCH: Allow duplicate serials for different statuses
           const serialKey = `${serialNumber}-${testStatus}`;
           if (!processedSerialsCache.current.has(serialKey)) {
             newSerials.push({
@@ -151,8 +178,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
               sourceFile: file.name,
               row: index + 2
             });
-            // Add to cache immediately to prevent re-adding in the same batch
             processedSerialsCache.current.add(serialKey);
+            saveCacheToDisk();
           }
         } catch (err) {
           errors.push({
@@ -190,10 +217,11 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       const newDate = updateTodaysDate();
       if (newDate !== currentDateRef.current) {
         fileCache.current = new Map();
-        processedSerialsCache.current = new Set();
+        processedSerialsCache.current.clear();
+        saveCacheToDisk();
         setProcessedFiles([]);
         setUnprocessedSerials([]);
-    }
+      }
 
       const allFiles = [];
       for await (const entry of folderHandle.values()) {
@@ -243,13 +271,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     } finally {
       setIsProcessing(false);
     }
-  }, [folderHandle, isProcessing, updateTodaysDate]); // Add dependencies
+  }, [folderHandle, isProcessing, updateTodaysDate, saveCacheToDisk, unprocessedSerials]);
 
   useEffect(() => {
     if (!folderHandle || !isWatching || unprocessedSerials.length > 0) return;
 
     scanInterval.current = setInterval(scanAllFiles, 10000);
-    scanAllFiles(); // Initial scan
+    scanAllFiles();
 
     return () => {
       if (scanInterval.current) {
@@ -257,26 +285,23 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         scanInterval.current = null;
       }
     };
-  }, [folderHandle, isWatching, unprocessedSerials.length, scanAllFiles]); // Add scanAllFiles to deps
+  }, [folderHandle, isWatching, unprocessedSerials.length, scanAllFiles]);
 
   useEffect(() => {
-    // Trigger auto-submit as soon as unprocessedSerials has new entries
     if (unprocessedSerials.length > 0 && !isSubmitting) {
-      // Set submitting flag
       setIsSubmitting(true);
 
       const autoSubmit = async () => {
         try {
-          await handleSubmit(); // Trigger the submit function
+          await handleSubmit();
         } catch (err) {
           toast.error('Auto-submit failed: ' + err.message);
         } finally {
-          setIsSubmitting(false); // Reset submitting flag
+          setIsSubmitting(false);
         }
       };
 
-      // Delay to ensure state update is complete
-      setTimeout(autoSubmit, 1000); // 1 second delay for state update
+      setTimeout(autoSubmit, 1000);
     }
   }, [unprocessedSerials, isSubmitting]);
 
@@ -302,14 +327,13 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          // Only retry for write conflict error
           if (
             errorData.message &&
             errorData.message.toLowerCase().includes('write conflict')
           ) {
             if (attempt < maxRetries - 1) {
               await new Promise(r => setTimeout(r, delay));
-              continue; // retry
+              continue;
             }
             throw new Error('Write conflict after multiple retries. Please try again.');
           } else {
@@ -319,20 +343,16 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
             );
           }
         }
-        // Success
         return await response.json();
       } catch (err) {
-        // Last attempt or non-write-conflict error
         if (attempt === maxRetries - 1 || !err.message.toLowerCase().includes('write conflict')) {
           throw err;
         }
-        // else retry
         await new Promise(r => setTimeout(r, delay));
       }
     }
   }
 
-  // Helper: Chunk array into smaller parts
   function chunkArray(array, chunkSize) {
     const results = [];
     for (let i = 0; i < array.length; i += chunkSize) {
@@ -354,7 +374,6 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
       let totalSuccess = 0;
       let totalFail = 0;
       let newlyFailedSerials = [];
-      // Collect all failedScans from all chunks
       let allFailedScans = [];
 
       for (const chunk of chunks) {
@@ -365,38 +384,31 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
             authToken,
             unprocessedSerials: chunk
           });
-          console.log('Batch submit result:', result);
 
-          // Get failed serial numbers from failedScans
           const failedScans = (result.failedScans || []).map(fs => `${fs.serialNumber}-${fs.status || fs.serialStatus}`);
           allFailedScans = allFailedScans.concat(result.failedScans || []);
 
-          // Show error messages for failed serials
           (result.failedScans || []).forEach(f =>
             toast.error(`Serial ${f.serialNumber} failed: ${f.reason}`)
           );
 
-          // Mark successful serials as processed
           chunk.forEach(sn => {
             if (sn && sn.serialNumber && sn.status && !failedScans.includes(`${sn.serialNumber}-${sn.status}`)) {
               processedSerialsCache.current.add(`${sn.serialNumber}-${sn.status}`);
+              saveCacheToDisk();
             }
           });
 
-          // Count successes/failures
           totalSuccess += chunk.length - failedScans.length;
           totalFail += failedScans.length;
-          // Only keep failed serial objects for future submission
           newlyFailedSerials = newlyFailedSerials.concat(
             chunk.filter(sn => sn && sn.serialNumber && sn.status && failedScans.includes(`${sn.serialNumber}-${sn.status}`))
           );
         } catch (err) {
-          // If the whole chunk fails, keep all of them for retry
           totalFail += chunk.length;
           newlyFailedSerials = newlyFailedSerials.concat(chunk.filter(sn => sn && sn.serialNumber));
           toast.error('Chunk failed: ' + err.message);
         }
-        // Wait 200-350ms (random) before next chunk to avoid conflicts
         await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 150)));
       }
 
@@ -410,12 +422,8 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         'FINISHED'
       ];
 
-      // Remove permanent failures from unprocessedSerials
       setUnprocessedSerials(current => 
         current.filter(sn => 
-          // Keep in queue if:
-          // - it was not in failedScans (i.e., succeeded), OR
-          // - it failed with a retryable status (not permanent)
           !allFailedScans.some(f => 
             f.serialNumber === sn.serialNumber && 
             permanentFailureStatuses.includes(f.status)
@@ -442,7 +450,10 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
     setSuccess(null);
     setUnprocessedSerials([]);
     fileCache.current = new Map();
-    processedSerialsCache.current = new Set();
+    processedSerialsCache.current.clear();
+    if (store && typeof store.delete === 'function') {
+      store.delete('processedSerials');
+    }
     if (scanInterval.current) {
       clearInterval(scanInterval.current);
       scanInterval.current = null;
@@ -486,7 +497,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
           variant="contained"
           color={isWatching ? 'error' : 'primary'}
           onClick={() => setIsWatching(!isWatching)}
-          disabled={isProcessing || isSubmitting} // Disable when auto-submit is in progress
+          disabled={isProcessing || isSubmitting}
           fullWidth
           sx={{ mb: 3 }}
         >
@@ -554,7 +565,7 @@ const ExcelFolderWatcher = ({ modelName, lineId, authToken, onBatchProcessed }) 
         variant="contained"
         color="success"
         onClick={handleSubmit}
-        disabled={unprocessedSerials.length === 0 || isProcessing || isSubmitting} // Disable button during auto-submit
+        disabled={unprocessedSerials.length === 0 || isProcessing || isSubmitting}
         fullWidth
         size="large"
       >

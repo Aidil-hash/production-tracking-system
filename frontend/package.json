@@ -1,6 +1,6 @@
 {
-  "name": "frontend",
-  "version": "0.1.8",
+  "name": "roland",
+  "version": "1.0.05",
   "main": "public/electron.js",
   "homepage": "./",
   "private": true,
@@ -28,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "electron-store": "^10.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.17.0",
     "lucide-react": "^0.483.0",
@@ -51,7 +52,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build && copy public\\preload.js build\\preload.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron .",
@@ -108,11 +109,15 @@
       "public/**/*",
       "!public",
       "build/index.html",
+      "build/preload.js",
       "electron.js"
     ],
     "directories": {
       "buildResources": "assets"
     },
+    "asarUnpack": [
+      "node_modules/electron-store/**"
+    ],
     "icon": "assets/favicon"
   }
 }

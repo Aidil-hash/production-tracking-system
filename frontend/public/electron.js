@@ -9,6 +9,12 @@ function createWindow() {
     height: 600,
     autoHideMenuBar: true,     // this auto-hides the menu
     frame: true,               // keep native window controls (false = borderless)
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'), // Secure preload
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // Disable sandbox for compatibility with some libraries
+    }
   });
 
   const isDev = !app.isPackaged;
