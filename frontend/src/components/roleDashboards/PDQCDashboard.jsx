@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, TextField, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper
@@ -18,7 +18,7 @@ function SerialDrivenDashboard() {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const token = localStorage.getItem('token');
 
-  const fetchLineFromSerial = async (serial) => {
+  const fetchLineFromSerial = useCallback(async (serial) => {
     try {
       const res = await axios.get(`${API_URL}/api/lines/serial/${serial}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -29,9 +29,9 @@ function SerialDrivenDashboard() {
       toast.error('Could not find line for this serial.');
       return null;
     }
-  };
+  }, [API_URL, token]);
 
-  const fetchPendingSerials = async (lineId) => {
+  const fetchPendingSerials = useCallback(async (lineId) => {
     try {
       const res = await axios.get(
         `${API_URL}/api/lines/${lineId}/pending-verification`,
@@ -41,14 +41,14 @@ function SerialDrivenDashboard() {
     } catch (err) {
       toast.error('Failed to fetch pending serials.');
     }
-  };
+  }, [API_URL, token]);
 
-  const handleManualSecondVerify = async () => {
+  const handleManualSecondVerify = useCallback(async () => {
     if (!manualSerial) return;
     setLineInfo(null);
     setPendingSerials([]);
     setSerialRejected(false);
-    
+
     try {
       const res = await axios.post(`${API_URL}/api/lines/validate`, {
         serialNumber: manualSerial
@@ -63,26 +63,29 @@ function SerialDrivenDashboard() {
     } catch (err) {
       toast.error('Failed to validate serial');
     }
-  };
+  }, [API_URL, manualSerial, token]);
 
-  const handleFinalSecondVerify = async (status) => {
-    const line = await fetchLineFromSerial(manualSerial);
-    if (!line) return;
+  const handleFinalSecondVerify = useCallback(
+    async (status) => {
+      const line = await fetchLineFromSerial(manualSerial);
+      if (!line) return;
 
-    try {
-      const response = await axios.post(
-        `${API_URL}/api/lines/${line.lineId}/scan`,
-        { serialNumber: manualSerial, serialStatus: status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success(response.data.message || 'Second verification successful');
-      setManualSerial('');
-      setAwaitingSecondStatus(false);
-      fetchPendingSerials(line.lineId);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Second verification failed');
-    }
-  };
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/lines/${line.lineId}/scan`,
+          { serialNumber: manualSerial, serialStatus: status },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        toast.success(response.data.message || 'Second verification successful');
+        setManualSerial('');
+        setAwaitingSecondStatus(false);
+        fetchPendingSerials(line.lineId);
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Second verification failed');
+      }
+    },
+    [API_URL, fetchLineFromSerial, fetchPendingSerials, manualSerial, token]
+  );
 
   useEffect(() => {
     if (!awaitingSecondStatus || serialRejected) return;

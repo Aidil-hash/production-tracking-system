@@ -4,20 +4,26 @@ const path = require('path');
 let mainWindow;
 
 function createWindow() {
+  const isDev = !app.isPackaged;
+  const preloadPath = path.join(__dirname, 'myPreload123.js');             // <- now points to project root
+  console.log('Electron __dirname:', __dirname);
+  console.log('Preload script path:', preloadPath);
+  const fs = require('fs');
+  console.log('Preload exists:', fs.existsSync(preloadPath));
+
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
-    autoHideMenuBar: true,     // this auto-hides the menu
-    frame: true,               // keep native window controls (false = borderless)
+    autoHideMenuBar: true,
+    frame: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'), // Secure preload
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // Disable sandbox for compatibility with some libraries
+      sandbox: false,
     }
   });
 
-  const isDev = !app.isPackaged;
   const startURL = isDev
     ? 'http://localhost:3000'
     : `file://${path.join(__dirname, 'index.html')}`;
