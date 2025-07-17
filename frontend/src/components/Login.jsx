@@ -114,7 +114,7 @@ export default function Login() {
       {/* Right side - Image */}
       <div className="hidden md:block">
         <img
-          src="roland-logo.png" // 👈 Replace this path with your own image
+          src="factory-pi.png" // 👈 Replace this path with your own image
           alt="Login visual"
           className="h-full w-full object-cover"
         />

@@ -1,6 +1,6 @@
 {
   "name": "roland",
-  "version": "1.0.05",
+  "version": "1.3.05",
   "main": "public/electron.js",
   "homepage": ".",
   "private": true,
